@@ -1,0 +1,14 @@
+## Interface: 20504
+## Interface-Classic: 20504
+## Title: TBC BIS Tracker
+## Notes: Track your Best-in-Slot gear progression for WoW TBC Anniversary. Supports Pre-BIS, Phase 1-4 for all classes and specs.
+## Author: mazarelo
+## Version: 1.0.0
+## SavedVariables: TBCBisTrackerDB
+## DefaultState: enabled
+## IconTexture: Interface\Icons\INV_Misc_QuestionMark
+
+Localization.lua
+Core.lua
+Database.lua
+UI.lua
