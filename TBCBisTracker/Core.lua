@@ -319,12 +319,10 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1)
         if not TBCBisTrackerDB.lastClass then
             local _, playerClass = UnitClass("player")
             TBCBisTrackerDB.lastClass = playerClass
-            -- Set first available spec for this class
-            if addon.DB and addon.DB[playerClass] then
-                for specName, _ in pairs(addon.DB[playerClass]) do
-                    TBCBisTrackerDB.lastSpec = specName
-                    break
-                end
+            -- Set first spec using the ordered list from CLASS_INFO
+            local classInfo = addon.CLASS_INFO and addon.CLASS_INFO[playerClass]
+            if classInfo and classInfo.specs and classInfo.specs[1] then
+                TBCBisTrackerDB.lastSpec = classInfo.specs[1]
             end
         end
 

@@ -419,11 +419,6 @@ function UI:CreateRowFrame(parent, idx)
     -- Background (alternating)
     local bg = row:CreateTexture(nil, "BACKGROUND")
     bg:SetAllPoints()
-    if idx % 2 == 0 then
-        bg:SetTexture(0.10, 0.10, 0.10, 0.5)
-    else
-        bg:SetTexture(0.06, 0.06, 0.06, 0.5)
-    end
     bg:SetTexture("Interface\\ChatFrame\\ChatFrameBackground")
     if idx % 2 == 0 then
         bg:SetVertexColor(0.10, 0.10, 0.14, 0.6)
