@@ -109,6 +109,9 @@ function UI:Build()
     -- ── Checkbox: show missing only ──
     self:BuildMissingFilter()
 
+    -- ── Export/Import buttons ──
+    self:BuildExportImportButtons()
+
     -- ── Column headers ──
     self:BuildColumnHeaders()
 
@@ -350,6 +353,69 @@ end
 -- Missing-only filter checkbox
 -- ─────────────────────────────────────────────
 
+function UI:ShowExportPopup()
+    local class = TBCBisTrackerDB.lastClass
+    local spec  = TBCBisTrackerDB.lastSpec
+    local phase = TBCBisTrackerDB.lastPhase
+    local text  = addon:ExportSetup(class, spec, phase)
+    if not text then addon:Print("Nothing to export."); return end
+    StaticPopupDialogs["TBCBIS_EXPORT"] = {
+        text = "Export — Ctrl+A then Ctrl+C to copy:",
+        button1 = "Close",
+        hasEditBox = true,
+        editBoxWidth = 350,
+        maxLetters = 999,
+        OnShow = function(s)
+            local eb = s.editBox or _G["StaticPopup1EditBox"] or _G["StaticPopup2EditBox"]
+            if not eb then return end
+            eb:SetMaxLetters(999)
+            eb:SetMaxBytes(0)
+            eb:SetText(text)
+            eb:HighlightText()
+            eb:SetFocus()
+        end,
+        EditBoxOnEscapePressed = function(s) s:GetParent():Hide() end,
+        timeout = 0, whileDead = true, hideOnEscape = true,
+    }
+    StaticPopup_Show("TBCBIS_EXPORT")
+end
+
+function UI:ShowImportPopup()
+    StaticPopupDialogs["TBCBIS_IMPORT"] = {
+        text = "Paste an exported setup string:",
+        button1 = "Import",
+        button2 = "Cancel",
+        hasEditBox = true,
+        editBoxWidth = 350,
+        OnShow = function(s) s.editBox:SetText(""); s.editBox:SetFocus() end,
+        OnAccept = function(s)
+            local eb = (s and s.editBox) or _G["StaticPopup1EditBox"] or _G["StaticPopup2EditBox"]
+            local input = eb and eb:GetText() or ""
+            local ok, msg = addon:ImportSetup(input)
+            addon:Print(ok and ("Import: " .. msg) or ("Import failed: " .. tostring(msg)))
+            if ok then UI:Refresh() end
+        end,
+        EditBoxOnEscapePressed = function(s) s:GetParent():Hide() end,
+        timeout = 0, whileDead = true, hideOnEscape = true,
+    }
+    StaticPopup_Show("TBCBIS_IMPORT")
+end
+
+function UI:BuildExportImportButtons()
+    local f = self.frame
+    local importBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+    importBtn:SetSize(60, 18)
+    importBtn:SetPoint("TOPRIGHT", f, "TOPRIGHT", -30, -8)
+    importBtn:SetText("Import")
+    importBtn:SetScript("OnClick", function() UI:ShowImportPopup() end)
+
+    local exportBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+    exportBtn:SetSize(60, 18)
+    exportBtn:SetPoint("RIGHT", importBtn, "LEFT", -4, 0)
+    exportBtn:SetText("Export")
+    exportBtn:SetScript("OnClick", function() UI:ShowExportPopup() end)
+end
+
 function UI:BuildMissingFilter()
     local f = self.frame
     local chk = CreateFrame("CheckButton", "TBCBisTrackerMissingChk", f, "UICheckButtonTemplate")
@@ -516,7 +582,7 @@ function UI:CreateRowFrame(parent, idx)
         GameTooltip:Hide()
     end)
 
-    -- Click handlers: cursor-drop = import; shift+left = chat-link; right = alts menu
+    -- Click handlers: cursor-drop = import; shift+left = chat-link; ctrl+left = URL; right = alts menu
     row:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     row:SetScript("OnClick", function(self, button)
         if button == "LeftButton" and CursorHasItem() then
@@ -532,6 +598,22 @@ function UI:CreateRowFrame(parent, idx)
                     DEFAULT_CHAT_FRAME.editBox:Insert(link)
                 end
             end
+        elseif button == "LeftButton" and IsControlKeyDown() and self.itemId and self.itemId > 0 then
+            local capturedId = self.itemId
+            StaticPopupDialogs["TBCBIS_WOWHEAD_URL"] = {
+                text = "Wowhead URL (Ctrl+C to copy):",
+                button1 = "Close",
+                hasEditBox = true,
+                editBoxWidth = 350,
+                OnShow = function(s)
+                    s.editBox:SetText(addon.WOWHEAD_BASE .. capturedId)
+                    s.editBox:HighlightText()
+                    s.editBox:SetFocus()
+                end,
+                EditBoxOnEscapePressed = function(s) s:GetParent():Hide() end,
+                timeout = 0, whileDead = true, hideOnEscape = true,
+            }
+            StaticPopup_Show("TBCBIS_WOWHEAD_URL")
         elseif button == "RightButton" and self.slotKey then
             UI:ShowAlternativesMenu(self, self.slotKey)
         end
@@ -571,16 +653,43 @@ function UI:ImportOrSelect(slot, itemId, sourceLabel)
         selectAltById(class, spec, phase, slot, itemId)
         addon:Print("Added " .. nameOrId .. " to " .. (addon.SLOT_LABELS[slot] or slot) .. " and selected.")
     end
+    addon:ScanEquipped()  -- tick obtained if the item is in bags/equipped
     UI:Refresh()
 end
 
-function UI:ImportFromCursor(slot)
+-- Find the BIS slot whose equipLoc whitelist accepts this item.
+-- If the dropped slot accepts it, keep it. Otherwise pick the first matching slot in SLOTS order.
+local function routeSlotForItem(equipLoc, droppedSlot)
+    if not equipLoc or equipLoc == "" then return droppedSlot end
+    if addon.SLOT_INVTYPES[droppedSlot] and addon.SLOT_INVTYPES[droppedSlot][equipLoc] then
+        return droppedSlot
+    end
+    for _, slot in ipairs(addon.SLOTS) do
+        local map = addon.SLOT_INVTYPES[slot]
+        if map and map[equipLoc] then
+            return slot
+        end
+    end
+    return nil
+end
+
+function UI:ImportFromCursor(droppedSlot)
     if not CursorHasItem() then return end
     local cursorType, _, itemLink = GetCursorInfo()
     ClearCursor()
     if cursorType ~= "item" or not itemLink then return end
     local itemId = tonumber(itemLink:match("item:(%d+)"))
-    UI:ImportOrSelect(slot, itemId, "Custom (drag-drop)")
+    if not itemId then return end
+    local _, _, _, _, _, _, _, _, equipLoc = GetItemInfo(itemId)
+    local targetSlot = routeSlotForItem(equipLoc, droppedSlot)
+    if not targetSlot then
+        addon:Print((GetItemInfo(itemId) or itemId) .. " can't be routed to a tracked slot (equipLoc=" .. tostring(equipLoc) .. ").")
+        return
+    end
+    if targetSlot ~= droppedSlot then
+        addon:Print("Routed to " .. (addon.SLOT_LABELS[targetSlot] or targetSlot) .. ".")
+    end
+    UI:ImportOrSelect(targetSlot, itemId, "Custom (drag-drop)")
 end
 
 function UI:ShowAlternativesMenu(anchorFrame, slot)

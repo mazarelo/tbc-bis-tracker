@@ -89,6 +89,27 @@ addon.QUALITY_COLORS = {
 
 addon.WOWHEAD_BASE = "https://www.wowhead.com/tbc/item="
 
+-- Acceptable equipLoc strings (from GetItemInfo) per BIS slot key
+addon.SLOT_INVTYPES = {
+    head     = { INVTYPE_HEAD = true },
+    neck     = { INVTYPE_NECK = true },
+    shoulder = { INVTYPE_SHOULDER = true },
+    back     = { INVTYPE_CLOAK = true },
+    chest    = { INVTYPE_CHEST = true, INVTYPE_ROBE = true },
+    wrist    = { INVTYPE_WRIST = true },
+    hands    = { INVTYPE_HAND = true },
+    waist    = { INVTYPE_WAIST = true },
+    legs     = { INVTYPE_LEGS = true },
+    feet     = { INVTYPE_FEET = true },
+    ring1    = { INVTYPE_FINGER = true },
+    ring2    = { INVTYPE_FINGER = true },
+    trinket1 = { INVTYPE_TRINKET = true },
+    trinket2 = { INVTYPE_TRINKET = true },
+    mainhand = { INVTYPE_WEAPON = true, INVTYPE_2HWEAPON = true, INVTYPE_WEAPONMAINHAND = true },
+    offhand  = { INVTYPE_WEAPON = true, INVTYPE_WEAPONOFFHAND = true, INVTYPE_HOLDABLE = true, INVTYPE_SHIELD = true },
+    ranged   = { INVTYPE_RANGED = true, INVTYPE_RANGEDRIGHT = true, INVTYPE_THROWN = true, INVTYPE_RELIC = true },
+}
+
 -- Map BIS-tracker slot keys to WoW inventory slot IDs.
 -- ring1/ring2/trinket1/trinket2 each map to TWO inventory slots — we accept a match in either.
 addon.SLOT_INVENTORY_IDS = {
@@ -248,6 +269,76 @@ function addon:RemoveCustomAlt(class, spec, phase, slot, itemId)
     end
 end
 
+-- Serialize the currently-selected items for a (class, spec, phase) into a single-line shareable string.
+function addon:ExportSetup(class, spec, phase)
+    if not class or not spec or not phase then return nil end
+    local parts = {
+        "TBCBIS:v1",
+        "class=" .. class,
+        "spec="  .. spec,
+        "phase=" .. phase,
+    }
+    for _, slot in ipairs(self.SLOTS) do
+        local entry = self:GetSlotItem(class, spec, phase, slot)
+        if entry and entry.id then
+            table.insert(parts, slot .. "=" .. entry.id)
+        end
+    end
+    return table.concat(parts, ";")
+end
+
+-- Parse an exported string and apply it: adds missing items as custom alts and selects them.
+-- Accepts both legacy newline-separated and current semicolon-separated formats.
+-- Returns ok, message.
+function addon:ImportSetup(text)
+    if not text or text == "" then return false, "empty" end
+    local class, spec, phase
+    local items = {}
+    -- Normalize separators: treat both \n and ; as token boundaries
+    local normalized = text:gsub("\r", ""):gsub("\n", ";")
+    for token in (normalized .. ";"):gmatch("([^;]+)") do
+        token = token:match("^%s*(.-)%s*$")
+        if token ~= "" and not token:match("^TBCBIS") then
+            local k, v = token:match("^([%w_]+)=(.+)$")
+            if k == "class" then class = v
+            elseif k == "spec"  then spec  = v
+            elseif k == "phase" then phase = v
+            elseif k and v then
+                local id = tonumber(v)
+                if id then items[k] = id end
+            end
+        end
+    end
+    if not class or not spec or not phase then return false, "missing class/spec/phase header" end
+    if not (self.DB[class] and self.DB[class][spec]) then
+        return false, "unknown class/spec: " .. class .. "/" .. spec
+    end
+    local applied = 0
+    for slot, itemId in pairs(items) do
+        local alts = self:GetSlotAlternatives(class, spec, phase, slot)
+        local foundIdx
+        if alts then
+            for i, alt in ipairs(alts) do
+                if alt.id == itemId then foundIdx = i; break end
+            end
+        end
+        if not foundIdx then
+            self:AddCustomAlt(class, spec, phase, slot, itemId, "Imported setup")
+            local newAlts = self:GetSlotAlternatives(class, spec, phase, slot)
+            if newAlts then
+                for i, alt in ipairs(newAlts) do
+                    if alt.id == itemId then foundIdx = i; break end
+                end
+            end
+        end
+        if foundIdx then
+            self:SetSelectedAlt(class, spec, phase, slot, foundIdx)
+            applied = applied + 1
+        end
+    end
+    return true, ("imported " .. applied .. " slots into " .. class .. "/" .. spec .. "/" .. phase)
+end
+
 -- Parse a Wowhead URL, in-game item link, or bare numeric id.
 function addon:ParseWowheadInput(input)
     if not input or input == "" then return nil end
@@ -316,6 +407,19 @@ end
 function addon:ResetAllData()
     TBCBisTrackerCharDB.obtained = {}
     self:Print("All tracking data has been reset.")
+    if self.UI and self.UI.Refresh then
+        self.UI:Refresh()
+    end
+end
+
+-- Reset obtained checkmarks for a single (class, spec, phase). Selections + custom alts kept.
+function addon:ResetPhase(class, spec, phase)
+    if not class or not spec or not phase then return end
+    local key = self:GetSpecKey(class, spec)
+    if TBCBisTrackerCharDB.obtained[key] then
+        TBCBisTrackerCharDB.obtained[key][phase] = nil
+    end
+    self:Print("Reset " .. class .. " " .. spec .. " " .. (self.PHASE_LABELS[phase] or phase) .. ".")
     if self.UI and self.UI.Refresh then
         self.UI:Refresh()
     end
@@ -481,6 +585,8 @@ SLASH_TBCBISTRACKER2 = "/tbcbistracker"
 SlashCmdList["TBCBISTRACKER"] = function(msg)
     local cmd = msg and msg:lower():match("^%s*(.-)%s*$") or ""
     if cmd == "reset" then
+        addon:ResetPhase(TBCBisTrackerDB.lastClass, TBCBisTrackerDB.lastSpec, TBCBisTrackerDB.lastPhase)
+    elseif cmd == "reset all" then
         addon:ResetAllData()
     elseif cmd == "hide" then
         if addon.MinimapBtn then addon.MinimapBtn:Hide() end
@@ -488,15 +594,22 @@ SlashCmdList["TBCBISTRACKER"] = function(msg)
     elseif cmd == "show" then
         if addon.MinimapBtn then addon.MinimapBtn:Show() end
         TBCBisTrackerDB.minimap.hide = false
+    elseif cmd == "export" then
+        if addon.UI and addon.UI.ShowExportPopup then addon.UI:ShowExportPopup() end
+    elseif cmd == "import" then
+        if addon.UI and addon.UI.ShowImportPopup then addon.UI:ShowImportPopup() end
     elseif cmd == "help" or cmd == "" then
         if cmd == "" then
             addon.UI:Toggle()
         else
-            addon:Print("/tbcbis         — toggle window")
-            addon:Print("/tbcbis reset   — reset all tracking data")
-            addon:Print("/tbcbis hide    — hide minimap button")
-            addon:Print("/tbcbis show    — show minimap button")
-            addon:Print("/tbcbis help    — show this message")
+            addon:Print("/tbcbis           — toggle window")
+            addon:Print("/tbcbis export    — export current spec/phase setup")
+            addon:Print("/tbcbis import    — import a setup string")
+            addon:Print("/tbcbis reset     — reset checkmarks for current phase")
+            addon:Print("/tbcbis reset all — reset ALL tracking data")
+            addon:Print("/tbcbis hide      — hide minimap button")
+            addon:Print("/tbcbis show      — show minimap button")
+            addon:Print("/tbcbis help      — show this message")
         end
     else
         addon.UI:Toggle()
@@ -511,6 +624,7 @@ local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("ADDON_LOADED")
 eventFrame:RegisterEvent("PLAYER_LOGIN")
 eventFrame:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
+eventFrame:RegisterEvent("BAG_UPDATE_DELAYED")
 
 eventFrame:SetScript("OnEvent", function(self, event, arg1)
     if event == "ADDON_LOADED" and arg1 == "TBCBisTracker" then
@@ -563,7 +677,7 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1)
         end
         addon:ScanEquipped()
 
-    elseif event == "PLAYER_EQUIPMENT_CHANGED" then
+    elseif event == "PLAYER_EQUIPMENT_CHANGED" or event == "BAG_UPDATE_DELAYED" then
         addon:ScanEquipped()
     end
 end)
