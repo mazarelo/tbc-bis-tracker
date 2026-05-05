@@ -5,6 +5,7 @@
 ## Author: mazarelo
 ## Version: 1.0.0
 ## SavedVariables: TBCBisTrackerDB
+## SavedVariablesPerCharacter: TBCBisTrackerCharDB
 ## DefaultState: enabled
 ## IconTexture: Interface\Icons\INV_Misc_QuestionMark
 

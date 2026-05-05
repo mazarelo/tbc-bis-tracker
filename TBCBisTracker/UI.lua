@@ -324,7 +324,18 @@ end
 
 function UI:RefreshPhaseTabs()
     local selected = TBCBisTrackerDB.lastPhase
+    local class    = TBCBisTrackerDB.lastClass
+    local spec     = TBCBisTrackerDB.lastSpec
     for phase, btn in pairs(self.phaseTabs) do
+        local label = addon.PHASE_LABELS[phase] or phase
+        if class and spec then
+            local got, tot = addon:GetPhaseProgress(class, spec, phase)
+            if tot > 0 then
+                local pctColor = (got == tot) and "|cffffd700" or "|cffaaaaaa"
+                label = label .. " " .. pctColor .. "(" .. got .. "/" .. tot .. ")|r"
+            end
+        end
+        btn.fs:SetText(label)
         if phase == selected then
             btn.bg:SetVertexColor(0.25, 0.20, 0.05, 0.9)
             btn.fs:SetTextColor(1, 0.82, 0, 1)
@@ -854,6 +865,7 @@ function UI:Refresh()
     self.scrollContent:SetHeight(math.max(1, rowIdx) * (ROW_H + ROW_PAD))
 
     self:UpdateProgress(obtained, total)
+    self:RefreshPhaseTabs()
 end
 
 function UI:UpdateProgress(obtained, total)

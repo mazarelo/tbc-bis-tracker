@@ -115,16 +115,21 @@ addon.SLOT_INVENTORY_IDS = {
 -- Saved-variable defaults
 -- ─────────────────────────────────────────────
 
+-- Account-wide settings (DOES NOT include tracking data)
 local DEFAULT_DB = {
-    obtained   = {},   -- ["CLASS-Spec"]["phase"]["slot"] = true
-    selected   = {},   -- ["CLASS-Spec"]["phase"]["slot"] = alternativeIndex (1 = BiS)
-    customAlts = {},   -- ["CLASS-Spec"]["phase"]["slot"] = { {id=, source=, sourceType=}, ... }
     minimap    = { hide = false, pos = 220 },
     lastClass  = nil,
     lastSpec   = nil,
     lastPhase  = "prebis",
     showMissingOnly = false,
     windowPos  = { point = "CENTER", x = 0, y = 0 },
+}
+
+-- Per-character tracking data
+local DEFAULT_CHAR_DB = {
+    obtained   = {},   -- ["CLASS-Spec"]["phase"]["slot"] = true
+    selected   = {},   -- ["CLASS-Spec"]["phase"]["slot"] = alternativeIndex (1 = BiS)
+    customAlts = {},   -- ["CLASS-Spec"]["phase"]["slot"] = { {id=, source=, sourceType=}, ... }
 }
 
 -- ─────────────────────────────────────────────
@@ -137,19 +142,33 @@ end
 
 function addon:IsObtained(class, spec, phase, slot)
     local key = self:GetSpecKey(class, spec)
-    return TBCBisTrackerDB.obtained[key]
-               and TBCBisTrackerDB.obtained[key][phase]
-               and TBCBisTrackerDB.obtained[key][phase][slot] == true
+    return TBCBisTrackerCharDB.obtained[key]
+               and TBCBisTrackerCharDB.obtained[key][phase]
+               and TBCBisTrackerCharDB.obtained[key][phase][slot] == true
 end
 
 function addon:SetObtained(class, spec, phase, slot, obtained)
     local key = self:GetSpecKey(class, spec)
-    TBCBisTrackerDB.obtained[key] = TBCBisTrackerDB.obtained[key] or {}
-    TBCBisTrackerDB.obtained[key][phase] = TBCBisTrackerDB.obtained[key][phase] or {}
-    TBCBisTrackerDB.obtained[key][phase][slot] = obtained or nil
+    TBCBisTrackerCharDB.obtained[key] = TBCBisTrackerCharDB.obtained[key] or {}
+    TBCBisTrackerCharDB.obtained[key][phase] = TBCBisTrackerCharDB.obtained[key][phase] or {}
+    TBCBisTrackerCharDB.obtained[key][phase][slot] = obtained or nil
 end
 
 -- Returns obtained count, total count for a given class/spec/phase
+function addon:GetPhaseProgress(class, spec, phase)
+    local obtained, total = 0, 0
+    for _, slot in ipairs(self.SLOTS) do
+        local alts = self:GetSlotAlternatives(class, spec, phase, slot)
+        if alts and #alts > 0 then
+            total = total + 1
+            if self:IsObtained(class, spec, phase, slot) then
+                obtained = obtained + 1
+            end
+        end
+    end
+    return obtained, total
+end
+
 function addon:GetProgress(class, spec, phase)
     local data = self:GetPhaseData(class, spec, phase)
     if not data then return 0, 0 end
@@ -199,7 +218,7 @@ function addon:GetSlotAlternatives(class, spec, phase, slot)
 end
 
 function addon:GetCustomAlts(class, spec, phase, slot)
-    local ca = TBCBisTrackerDB.customAlts
+    local ca = TBCBisTrackerCharDB.customAlts
     if not ca then return nil end
     local key = self:GetSpecKey(class, spec)
     return ca[key] and ca[key][phase] and ca[key][phase][slot]
@@ -207,9 +226,9 @@ end
 
 function addon:AddCustomAlt(class, spec, phase, slot, itemId, source)
     if not itemId then return false end
-    TBCBisTrackerDB.customAlts = TBCBisTrackerDB.customAlts or {}
+    TBCBisTrackerCharDB.customAlts = TBCBisTrackerCharDB.customAlts or {}
     local key = self:GetSpecKey(class, spec)
-    local ca = TBCBisTrackerDB.customAlts
+    local ca = TBCBisTrackerCharDB.customAlts
     ca[key] = ca[key] or {}
     ca[key][phase] = ca[key][phase] or {}
     ca[key][phase][slot] = ca[key][phase][slot] or {}
@@ -249,18 +268,18 @@ function addon:ParseWowheadInput(input)
 end
 
 function addon:GetSelectedAlt(class, spec, phase, slot)
-    local sel = TBCBisTrackerDB.selected
+    local sel = TBCBisTrackerCharDB.selected
     if not sel then return 1 end
     local key = self:GetSpecKey(class, spec)
     return (sel[key] and sel[key][phase] and sel[key][phase][slot]) or 1
 end
 
 function addon:SetSelectedAlt(class, spec, phase, slot, idx)
-    TBCBisTrackerDB.selected = TBCBisTrackerDB.selected or {}
+    TBCBisTrackerCharDB.selected = TBCBisTrackerCharDB.selected or {}
     local key = self:GetSpecKey(class, spec)
-    TBCBisTrackerDB.selected[key] = TBCBisTrackerDB.selected[key] or {}
-    TBCBisTrackerDB.selected[key][phase] = TBCBisTrackerDB.selected[key][phase] or {}
-    TBCBisTrackerDB.selected[key][phase][slot] = idx
+    TBCBisTrackerCharDB.selected[key] = TBCBisTrackerCharDB.selected[key] or {}
+    TBCBisTrackerCharDB.selected[key][phase] = TBCBisTrackerCharDB.selected[key][phase] or {}
+    TBCBisTrackerCharDB.selected[key][phase][slot] = idx
 end
 
 -- Returns the currently-selected item entry for a slot, the index, and total alternative count.
@@ -295,7 +314,7 @@ function addon:GetItemQualityColor(itemId)
 end
 
 function addon:ResetAllData()
-    TBCBisTrackerDB.obtained = {}
+    TBCBisTrackerCharDB.obtained = {}
     self:Print("All tracking data has been reset.")
     if self.UI and self.UI.Refresh then
         self.UI:Refresh()
@@ -317,32 +336,29 @@ function addon:ScanEquipped()
     local classData = self.DB[playerClass]
     if not classData then return end
 
-    -- Snapshot equipped item IDs by inventory slot
-    local equipped = {}
+    -- Collect every item id the player currently owns (equipped + bags 0-4)
+    local owned = {}
     for invSlot = 1, 19 do
-        equipped[invSlot] = GetInventoryItemID("player", invSlot)
+        local id = GetInventoryItemID("player", invSlot)
+        if id then owned[id] = true end
+    end
+    for bag = 0, NUM_BAG_SLOTS or 4 do
+        local slots = GetContainerNumSlots and GetContainerNumSlots(bag) or 0
+        for slotIdx = 1, slots do
+            local id = GetContainerItemID and GetContainerItemID(bag, slotIdx) or nil
+            if id then owned[id] = true end
+        end
     end
 
     local marked = 0
-    for spec, specData in pairs(classData) do
+    for spec, _ in pairs(classData) do
         for _, phase in ipairs(self.PHASES) do
-            local phaseData = specData[phase]
-            if phaseData then
-                for slot, _ in pairs(phaseData) do
-                    local entry = self:GetSlotItem(playerClass, spec, phase, slot)
-                    if entry and entry.id then
-                        local invSlots = self.SLOT_INVENTORY_IDS[slot]
-                        if invSlots then
-                            for _, invSlot in ipairs(invSlots) do
-                                if equipped[invSlot] == entry.id then
-                                    if not self:IsObtained(playerClass, spec, phase, slot) then
-                                        self:SetObtained(playerClass, spec, phase, slot, true)
-                                        marked = marked + 1
-                                    end
-                                    break
-                                end
-                            end
-                        end
+            for _, slot in ipairs(self.SLOTS) do
+                local entry = self:GetSlotItem(playerClass, spec, phase, slot)
+                if entry and entry.id and owned[entry.id] then
+                    if not self:IsObtained(playerClass, spec, phase, slot) then
+                        self:SetObtained(playerClass, spec, phase, slot, true)
+                        marked = marked + 1
                     end
                 end
             end
@@ -502,6 +518,24 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1)
         -- Initialise saved variables
         TBCBisTrackerDB = TBCBisTrackerDB or {}
         applyDefaults(TBCBisTrackerDB, DEFAULT_DB)
+        TBCBisTrackerCharDB = TBCBisTrackerCharDB or {}
+        applyDefaults(TBCBisTrackerCharDB, DEFAULT_CHAR_DB)
+
+        -- One-time migration: if account-wide had tracking data and char DB is empty, copy it over
+        if TBCBisTrackerDB.obtained and not TBCBisTrackerCharDB.__migrated then
+            if next(TBCBisTrackerDB.obtained) and not next(TBCBisTrackerCharDB.obtained) then
+                TBCBisTrackerCharDB.obtained = TBCBisTrackerDB.obtained
+            end
+            if TBCBisTrackerDB.selected and next(TBCBisTrackerDB.selected) and not next(TBCBisTrackerCharDB.selected) then
+                TBCBisTrackerCharDB.selected = TBCBisTrackerDB.selected
+            end
+            if TBCBisTrackerDB.customAlts and next(TBCBisTrackerDB.customAlts) and not next(TBCBisTrackerCharDB.customAlts) then
+                TBCBisTrackerCharDB.customAlts = TBCBisTrackerDB.customAlts
+            end
+            TBCBisTrackerCharDB.__migrated = true
+            -- Drop legacy account-wide tracking blobs to avoid drift
+            TBCBisTrackerDB.obtained, TBCBisTrackerDB.selected, TBCBisTrackerDB.customAlts = nil, nil, nil
+        end
 
         -- Detect player class if no stored preference
         if not TBCBisTrackerDB.lastClass then
