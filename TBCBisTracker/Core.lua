@@ -261,6 +261,7 @@ function addon:AddCustomAlt(class, spec, phase, slot, itemId, source)
     end
     table.insert(ca[key][phase][slot], { id = itemId, source = source or "Custom (imported)", sourceType = "world" })
     self._itemIndex = nil  -- invalidate search index
+    self._trackedIndex = nil  -- invalidate tooltip index
     return true
 end
 
@@ -270,6 +271,8 @@ function addon:RemoveCustomAlt(class, spec, phase, slot, itemId)
     for i = #list, 1, -1 do
         if list[i].id == itemId then table.remove(list, i) end
     end
+    self._itemIndex = nil
+    self._trackedIndex = nil
 end
 
 -- Serialize the currently-selected items for a (class, spec, phase) into a single-line shareable string.
@@ -340,6 +343,172 @@ function addon:ImportSetup(text)
         end
     end
     return true, ("imported " .. applied .. " slots into " .. class .. "/" .. spec .. "/" .. phase)
+end
+
+-- ─────────────────────────────────────────────
+-- Badge of Justice tracker
+-- ─────────────────────────────────────────────
+
+addon.BADGE_OF_JUSTICE_ID = 29434
+
+-- Fallback prices for items whose source string omits the explicit Badge cost.
+addon.BADGE_COSTS = {
+    [29370] = 41,  -- Icon of the Silver Crescent
+    [29272] = 75,  -- Orb of the Soul-Eater
+    [29273] = 75,  -- Khadgar's Knapsack
+    [29383] = 41,  -- Bloodlust Brooch
+    [29384] = 25,  -- Ring of Unyielding Force
+    [29381] = 25,  -- Choker of Vile Intent
+    [29386] = 25,  -- Necklace of the Juggernaut
+    [29382] = 25,  -- Blood Knight War Cloak
+    [32087] = 50,  -- Mask of the Deceiver
+    [32088] = 50,  -- Cowl of Beastly Rage
+    [33334] = 60,  -- Fetish of the Primal Gods
+    [33192] = 30,  -- Carved Witch Doctor's Stick
+}
+
+function addon:GetBadgeCount()
+    return (GetItemCount and GetItemCount(self.BADGE_OF_JUSTICE_ID, true) or 0)
+end
+
+function addon:IsBadgeItem(entry)
+    if not entry or not entry.source then return false end
+    return entry.source:find("Badges of Justice") ~= nil
+end
+
+-- Detects whether an item is a tier-set piece based on its source string.
+-- Returns nil or { tier = "T4"|"T5"|"T6"|"T6.5", boss = "..." }
+function addon:GetTierInfo(entry)
+    if not entry or not entry.source then return nil end
+    local src = entry.source
+    if not src:find("Token") and not src:find("Tier") then return nil end
+
+    -- Try to extract the boss name. Wowhead-style: "Tier Token from <boss> (<location>)"
+    local boss = src:match("Tier Token from ([^%(]+)%(") or src:match("Token from ([^%(]+)%(")
+    if not boss then
+        -- Pattern like "Karazhan - Prince Malchezaar Token (Item)"
+        boss = src:match("%- ([^%-%(]+)Token") or src:match("([^%-%(]+) Token")
+    end
+    if boss then boss = boss:match("^%s*(.-)%s*$") end
+
+    -- Identify which tier from boss / zone keywords
+    local tier
+    if src:find("Karazhan") or src:find("Gruul") or src:find("Magtheridon") then
+        tier = "T4"
+    elseif src:find("Serpentshrine") or src:find("SSC") or src:find("Tempest Keep") or src:find("TK") or src:find("The Eye") then
+        tier = "T5"
+    elseif src:find("Black Temple") or src:find("BT") or src:find("Hyjal") then
+        tier = "T6"
+    elseif src:find("Sunwell") or src:find("SWP") then
+        tier = "T6.5"
+    end
+
+    if not tier then return nil end
+    return { tier = tier, boss = boss }
+end
+
+function addon:GetBadgeCost(entry)
+    if not entry then return nil end
+    local n = entry.source and entry.source:match("(%d+)%s*Badges?%s*of%s*Justice")
+    if n then return tonumber(n) end
+    if entry.id and self.BADGE_COSTS[entry.id] then return self.BADGE_COSTS[entry.id] end
+    return nil
+end
+
+-- Returns a per-tier summary: { [tier] = { total=N, obtained=M, slots = {slot,...} } }
+function addon:GetTierProgress(class, spec, phase)
+    local out = {}
+    if not class or not spec or not phase then return out end
+    for _, slot in ipairs(self.SLOTS) do
+        local entry = self:GetSlotItem(class, spec, phase, slot)
+        if entry then
+            local info = self:GetTierInfo(entry)
+            if info then
+                local agg = out[info.tier]
+                if not agg then
+                    agg = { total = 0, obtained = 0, slots = {} }
+                    out[info.tier] = agg
+                end
+                agg.total = agg.total + 1
+                table.insert(agg.slots, slot)
+                if self:IsObtained(class, spec, phase, slot) then
+                    agg.obtained = agg.obtained + 1
+                end
+            end
+        end
+    end
+    return out
+end
+
+-- Returns: owned, totalCost, items[] (each {slot, cost, entry}) for unobtained badge items in (class,spec,phase).
+function addon:GetBadgeProgress(class, spec, phase)
+    local owned = self:GetBadgeCount()
+    if not class or not spec or not phase then return owned, 0, {} end
+    local total, items = 0, {}
+    for _, slot in ipairs(self.SLOTS) do
+        if not self:IsObtained(class, spec, phase, slot) then
+            local entry = self:GetSlotItem(class, spec, phase, slot)
+            if entry and self:IsBadgeItem(entry) then
+                local cost = self:GetBadgeCost(entry)
+                if cost then
+                    total = total + cost
+                    table.insert(items, { slot = slot, cost = cost, entry = entry })
+                end
+            end
+        end
+    end
+    return owned, total, items
+end
+
+-- ─────────────────────────────────────────────
+-- Reverse index: item id → list of (spec, phase, slot, altIdx, totalAlts)
+-- for the player's class. Used by tooltip integration.
+-- ─────────────────────────────────────────────
+
+function addon:BuildTrackedItemIndex()
+    local _, playerClass = UnitClass("player")
+    if not playerClass then self._trackedIndex = {}; return self._trackedIndex end
+    local classData = self.DB[playerClass]
+    if not classData then self._trackedIndex = {}; return self._trackedIndex end
+    local idx = {}
+    for spec, _ in pairs(classData) do
+        for _, phase in ipairs(self.PHASES) do
+            for _, slot in ipairs(self.SLOTS) do
+                local alts = self:GetSlotAlternatives(playerClass, spec, phase, slot)
+                if alts then
+                    for i, alt in ipairs(alts) do
+                        if alt.id then
+                            idx[alt.id] = idx[alt.id] or {}
+                            table.insert(idx[alt.id], {
+                                spec = spec, phase = phase, slot = slot,
+                                idx = i, total = #alts,
+                            })
+                        end
+                    end
+                end
+            end
+        end
+    end
+    self._trackedIndex = idx
+    return idx
+end
+
+function addon:GetItemTrackingInfo(itemId)
+    if not itemId then return nil end
+    if not self._trackedIndex then self:BuildTrackedItemIndex() end
+    local matches = self._trackedIndex[itemId]
+    if not matches or #matches == 0 then return nil end
+    local _, playerClass = UnitClass("player")
+    local out = {}
+    for _, m in ipairs(matches) do
+        local selected = self:GetSelectedAlt(playerClass, m.spec, m.phase, m.slot)
+        table.insert(out, {
+            spec = m.spec, phase = m.phase, slot = m.slot,
+            idx = m.idx, total = m.total,
+            isSelected = (m.idx == selected),
+        })
+    end
+    return out
 end
 
 -- ─────────────────────────────────────────────
@@ -796,5 +965,59 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1)
 
     elseif event == "PLAYER_EQUIPMENT_CHANGED" or event == "BAG_UPDATE_DELAYED" then
         addon:ScanEquipped()
+        if addon.UI and addon.UI.RefreshBadgeStatus then
+            addon.UI:RefreshBadgeStatus()
+        end
     end
 end)
+
+-- ─────────────────────────────────────────────
+-- Tooltip integration: append tracking info to any item tooltip
+-- ─────────────────────────────────────────────
+
+local function appendTrackingLines(tooltip)
+    if not tooltip or not tooltip.GetItem then return end
+    local _, link = tooltip:GetItem()
+    if not link then return end
+    local itemId = tonumber(link:match("item:(%d+)"))
+    if not itemId then return end
+
+    local matches = addon:GetItemTrackingInfo(itemId)
+    if not matches or #matches == 0 then return end
+
+    -- Avoid duplicate stamping on the same render
+    if tooltip.tbcbisStamp == itemId then return end
+    tooltip.tbcbisStamp = itemId
+
+    tooltip:AddLine(" ")
+    for _, m in ipairs(matches) do
+        local phaseLabel = addon.PHASE_LABELS[m.phase] or m.phase
+        local slotLabel  = addon.SLOT_LABELS[m.slot] or m.slot
+        local prefix, line
+        if m.isSelected then
+            prefix = "|cffffd700[BIS]|r"
+            line = string.format("%s Selected for %s %s", prefix, phaseLabel, slotLabel)
+        elseif m.idx == 1 then
+            prefix = "|cff00ff00[BIS]|r"
+            line = string.format("%s Top pick for %s %s (currently tracking Alt %d)", prefix, phaseLabel, slotLabel,
+                addon:GetSelectedAlt(select(2, UnitClass("player")), m.spec, m.phase, m.slot))
+        else
+            prefix = "|cffaaaaaa[Alt " .. m.idx .. "/" .. m.total .. "]|r"
+            line = string.format("%s for %s %s", prefix, phaseLabel, slotLabel)
+        end
+        if m.spec ~= TBCBisTrackerDB.lastSpec then
+            line = line .. " |cff888888(" .. m.spec .. ")|r"
+        end
+        tooltip:AddLine(line)
+    end
+    tooltip:Show()  -- recompute height
+end
+
+local function clearStamp(self) self.tbcbisStamp = nil end
+
+GameTooltip:HookScript("OnTooltipSetItem", appendTrackingLines)
+GameTooltip:HookScript("OnHide", clearStamp)
+if ItemRefTooltip then
+    ItemRefTooltip:HookScript("OnTooltipSetItem", appendTrackingLines)
+    ItemRefTooltip:HookScript("OnHide", clearStamp)
+end

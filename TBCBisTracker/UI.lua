@@ -137,6 +137,12 @@ function UI:Build()
     -- ── Progress bar ──
     self:BuildProgressBar()
 
+    -- ── Badge of Justice status line ──
+    self:BuildBadgeStatus()
+
+    -- ── Tier set bonus tracker ──
+    self:BuildTierStatus()
+
     -- Initial population
     self:RefreshClassButtons()
     self:RefreshSpecSelector()
@@ -932,6 +938,59 @@ end
 -- Progress bar
 -- ─────────────────────────────────────────────
 
+function UI:BuildBadgeStatus()
+    local f = self.frame
+    local fs = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    fs:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 22, 42)
+    fs:SetJustifyH("LEFT")
+    self.badgeStatus = fs
+
+    -- Hover: show breakdown of unobtained badge items
+    local hoverFrame = CreateFrame("Frame", nil, f)
+    hoverFrame:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 18, 38)
+    hoverFrame:SetSize(380, 16)
+    hoverFrame:EnableMouse(true)
+    hoverFrame:SetScript("OnEnter", function(self)
+        local class = TBCBisTrackerDB.lastClass
+        local spec  = TBCBisTrackerDB.lastSpec
+        local phase = TBCBisTrackerDB.lastPhase
+        local owned, total, items = addon:GetBadgeProgress(class, spec, phase)
+        if #items == 0 then return end
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText("Badge purchases (" .. addon.PHASE_LABELS[phase] .. ")")
+        GameTooltip:AddLine(string.format("Owned: %d   Total cost: %d", owned, total), 1, 1, 1)
+        GameTooltip:AddLine(" ")
+        for _, it in ipairs(items) do
+            local name = GetItemInfo(it.entry.id) or ("item:" .. it.entry.id)
+            local color = addon:GetItemQualityColor(it.entry.id) or "|cffffffff"
+            GameTooltip:AddDoubleLine(
+                color .. name .. "|r — " .. (addon.SLOT_LABELS[it.slot] or it.slot),
+                it.cost .. " BoJ",
+                1, 1, 1, 1, 0.84, 0
+            )
+        end
+        GameTooltip:Show()
+    end)
+    hoverFrame:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    self.badgeHover = hoverFrame
+end
+
+function UI:RefreshBadgeStatus()
+    if not self.badgeStatus then return end
+    local class = TBCBisTrackerDB.lastClass
+    local spec  = TBCBisTrackerDB.lastSpec
+    local phase = TBCBisTrackerDB.lastPhase
+    local owned, total, items = addon:GetBadgeProgress(class, spec, phase)
+    if total == 0 then
+        self.badgeStatus:SetText("|cff888888Badges of Justice: " .. owned .. "|r")
+    elseif owned >= total then
+        self.badgeStatus:SetText(string.format("|cffffd700Badges: %d / %d (enough!)|r — %d items remaining", owned, total, #items))
+    else
+        local diff = total - owned
+        self.badgeStatus:SetText(string.format("|cffaaaaaaBadges: %d / %d|r — need |cffff8800%d more|r for %d unobtained items", owned, total, diff, #items))
+    end
+end
+
 function UI:BuildProgressBar()
     local f = self.frame
 
@@ -1030,7 +1089,13 @@ function UI:Refresh()
                 local itemName = addon:GetItemName(itemId)
                 local color    = addon:GetItemQualityColor(itemId)
                 local altSuffix = (altCount > 1) and (" |cff888888[" .. selectedIdx .. "/" .. altCount .. "]|r") or ""
-                row.itemLbl:SetText(color .. itemName .. "|r" .. altSuffix)
+
+                local tierInfo = addon:GetTierInfo(entry)
+                local tierPrefix = ""
+                if tierInfo then
+                    tierPrefix = "|cffffd700[" .. tierInfo.tier .. "]|r "
+                end
+                row.itemLbl:SetText(tierPrefix .. color .. itemName .. "|r" .. altSuffix)
 
                 local srcColor = SOURCE_TYPE_COLORS[entry.sourceType] or "|cffcccccc"
                 local srcText  = entry.source or "Unknown"
@@ -1038,6 +1103,13 @@ function UI:Refresh()
                     srcText = entry.note .. " (" .. srcText .. ")"
                 end
                 row.srcLbl:SetText(srcColor .. srcText .. "|r")
+
+                local slotName = addon.SLOT_LABELS[slot] or slot
+                if tierInfo then
+                    row.slotLbl:SetText("|cffffd700★|r " .. slotName)
+                else
+                    row.slotLbl:SetText(slotName)
+                end
 
                 row.chk:Show()
                 row.chk:Enable()
@@ -1051,6 +1123,8 @@ function UI:Refresh()
                 if isObtained then
                     row.itemLbl:SetTextColor(0.4, 0.4, 0.4, 1)
                     row.slotLbl:SetTextColor(0.4, 0.4, 0.4, 1)
+                elseif tierInfo then
+                    row.slotLbl:SetTextColor(1, 0.82, 0, 1)
                 else
                     row.slotLbl:SetTextColor(0.7, 0.7, 0.7, 1)
                 end
@@ -1071,6 +1145,7 @@ function UI:Refresh()
 
     self:UpdateProgress(obtained, total)
     self:RefreshPhaseTabs()
+    self:RefreshBadgeStatus()
 end
 
 function UI:UpdateProgress(obtained, total)
