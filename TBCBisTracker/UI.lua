@@ -505,10 +505,19 @@ function UI:CreateRowFrame(parent, idx)
         GameTooltip:Hide()
     end)
 
-    -- Right-click → choose alternative / import
+    -- Click handlers: shift+left = chat-link item; right = alternatives menu
     row:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     row:SetScript("OnClick", function(self, button)
-        if button == "RightButton" and self.slotKey then
+        if button == "LeftButton" and IsShiftKeyDown() and self.itemId and self.itemId > 0 then
+            local _, link = GetItemInfo(self.itemId)
+            if link then
+                if ChatEdit_InsertLink then
+                    ChatEdit_InsertLink(link)
+                else
+                    DEFAULT_CHAT_FRAME.editBox:Insert(link)
+                end
+            end
+        elseif button == "RightButton" and self.slotKey then
             UI:ShowAlternativesMenu(self, self.slotKey)
         end
     end)
