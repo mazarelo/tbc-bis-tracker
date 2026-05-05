@@ -9,7 +9,7 @@ local L     = addon.L
 -- Constants
 -- ─────────────────────────────────────────────
 
-addon.PHASES = { "prebis", "phase1", "phase2", "phase3", "phase4" }
+addon.PHASES = { "prebis", "phase1", "phase2", "phase3", "phase4", "phase5" }
 
 addon.PHASE_LABELS = {
     prebis = "Pre-BIS",
@@ -17,6 +17,7 @@ addon.PHASE_LABELS = {
     phase2 = "Phase 2",
     phase3 = "Phase 3",
     phase4 = "Phase 4",
+    phase5 = "Phase 5",
 }
 
 addon.PHASE_DESCRIPTIONS = {
@@ -24,7 +25,8 @@ addon.PHASE_DESCRIPTIONS = {
     phase1 = "Phase 1 — Karazhan · Gruul's Lair · Magtheridon's Lair",
     phase2 = "Phase 2 — Serpentshrine Cavern · The Eye (Tempest Keep)",
     phase3 = "Phase 3 — Black Temple · Battle for Mount Hyjal",
-    phase4 = "Phase 4 — Sunwell Plateau",
+    phase4 = "Phase 4 — Zul'Aman",
+    phase5 = "Phase 5 — Sunwell Plateau",
 }
 
 addon.SLOTS = {
@@ -87,18 +89,42 @@ addon.QUALITY_COLORS = {
 
 addon.WOWHEAD_BASE = "https://www.wowhead.com/tbc/item="
 
+-- Map BIS-tracker slot keys to WoW inventory slot IDs.
+-- ring1/ring2/trinket1/trinket2 each map to TWO inventory slots — we accept a match in either.
+addon.SLOT_INVENTORY_IDS = {
+    head     = { 1 },
+    neck     = { 2 },
+    shoulder = { 3 },
+    chest    = { 5 },
+    waist    = { 6 },
+    legs     = { 7 },
+    feet     = { 8 },
+    wrist    = { 9 },
+    hands    = { 10 },
+    ring1    = { 11, 12 },
+    ring2    = { 11, 12 },
+    trinket1 = { 13, 14 },
+    trinket2 = { 13, 14 },
+    back     = { 15 },
+    mainhand = { 16 },
+    offhand  = { 17 },
+    ranged   = { 18 },
+}
+
 -- ─────────────────────────────────────────────
 -- Saved-variable defaults
 -- ─────────────────────────────────────────────
 
 local DEFAULT_DB = {
-    obtained  = {},   -- ["CLASS-Spec"]["phase"]["slot"] = true
-    minimap   = { hide = false, pos = 220 },
-    lastClass = nil,
-    lastSpec  = nil,
-    lastPhase = "prebis",
+    obtained   = {},   -- ["CLASS-Spec"]["phase"]["slot"] = true
+    selected   = {},   -- ["CLASS-Spec"]["phase"]["slot"] = alternativeIndex (1 = BiS)
+    customAlts = {},   -- ["CLASS-Spec"]["phase"]["slot"] = { {id=, source=, sourceType=}, ... }
+    minimap    = { hide = false, pos = 220 },
+    lastClass  = nil,
+    lastSpec   = nil,
+    lastPhase  = "prebis",
     showMissingOnly = false,
-    windowPos = { point = "CENTER", x = 0, y = 0 },
+    windowPos  = { point = "CENTER", x = 0, y = 0 },
 }
 
 -- ─────────────────────────────────────────────
@@ -148,6 +174,104 @@ function addon:GetPhaseData(class, spec, phase)
     return specData[phase]
 end
 
+-- Slot data may be either a single item ({id=...}) or a list of items {item, item, ...}
+-- where index 1 is BiS and 2+ are alternatives. User-imported alternatives are appended.
+function addon:GetSlotAlternatives(class, spec, phase, slot)
+    local out = {}
+    local entries = self:GetPhaseData(class, spec, phase)
+    if entries then
+        local list = entries[slot]
+        if list then
+            if list.id then
+                table.insert(out, list)
+            else
+                for _, it in ipairs(list) do table.insert(out, it) end
+            end
+        end
+    end
+    -- Merge user-imported custom alternatives
+    local custom = self:GetCustomAlts(class, spec, phase, slot)
+    if custom then
+        for _, it in ipairs(custom) do table.insert(out, it) end
+    end
+    if #out == 0 then return nil end
+    return out
+end
+
+function addon:GetCustomAlts(class, spec, phase, slot)
+    local ca = TBCBisTrackerDB.customAlts
+    if not ca then return nil end
+    local key = self:GetSpecKey(class, spec)
+    return ca[key] and ca[key][phase] and ca[key][phase][slot]
+end
+
+function addon:AddCustomAlt(class, spec, phase, slot, itemId, source)
+    if not itemId then return false end
+    TBCBisTrackerDB.customAlts = TBCBisTrackerDB.customAlts or {}
+    local key = self:GetSpecKey(class, spec)
+    local ca = TBCBisTrackerDB.customAlts
+    ca[key] = ca[key] or {}
+    ca[key][phase] = ca[key][phase] or {}
+    ca[key][phase][slot] = ca[key][phase][slot] or {}
+    -- Avoid duplicates
+    for _, it in ipairs(ca[key][phase][slot]) do
+        if it.id == itemId then return false end
+    end
+    table.insert(ca[key][phase][slot], { id = itemId, source = source or "Custom (imported)", sourceType = "world" })
+    return true
+end
+
+function addon:RemoveCustomAlt(class, spec, phase, slot, itemId)
+    local list = self:GetCustomAlts(class, spec, phase, slot)
+    if not list then return end
+    for i = #list, 1, -1 do
+        if list[i].id == itemId then table.remove(list, i) end
+    end
+end
+
+-- Parse a Wowhead URL, in-game item link, or bare numeric id.
+function addon:ParseWowheadInput(input)
+    if not input or input == "" then return nil end
+    input = tostring(input):match("^%s*(.-)%s*$")
+    local patterns = {
+        "item=(%d+)",        -- wowhead query-style: ...item=29370
+        "item:(%d+)",        -- in-game hyperlink: |Hitem:29370:0:...
+        "/item/(%d+)",       -- path style: /item/29370
+        "/items/(%d+)",      -- plural variant
+        "wowhead%.com/[%w%-/]*/(%d+)",  -- last segment of a wowhead path
+        "^(%d+)$",           -- bare number
+    }
+    for _, p in ipairs(patterns) do
+        local id = input:match(p)
+        if id then return tonumber(id) end
+    end
+    return nil
+end
+
+function addon:GetSelectedAlt(class, spec, phase, slot)
+    local sel = TBCBisTrackerDB.selected
+    if not sel then return 1 end
+    local key = self:GetSpecKey(class, spec)
+    return (sel[key] and sel[key][phase] and sel[key][phase][slot]) or 1
+end
+
+function addon:SetSelectedAlt(class, spec, phase, slot, idx)
+    TBCBisTrackerDB.selected = TBCBisTrackerDB.selected or {}
+    local key = self:GetSpecKey(class, spec)
+    TBCBisTrackerDB.selected[key] = TBCBisTrackerDB.selected[key] or {}
+    TBCBisTrackerDB.selected[key][phase] = TBCBisTrackerDB.selected[key][phase] or {}
+    TBCBisTrackerDB.selected[key][phase][slot] = idx
+end
+
+-- Returns the currently-selected item entry for a slot, the index, and total alternative count.
+function addon:GetSlotItem(class, spec, phase, slot)
+    local alts = self:GetSlotAlternatives(class, spec, phase, slot)
+    if not alts or #alts == 0 then return nil, 1, 0 end
+    local idx = self:GetSelectedAlt(class, spec, phase, slot)
+    if idx > #alts then idx = 1 end
+    return alts[idx], idx, #alts
+end
+
 function addon:GetItemLink(itemId)
     if not itemId then return "|cffffffff[Unknown]|r" end
     local name, _, quality = GetItemInfo(itemId)
@@ -183,6 +307,55 @@ function addon:Print(msg)
 end
 
 -- ─────────────────────────────────────────────
+-- Auto-detect: mark BIS items obtained from currently equipped gear.
+-- One-way: never auto-unticks; manual untick stays unticked until item re-equipped.
+-- ─────────────────────────────────────────────
+
+function addon:ScanEquipped()
+    local _, playerClass = UnitClass("player")
+    if not playerClass then return end
+    local classData = self.DB[playerClass]
+    if not classData then return end
+
+    -- Snapshot equipped item IDs by inventory slot
+    local equipped = {}
+    for invSlot = 1, 19 do
+        equipped[invSlot] = GetInventoryItemID("player", invSlot)
+    end
+
+    local marked = 0
+    for spec, specData in pairs(classData) do
+        for _, phase in ipairs(self.PHASES) do
+            local phaseData = specData[phase]
+            if phaseData then
+                for slot, _ in pairs(phaseData) do
+                    local entry = self:GetSlotItem(playerClass, spec, phase, slot)
+                    if entry and entry.id then
+                        local invSlots = self.SLOT_INVENTORY_IDS[slot]
+                        if invSlots then
+                            for _, invSlot in ipairs(invSlots) do
+                                if equipped[invSlot] == entry.id then
+                                    if not self:IsObtained(playerClass, spec, phase, slot) then
+                                        self:SetObtained(playerClass, spec, phase, slot, true)
+                                        marked = marked + 1
+                                    end
+                                    break
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    if marked > 0 and self.UI and self.UI.Refresh then
+        self.UI:Refresh()
+    end
+    return marked
+end
+
+-- ─────────────────────────────────────────────
 -- Merge defaults (non-destructive)
 -- ─────────────────────────────────────────────
 
@@ -208,24 +381,38 @@ local function CreateMinimapButton()
     btn:SetSize(32, 32)
     btn:SetFrameStrata("MEDIUM")
     btn:SetFrameLevel(8)
-    btn:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
+    btn:SetClampedToScreen(true)
 
-    local icon = btn:CreateTexture(nil, "BACKGROUND")
+    local bg = btn:CreateTexture(nil, "BACKGROUND")
+    bg:SetSize(20, 20)
+    bg:SetPoint("TOPLEFT", 6, -6)
+    bg:SetTexture("Interface\\Minimap\\UI-Minimap-Background")
+
+    local icon = btn:CreateTexture(nil, "ARTWORK")
+    icon:SetSize(18, 18)
+    icon:SetPoint("TOPLEFT", 7, -6)
     icon:SetTexture("Interface\\Icons\\INV_Misc_Map_01")
-    icon:SetSize(20, 20)
-    icon:SetPoint("CENTER")
+    icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
 
     local border = btn:CreateTexture(nil, "OVERLAY")
+    border:SetSize(54, 54)
+    border:SetPoint("TOPLEFT")
     border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
-    border:SetSize(56, 56)
-    border:SetPoint("CENTER", 0, 0)
+
+    local highlight = btn:CreateTexture(nil, "HIGHLIGHT")
+    highlight:SetSize(20, 20)
+    highlight:SetPoint("TOPLEFT", 6, -6)
+    highlight:SetTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
+    highlight:SetBlendMode("ADD")
 
     -- Position around minimap
+    local MINIMAP_RADIUS = 80
     local function UpdatePosition()
         local pos   = TBCBisTrackerDB.minimap.pos or 220
         local angle = math.rad(pos)
-        local r     = Minimap:GetWidth() / 2 + 5
-        btn:SetPoint("CENTER", Minimap, "CENTER", math.cos(angle) * r, math.sin(angle) * r)
+        btn:ClearAllPoints()
+        btn:SetPoint("CENTER", Minimap, "CENTER",
+            math.cos(angle) * MINIMAP_RADIUS, math.sin(angle) * MINIMAP_RADIUS)
     end
 
     -- Drag to reposition
@@ -307,6 +494,7 @@ end
 local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("ADDON_LOADED")
 eventFrame:RegisterEvent("PLAYER_LOGIN")
+eventFrame:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
 
 eventFrame:SetScript("OnEvent", function(self, event, arg1)
     if event == "ADDON_LOADED" and arg1 == "TBCBisTracker" then
@@ -339,5 +527,9 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1)
         if addon.UI and addon.UI.Build then
             addon.UI:Build()
         end
+        addon:ScanEquipped()
+
+    elseif event == "PLAYER_EQUIPMENT_CHANGED" then
+        addon:ScanEquipped()
     end
 end)

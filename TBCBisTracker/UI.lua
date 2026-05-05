@@ -179,10 +179,8 @@ function UI:RefreshClassButtons()
     for class, btn in pairs(self.classBtns) do
         if class == selectedClass then
             btn.border:SetAlpha(1)
-            btn:SetScale(1.15)
         else
             btn.border:SetAlpha(0)
-            btn:SetScale(1.0)
         end
     end
 end
@@ -199,61 +197,77 @@ function UI:BuildSpecSelector()
     self.specBtnRow:SetPoint("TOPLEFT", f, "TOPLEFT", 20, -78)
 end
 
+local SPEC_POOL_SIZE = 4
+
+local function GetOrCreateSpecBtn(self, idx)
+    local btn = self.specBtns[idx]
+    if btn then return btn end
+
+    btn = CreateFrame("Button", nil, self.specBtnRow)
+    btn:SetHeight(22)
+
+    local bg = btn:CreateTexture(nil, "BACKGROUND")
+    bg:SetAllPoints()
+    bg:SetTexture("Interface\\ChatFrame\\ChatFrameBackground")
+    btn.bg = bg
+
+    local fs = btn:CreateFontString(nil, "OVERLAY")
+    SetFontSmall(fs)
+    fs:SetAllPoints()
+    btn.fs = fs
+
+    btn:SetScript("OnEnter", function(s)
+        if s.spec ~= TBCBisTrackerDB.lastSpec then
+            s.bg:SetVertexColor(0.25, 0.25, 0.25, 1)
+        end
+    end)
+    btn:SetScript("OnLeave", function(s)
+        if s.spec == TBCBisTrackerDB.lastSpec then
+            s.bg:SetVertexColor(0.25, 0.20, 0.05, 0.9)
+        else
+            s.bg:SetVertexColor(0.12, 0.12, 0.12, 0.8)
+        end
+    end)
+    btn:SetScript("OnClick", function(s)
+        if not s.spec then return end
+        TBCBisTrackerDB.lastSpec = s.spec
+        UI:RefreshSpecSelector()
+        UI:Refresh()
+    end)
+
+    self.specBtns[idx] = btn
+    return btn
+end
+
 function UI:RefreshSpecSelector()
     local class = TBCBisTrackerDB.lastClass
     if not class then return end
     local info  = addon.CLASS_INFO[class]
     if not info then return end
 
-    -- Remove old buttons
-    for _, b in ipairs(self.specBtns) do b:Hide() end
-    self.specBtns = {}
-
     local x = 0
-    for _, spec in ipairs(info.specs) do
-        local btn = CreateFrame("Button", nil, self.specBtnRow)
-        btn:SetHeight(22)
-        btn:SetPoint("LEFT", self.specBtnRow, "LEFT", x, 0)
-
-        local bg = btn:CreateTexture(nil, "BACKGROUND")
-        bg:SetAllPoints()
-        bg:SetTexture("Interface\\ChatFrame\\ChatFrameBackground")
-        bg:SetVertexColor(0.15, 0.15, 0.15, 0.8)
-        btn.bg = bg
-
-        local fs = btn:CreateFontString(nil, "OVERLAY")
-        SetFontSmall(fs)
-        fs:SetAllPoints()
-        fs:SetText(spec)
-        btn.fs = fs
-
-        -- measure width
-        btn:SetWidth(fs:GetStringWidth() + 24)
-        x = x + fs:GetStringWidth() + 28
-
-        local capturedSpec = spec
-        btn:SetScript("OnClick", function()
-            TBCBisTrackerDB.lastSpec = capturedSpec
-            UI:RefreshSpecSelector()
-            UI:Refresh()
-        end)
-
-        btn:SetScript("OnEnter", function(self)
-            self.bg:SetVertexColor(0.25, 0.25, 0.25, 1)
-        end)
-        btn:SetScript("OnLeave", function(self)
-            UI:RefreshSpecSelector()
-        end)
-
-        table.insert(self.specBtns, btn)
-
-        -- apply colour based on selection
-        if spec == TBCBisTrackerDB.lastSpec then
-            fs:SetTextColor(1, 0.82, 0, 1)
-            bg:SetVertexColor(0.25, 0.20, 0.05, 0.9)
+    for i = 1, SPEC_POOL_SIZE do
+        local spec = info.specs[i]
+        local btn  = GetOrCreateSpecBtn(self, i)
+        if spec then
+            btn.spec = spec
+            btn.fs:SetText(spec)
+            local w = btn.fs:GetStringWidth() + 24
+            btn:SetWidth(w)
+            btn:ClearAllPoints()
+            btn:SetPoint("LEFT", self.specBtnRow, "LEFT", x, 0)
+            if spec == TBCBisTrackerDB.lastSpec then
+                btn.fs:SetTextColor(1, 0.82, 0, 1)
+                btn.bg:SetVertexColor(0.25, 0.20, 0.05, 0.9)
+            else
+                btn.fs:SetTextColor(0.8, 0.8, 0.8, 1)
+                btn.bg:SetVertexColor(0.12, 0.12, 0.12, 0.8)
+            end
+            btn:Show()
+            x = x + w + 4
         else
-            fs:SetTextColor(0.8, 0.8, 0.8, 1)
-            bg:SetVertexColor(0.12, 0.12, 0.12, 0.8)
+            btn.spec = nil
+            btn:Hide()
         end
     end
 end
@@ -491,7 +505,161 @@ function UI:CreateRowFrame(parent, idx)
         GameTooltip:Hide()
     end)
 
+    -- Right-click → choose alternative / import
+    row:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    row:SetScript("OnClick", function(self, button)
+        if button == "RightButton" and self.slotKey then
+            UI:ShowAlternativesMenu(self, self.slotKey)
+        end
+    end)
+
     return row
+end
+
+function UI:ShowAlternativesMenu(anchorFrame, slot)
+    local class = TBCBisTrackerDB.lastClass
+    local spec  = TBCBisTrackerDB.lastSpec
+    local phase = TBCBisTrackerDB.lastPhase
+    local alts  = addon:GetSlotAlternatives(class, spec, phase, slot)
+    if not alts or #alts == 0 then
+        -- Empty slot in DB and no custom imports yet; offer the import option from a minimal menu
+        alts = {}
+    end
+    local currentIdx = addon:GetSelectedAlt(class, spec, phase, slot)
+
+    if not self.altDropdown then
+        self.altDropdown = CreateFrame("Frame", "TBCBisTrackerAltDropdown", UIParent, "UIDropDownMenuTemplate")
+    end
+
+    UIDropDownMenu_Initialize(self.altDropdown, function(_, level)
+        local title = UIDropDownMenu_CreateInfo()
+        title.text = "Track for " .. (addon.SLOT_LABELS[slot] or slot)
+        title.isTitle = true
+        title.notCheckable = true
+        UIDropDownMenu_AddButton(title, level)
+
+        for i, alt in ipairs(alts) do
+            local name  = addon:GetItemName(alt.id)
+            local color = addon:GetItemQualityColor(alt.id)
+            local prefix = (i == 1) and "|cffffd700[BiS]|r " or "|cffaaaaaa[Alt " .. (i-1) .. "]|r "
+            local info = UIDropDownMenu_CreateInfo()
+            info.text     = prefix .. color .. name .. "|r"
+            info.checked  = (i == currentIdx)
+            info.func     = function()
+                addon:SetSelectedAlt(class, spec, phase, slot, i)
+                UI:Refresh()
+                CloseDropDownMenus()
+            end
+            UIDropDownMenu_AddButton(info, level)
+        end
+
+        local sep = UIDropDownMenu_CreateInfo()
+        sep.text = ""
+        sep.isTitle = true
+        sep.notCheckable = true
+        UIDropDownMenu_AddButton(sep, level)
+
+        local imp = UIDropDownMenu_CreateInfo()
+        imp.text = "|cff00ff00Import from Wowhead...|r"
+        imp.notCheckable = true
+        imp.func = function()
+            StaticPopupDialogs["TBCBIS_IMPORT_WOWHEAD"] = {
+                text = "Paste a Wowhead URL or item ID for " .. (addon.SLOT_LABELS[slot] or slot) .. ":",
+                button1 = "Add",
+                button2 = "Cancel",
+                hasEditBox = true,
+                editBoxWidth = 350,
+                OnShow = function(s) s.editBox:SetFocus() end,
+                OnAccept = function(s)
+                    local eb = (s and s.editBox) or _G["StaticPopup1EditBox"] or _G["StaticPopup2EditBox"]
+                    local input = eb and eb:GetText() or ""
+                    local id = addon:ParseWowheadInput(input)
+                    if not id then
+                        addon:Print("Could not parse a Wowhead item URL/ID from: " .. tostring(input))
+                        return
+                    end
+                    local added = addon:AddCustomAlt(class, spec, phase, slot, id, "Custom (Wowhead import)")
+                    if added then
+                        addon:Print("Added item " .. id .. " as alternative for " .. (addon.SLOT_LABELS[slot] or slot) .. ".")
+                    else
+                        addon:Print("Item " .. id .. " is already an alternative for that slot.")
+                    end
+                    UI:Refresh()
+                end,
+                EditBoxOnEnterPressed = function(s)
+                    local parent = s:GetParent()
+                    if parent.OnAccept then parent.OnAccept(parent) end
+                    parent:Hide()
+                end,
+                EditBoxOnEscapePressed = function(s) s:GetParent():Hide() end,
+                timeout = 0, whileDead = true, hideOnEscape = true,
+            }
+            StaticPopup_Show("TBCBIS_IMPORT_WOWHEAD")
+            CloseDropDownMenus()
+        end
+        UIDropDownMenu_AddButton(imp, level)
+
+        -- Allow removing user-added alternatives
+        local custom = addon:GetCustomAlts(class, spec, phase, slot)
+        if custom and #custom > 0 then
+            for _, ci in ipairs(custom) do
+                local removeInfo = UIDropDownMenu_CreateInfo()
+                local nm = addon:GetItemName(ci.id)
+                removeInfo.text = "|cffff6060Remove|r " .. nm
+                removeInfo.notCheckable = true
+                local capturedId = ci.id
+                removeInfo.func = function()
+                    addon:RemoveCustomAlt(class, spec, phase, slot, capturedId)
+                    -- Reset selection if it pointed past the new list end
+                    addon:SetSelectedAlt(class, spec, phase, slot, 1)
+                    UI:Refresh()
+                    CloseDropDownMenus()
+                end
+                UIDropDownMenu_AddButton(removeInfo, level)
+            end
+        end
+
+        local cancel = UIDropDownMenu_CreateInfo()
+        cancel.text = "Cancel"
+        cancel.notCheckable = true
+        cancel.func = function() CloseDropDownMenus() end
+        UIDropDownMenu_AddButton(cancel, level)
+    end, "MENU")
+
+    -- Track which item id corresponds to which menu position so we can attach item tooltips
+    self.altMenuItemIds = {}
+    local pos = 1
+    pos = pos + 1  -- skip title row
+    for i = 1, #alts do
+        self.altMenuItemIds[pos] = alts[i].id
+        pos = pos + 1
+    end
+
+    ToggleDropDownMenu(1, nil, self.altDropdown, "cursor", 0, 0)
+
+    -- After the dropdown renders, attach item tooltips to each button
+    C_Timer.After(0, function()
+        local list = _G["DropDownList1"]
+        if not list then return end
+        for i = 1, 32 do
+            local btn = _G["DropDownList1Button" .. i]
+            if not btn or not btn:IsShown() then break end
+            local itemId = UI.altMenuItemIds[i]
+            if itemId and not btn.tbcbisHooked then
+                btn.tbcbisHooked = true
+                btn:HookScript("OnEnter", function(s)
+                    local id = UI.altMenuItemIds[i]
+                    if not id then return end
+                    GameTooltip:SetOwner(s, "ANCHOR_RIGHT")
+                    GameTooltip:SetHyperlink("item:" .. id .. ":0:0:0:0:0:0:0")
+                    GameTooltip:AddLine(" ")
+                    GameTooltip:AddLine("|cffaaaaaa" .. addon.WOWHEAD_BASE .. id .. "|r", 1, 1, 1, true)
+                    GameTooltip:Show()
+                end)
+                btn:HookScript("OnLeave", function() GameTooltip:Hide() end)
+            end
+        end
+    end)
 end
 
 -- ─────────────────────────────────────────────
@@ -566,62 +734,70 @@ function UI:Refresh()
     local obtained, total = 0, 0
 
     for _, slot in ipairs(addon.SLOTS) do
-        local entry = data[slot]
-        if not entry then goto continue end
+        local entry, selectedIdx, altCount = addon:GetSlotItem(class, spec, phase, slot)
+        local isObtained = entry and addon:IsObtained(class, spec, phase, slot) or false
 
-        total = total + 1
-        local isObtained = addon:IsObtained(class, spec, phase, slot)
-        if isObtained then obtained = obtained + 1 end
-
-        if missingOnly and isObtained then goto continue end
-
-        rowIdx = rowIdx + 1
-        local row = self.rowPool[rowIdx]
-        if not row then break end
-
-        -- Position row
-        row:SetWidth(SCROLL_W)
-        row:SetPoint("TOPLEFT", self.scrollContent, "TOPLEFT", 0, -(rowIdx - 1) * (ROW_H + ROW_PAD))
-        row:Show()
-
-        -- Slot icon
-        row.iconTex:SetTexture(addon.SLOT_ICONS[slot] or "Interface\\Icons\\INV_Misc_QuestionMark")
-
-        -- Slot name
-        row.slotLbl:SetText(addon.SLOT_LABELS[slot] or slot)
-
-        -- Item name + quality colour
-        local itemId   = entry.id
-        row.itemId     = itemId or 0
-        local itemName = addon:GetItemName(itemId)
-        local color    = addon:GetItemQualityColor(itemId)
-        row.itemLbl:SetText(color .. itemName .. "|r")
-
-        -- Source
-        local srcColor = SOURCE_TYPE_COLORS[entry.sourceType] or "|cffcccccc"
-        local srcText  = entry.source or "Unknown"
-        if entry.note then
-            srcText = entry.note .. " (" .. srcText .. ")"
-        end
-        row.srcLbl:SetText(srcColor .. srcText .. "|r")
-
-        -- Checkbox state
-        row.chk:SetChecked(isObtained)
-        row.chk:SetScript("OnClick", function(chkSelf)
-            local val = chkSelf:GetChecked()
-            addon:SetObtained(class, spec, phase, slot, val)
-            UI:Refresh()
-        end)
-
-        -- Strike through obtained items
-        if isObtained then
-            row.itemLbl:SetTextColor(0.4, 0.4, 0.4, 1)
-            row.slotLbl:SetTextColor(0.4, 0.4, 0.4, 1)
-        else
-            row.slotLbl:SetTextColor(0.7, 0.7, 0.7, 1)
+        if entry then
+            total = total + 1
+            if isObtained then obtained = obtained + 1 end
         end
 
-        ::continue::
+        if not (missingOnly and isObtained) then
+            rowIdx = rowIdx + 1
+            local row = self.rowPool[rowIdx]
+            if not row then break end
+
+            -- Position row
+            row:SetWidth(SCROLL_W)
+            row:SetPoint("TOPLEFT", self.scrollContent, "TOPLEFT", 0, -(rowIdx - 1) * (ROW_H + ROW_PAD))
+            row:Show()
+            row.slotKey = slot
+
+            -- Slot icon + name (always shown)
+            row.iconTex:SetTexture(addon.SLOT_ICONS[slot] or "Interface\\Icons\\INV_Misc_QuestionMark")
+            row.slotLbl:SetText(addon.SLOT_LABELS[slot] or slot)
+
+            if entry then
+                -- Populated slot — show item details
+                local itemId   = entry.id
+                row.itemId     = itemId or 0
+                local itemName = addon:GetItemName(itemId)
+                local color    = addon:GetItemQualityColor(itemId)
+                local altSuffix = (altCount > 1) and (" |cff888888[" .. selectedIdx .. "/" .. altCount .. "]|r") or ""
+                row.itemLbl:SetText(color .. itemName .. "|r" .. altSuffix)
+
+                local srcColor = SOURCE_TYPE_COLORS[entry.sourceType] or "|cffcccccc"
+                local srcText  = entry.source or "Unknown"
+                if entry.note then
+                    srcText = entry.note .. " (" .. srcText .. ")"
+                end
+                row.srcLbl:SetText(srcColor .. srcText .. "|r")
+
+                row.chk:Show()
+                row.chk:Enable()
+                row.chk:SetChecked(isObtained)
+                row.chk:SetScript("OnClick", function(chkSelf)
+                    local val = chkSelf:GetChecked()
+                    addon:SetObtained(class, spec, phase, slot, val)
+                    UI:Refresh()
+                end)
+
+                if isObtained then
+                    row.itemLbl:SetTextColor(0.4, 0.4, 0.4, 1)
+                    row.slotLbl:SetTextColor(0.4, 0.4, 0.4, 1)
+                else
+                    row.slotLbl:SetTextColor(0.7, 0.7, 0.7, 1)
+                end
+            else
+                -- Empty slot — placeholder, prompt right-click to import
+                row.itemId = 0
+                row.itemLbl:SetText("|cff666666(empty — right-click to import)|r")
+                row.srcLbl:SetText("")
+                row.chk:SetChecked(false)
+                row.chk:Hide()
+                row.slotLbl:SetTextColor(0.5, 0.5, 0.5, 1)
+            end
+        end
     end
 
     -- Resize content frame

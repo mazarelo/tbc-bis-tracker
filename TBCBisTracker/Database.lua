@@ -2,575 +2,214 @@
 -- Best-in-Slot gear for all classes and specs across all TBC phases.
 -- Item IDs match Wowhead TBC Classic (https://www.wowhead.com/tbc/item=<id>).
 -- Source types: "crafted","heroic","raid","reputation","pvp","world","quest","dungeon"
+--
+-- STATUS: Only PRIEST Shadow has real Wowhead-sourced data. All other specs
+-- are empty placeholders to be filled in one-by-one from Wowhead BiS guides.
 
 TBCBisTracker = TBCBisTracker or {}
 TBCBisTracker.DB = {}
 
 local DB = TBCBisTracker.DB
 
--- Helper to create an item entry
 local function item(id, source, sourceType, note)
     return { id = id, source = source, sourceType = sourceType or "raid", note = note }
 end
 
+local function EMPTY_PHASES()
+    return { prebis = {}, phase1 = {}, phase2 = {}, phase3 = {}, phase4 = {}, phase5 = {} }
+end
+
 -- =================================================================
--- WARRIOR
+-- WARRIOR -- TODO: Wowhead-source per spec
 -- =================================================================
 DB["WARRIOR"] = {}
-
--- Warrior - Fury (DPS)
-DB["WARRIOR"]["Fury"] = {
-    prebis = {
-        head     = item(23274, "Crafted (Blacksmithing 350)", "crafted"),
-        neck     = item(29381, "H Sethekk Halls - Talon King Ikiss", "heroic"),
-        shoulder = item(28228, "H Ramparts - Watchkeeper Gargolmar", "heroic"),
-        back     = item(28722, "H Slave Pens - Quagmirran", "heroic"),
-        chest    = item(23245, "Crafted (Blacksmithing 350)", "crafted"),
-        wrist    = item(28515, "H Mechanar - Nethermancer Sepethrea", "heroic"),
-        hands    = item(23248, "Crafted (Blacksmithing 350)", "crafted"),
-        waist    = item(23250, "Crafted (Blacksmithing 350)", "crafted"),
-        legs     = item(23246, "Crafted (Blacksmithing 350)", "crafted"),
-        feet     = item(23247, "Crafted (Blacksmithing 350)", "crafted"),
-        ring1    = item(28780, "H Black Morass - Medivh", "heroic"),
-        ring2    = item(29383, "H Arcatraz - Harbinger Skyriss", "heroic"),
-        trinket1 = item(28190, "H Mana Tombs - Nexus-Prince Shaffar", "heroic"),
-        trinket2 = item(28830, "H Shattered Halls - Warchief Kargath", "heroic"),
-        mainhand = item(28745, "H Ramparts - Nazan and Vazruden", "heroic"),
-        offhand  = item(23472, "Crafted (Blacksmithing 350)", "crafted"),
-        ranged   = item(28435, "H Ramparts - Watchkeeper Gargolmar", "heroic"),
-    },
-    phase1 = {
-        head     = item(30247, "Karazhan - Nightbane (Token)", "raid"),
-        neck     = item(29381, "H Sethekk Halls - Talon King Ikiss", "heroic"),
-        shoulder = item(30257, "Karazhan - Prince Malchezaar (Token)", "raid"),
-        back     = item(28722, "H Slave Pens - Quagmirran", "heroic"),
-        chest    = item(30132, "Gruul's Lair - Gruul the Dragonkiller", "raid"),
-        wrist    = item(30100, "Karazhan - Various", "raid"),
-        hands    = item(30257, "Karazhan - Prince Malchezaar (Token)", "raid"),
-        waist    = item(28711, "H Underbog - Hungarfen", "heroic"),
-        legs     = item(30247, "Karazhan - Nightbane (Token)", "raid"),
-        feet     = item(30104, "Karazhan - Moroes", "raid"),
-        ring1    = item(29383, "H Arcatraz - Harbinger Skyriss", "heroic"),
-        ring2    = item(30052, "Karazhan - Prince Malchezaar", "raid"),
-        trinket1 = item(29434, "Karazhan - Moroes", "raid"),
-        trinket2 = item(28190, "H Mana Tombs - Nexus-Prince Shaffar", "heroic"),
-        mainhand = item(30091, "Karazhan - Prince Malchezaar", "raid"),
-        offhand  = item(30091, "Karazhan - Prince Malchezaar", "raid"),
-        ranged   = item(28435, "H Ramparts - Watchkeeper Gargolmar", "heroic"),
-    },
-    phase2 = {
-        head     = item(30247, "Karazhan - Nightbane (Token)", "raid"),
-        neck     = item(30621, "SSC - Lady Vashj", "raid"),
-        shoulder = item(30679, "SSC - Leotheras the Blind", "raid"),
-        back     = item(30730, "The Eye - Al'ar", "raid"),
-        chest    = item(30132, "Gruul's Lair - Gruul the Dragonkiller", "raid"),
-        wrist    = item(30677, "SSC - Hydross the Unstable", "raid"),
-        hands    = item(30670, "SSC - Morogrim Tidewalker", "raid"),
-        waist    = item(30872, "The Eye - High Astromancer Solarian", "raid"),
-        legs     = item(30689, "SSC - Fathom-Lord Karathress", "raid"),
-        feet     = item(30667, "SSC - The Lurker Below", "raid"),
-        ring1    = item(30627, "SSC - Lady Vashj", "raid"),
-        ring2    = item(30834, "The Eye - Kael'thas Sunstrider", "raid"),
-        trinket1 = item(28190, "H Mana Tombs - Nexus-Prince Shaffar", "heroic"),
-        trinket2 = item(29434, "Karazhan - Moroes", "raid"),
-        mainhand = item(30739, "The Eye - Kael'thas Sunstrider", "raid"),
-        offhand  = item(30736, "The Eye - Kael'thas Sunstrider", "raid"),
-        ranged   = item(30759, "The Eye - Kael'thas Sunstrider", "raid"),
-    },
-    phase3 = {
-        head     = item(32461, "Black Temple - Illidan (Token)", "raid"),
-        neck     = item(32349, "Black Temple - Shade of Akama", "raid"),
-        shoulder = item(32461, "Black Temple - Illidan (Token)", "raid"),
-        back     = item(32524, "Black Temple - Gurtogg Bloodboil", "raid"),
-        chest    = item(32461, "Black Temple - Illidan (Token)", "raid"),
-        wrist    = item(32514, "Black Temple - High Warlord Naj'entus", "raid"),
-        hands    = item(32461, "Black Temple - Illidan (Token)", "raid"),
-        waist    = item(32583, "Black Temple - Reliquary of Souls", "raid"),
-        legs     = item(32461, "Black Temple - Illidan (Token)", "raid"),
-        feet     = item(32241, "Hyjal Summit - Archimonde", "raid"),
-        ring1    = item(32527, "Black Temple - Teron Gorefiend", "raid"),
-        ring2    = item(32531, "Black Temple - Mother Shahraz", "raid"),
-        trinket1 = item(32658, "Black Temple - Illidan Stormrage", "raid"),
-        trinket2 = item(28190, "H Mana Tombs - Nexus-Prince Shaffar", "heroic"),
-        mainhand = item(32336, "Black Temple - Illidan Stormrage", "raid"),
-        offhand  = item(32331, "Black Temple - Gurtogg Bloodboil", "raid"),
-        ranged   = item(32336, "Black Temple - Illidan Stormrage", "raid"),
-    },
-    phase4 = {
-        head     = item(34432, "Sunwell - M'uru (Token)", "raid"),
-        neck     = item(34362, "Sunwell - Trash", "raid"),
-        shoulder = item(34432, "Sunwell - M'uru (Token)", "raid"),
-        back     = item(34015, "Sunwell - Brutallus", "raid"),
-        chest    = item(34432, "Sunwell - M'uru (Token)", "raid"),
-        wrist    = item(34009, "Sunwell - Felmyst", "raid"),
-        hands    = item(34432, "Sunwell - M'uru (Token)", "raid"),
-        waist    = item(34017, "Sunwell - Brutallus", "raid"),
-        legs     = item(34432, "Sunwell - M'uru (Token)", "raid"),
-        feet     = item(34005, "Sunwell - Kalecgos", "raid"),
-        ring1    = item(34362, "Sunwell - Trash", "raid"),
-        ring2    = item(34182, "Sunwell - Eredar Twins", "raid"),
-        trinket1 = item(34427, "Sunwell - M'uru", "raid"),
-        trinket2 = item(34472, "Sunwell - Kil'jaeden", "raid"),
-        mainhand = item(34186, "Sunwell - Eredar Twins", "raid"),
-        offhand  = item(34186, "Sunwell - Eredar Twins", "raid"),
-        ranged   = item(34201, "Sunwell - Kil'jaeden", "raid"),
-    },
-}
-
--- Warrior - Protection (Tank)
-DB["WARRIOR"]["Protection"] = {
-    prebis = {
-        head     = item(23274, "Crafted (Blacksmithing 350)", "crafted"),
-        neck     = item(29381, "H Sethekk Halls - Talon King Ikiss", "heroic"),
-        shoulder = item(28228, "H Ramparts - Watchkeeper Gargolmar", "heroic"),
-        back     = item(28722, "H Slave Pens - Quagmirran", "heroic"),
-        chest    = item(23245, "Crafted (Blacksmithing 350)", "crafted"),
-        wrist    = item(29119, "Crafted (Blacksmithing 360)", "crafted"),
-        hands    = item(28520, "H Mechanar - Mechano-Lord Capacitus", "heroic"),
-        waist    = item(30016, "Crafted (Blacksmithing 365)", "crafted"),
-        legs     = item(27798, "H Black Morass - Temporus", "heroic"),
-        feet     = item(28545, "H Mechanar - Mechano-Lord Capacitus", "heroic"),
-        ring1    = item(29383, "H Arcatraz - Harbinger Skyriss", "heroic"),
-        ring2    = item(28780, "H Black Morass - Medivh", "heroic"),
-        trinket1 = item(29132, "H Mana Tombs - Nexus-Prince Shaffar", "heroic"),
-        trinket2 = item(32698, "Crafted (Jewelcrafting 365)", "crafted"),
-        mainhand = item(28749, "H Blood Furnace - Broggok", "heroic"),
-        offhand  = item(28600, "Sha'tar - Exalted", "reputation"),
-        ranged   = item(28435, "H Ramparts - Watchkeeper Gargolmar", "heroic"),
-    },
-    phase1 = {
-        head     = item(30247, "Karazhan - Nightbane (Token)", "raid"),
-        neck     = item(29381, "H Sethekk Halls - Talon King Ikiss", "heroic"),
-        shoulder = item(30257, "Karazhan - Prince Malchezaar (Token)", "raid"),
-        back     = item(28722, "H Slave Pens - Quagmirran", "heroic"),
-        chest    = item(30132, "Gruul's Lair - Gruul the Dragonkiller", "raid"),
-        wrist    = item(29119, "Crafted (Blacksmithing 360)", "crafted"),
-        hands    = item(30257, "Karazhan - Prince Malchezaar (Token)", "raid"),
-        waist    = item(30016, "Crafted (Blacksmithing 365)", "crafted"),
-        legs     = item(30247, "Karazhan - Nightbane (Token)", "raid"),
-        feet     = item(28545, "H Mechanar - Mechano-Lord Capacitus", "heroic"),
-        ring1    = item(29383, "H Arcatraz - Harbinger Skyriss", "heroic"),
-        ring2    = item(30052, "Karazhan - Prince Malchezaar", "raid"),
-        trinket1 = item(29132, "H Mana Tombs - Nexus-Prince Shaffar", "heroic"),
-        trinket2 = item(32698, "Crafted (Jewelcrafting 365)", "crafted"),
-        mainhand = item(28749, "H Blood Furnace - Broggok", "heroic"),
-        offhand  = item(30091, "Karazhan - Prince Malchezaar", "raid"),
-        ranged   = item(28435, "H Ramparts - Watchkeeper Gargolmar", "heroic"),
-    },
-    phase2 = {
-        head     = item(30247, "Karazhan - Nightbane (Token)", "raid"),
-        neck     = item(30621, "SSC - Lady Vashj", "raid"),
-        shoulder = item(30679, "SSC - Leotheras the Blind", "raid"),
-        back     = item(30730, "The Eye - Al'ar", "raid"),
-        chest    = item(30132, "Gruul's Lair - Gruul the Dragonkiller", "raid"),
-        wrist    = item(30677, "SSC - Hydross the Unstable", "raid"),
-        hands    = item(30670, "SSC - Morogrim Tidewalker", "raid"),
-        waist    = item(30872, "The Eye - High Astromancer Solarian", "raid"),
-        legs     = item(30689, "SSC - Fathom-Lord Karathress", "raid"),
-        feet     = item(30667, "SSC - The Lurker Below", "raid"),
-        ring1    = item(30627, "SSC - Lady Vashj", "raid"),
-        ring2    = item(30834, "The Eye - Kael'thas Sunstrider", "raid"),
-        trinket1 = item(29132, "H Mana Tombs - Nexus-Prince Shaffar", "heroic"),
-        trinket2 = item(32698, "Crafted (Jewelcrafting 365)", "crafted"),
-        mainhand = item(30739, "The Eye - Kael'thas Sunstrider", "raid"),
-        offhand  = item(30736, "The Eye - Kael'thas Sunstrider", "raid"),
-        ranged   = item(30759, "The Eye - Kael'thas Sunstrider", "raid"),
-    },
-    phase3 = {
-        head     = item(32461, "Black Temple - Illidan (Token)", "raid"),
-        neck     = item(32349, "Black Temple - Shade of Akama", "raid"),
-        shoulder = item(32461, "Black Temple - Illidan (Token)", "raid"),
-        back     = item(32524, "Black Temple - Gurtogg Bloodboil", "raid"),
-        chest    = item(32461, "Black Temple - Illidan (Token)", "raid"),
-        wrist    = item(32514, "Black Temple - High Warlord Naj'entus", "raid"),
-        hands    = item(32461, "Black Temple - Illidan (Token)", "raid"),
-        waist    = item(32583, "Black Temple - Reliquary of Souls", "raid"),
-        legs     = item(32461, "Black Temple - Illidan (Token)", "raid"),
-        feet     = item(32241, "Hyjal Summit - Archimonde", "raid"),
-        ring1    = item(32527, "Black Temple - Teron Gorefiend", "raid"),
-        ring2    = item(32531, "Black Temple - Mother Shahraz", "raid"),
-        trinket1 = item(32658, "Black Temple - Illidan Stormrage", "raid"),
-        trinket2 = item(29132, "H Mana Tombs - Nexus-Prince Shaffar", "heroic"),
-        mainhand = item(32336, "Black Temple - Illidan Stormrage", "raid"),
-        offhand  = item(32335, "Black Temple - High Warlord Naj'entus", "raid"),
-        ranged   = item(32336, "Black Temple - Illidan Stormrage", "raid"),
-    },
-    phase4 = {
-        head     = item(34432, "Sunwell - M'uru (Token)", "raid"),
-        neck     = item(34362, "Sunwell - Trash", "raid"),
-        shoulder = item(34432, "Sunwell - M'uru (Token)", "raid"),
-        back     = item(34015, "Sunwell - Brutallus", "raid"),
-        chest    = item(34432, "Sunwell - M'uru (Token)", "raid"),
-        wrist    = item(34009, "Sunwell - Felmyst", "raid"),
-        hands    = item(34432, "Sunwell - M'uru (Token)", "raid"),
-        waist    = item(34017, "Sunwell - Brutallus", "raid"),
-        legs     = item(34432, "Sunwell - M'uru (Token)", "raid"),
-        feet     = item(34005, "Sunwell - Kalecgos", "raid"),
-        ring1    = item(34362, "Sunwell - Trash", "raid"),
-        ring2    = item(34182, "Sunwell - Eredar Twins", "raid"),
-        trinket1 = item(34427, "Sunwell - M'uru", "raid"),
-        trinket2 = item(34472, "Sunwell - Kil'jaeden", "raid"),
-        mainhand = item(34186, "Sunwell - Eredar Twins", "raid"),
-        offhand  = item(34185, "Sunwell - Kalecgos", "raid"),
-        ranged   = item(34201, "Sunwell - Kil'jaeden", "raid"),
-    },
-}
+DB["WARRIOR"]["Fury"]       = EMPTY_PHASES()
+DB["WARRIOR"]["Protection"] = EMPTY_PHASES()
 
 -- =================================================================
--- PALADIN
+-- PALADIN -- TODO
 -- =================================================================
 DB["PALADIN"] = {}
-
--- Paladin - Holy (Healer)
-DB["PALADIN"]["Holy"] = {
-    prebis = {
-        head     = item(24266, "Crafted (Tailoring 375) - Spellstrike Hood", "crafted"),
-        neck     = item(28327, "H Slave Pens - Quagmirran", "heroic"),
-        shoulder = item(28797, "H Sethekk Halls - Talon King Ikiss", "heroic"),
-        back     = item(28609, "Aldor - Exalted", "reputation"),
-        chest    = item(21884, "Crafted (Tailoring 360) - Frozen Shadoweave Robe", "crafted"),
-        wrist    = item(28503, "H Auchenai Crypts - Exarch Maladaar", "heroic"),
-        hands    = item(28507, "H Auchenai Crypts - Exarch Maladaar", "heroic"),
-        waist    = item(24262, "Crafted (Tailoring 355)", "crafted"),
-        legs     = item(24264, "Crafted (Tailoring 375) - Spellstrike Infusion", "crafted"),
-        feet     = item(21987, "Crafted (Tailoring 360) - Frozen Shadoweave Boots", "crafted"),
-        ring1    = item(29348, "H Arcatraz - Harbinger Skyriss", "heroic"),
-        ring2    = item(28793, "H Underbog - The Black Stalker", "heroic"),
-        trinket1 = item(29175, "H Old Hillsbrad - Epoch Hunter", "heroic"),
-        trinket2 = item(28190, "H Mana Tombs - Nexus-Prince Shaffar", "heroic"),
-        mainhand = item(29350, "Crafted (Blacksmithing 375) - Eternium Runed Blade", "crafted"),
-        offhand  = item(28606, "Scryers - Exalted", "reputation"),
-        ranged   = item(29301, "H Shattered Halls - Kargath Bladefist", "heroic"),
-    },
-    phase1 = {
-        head     = item(30247, "Karazhan - Nightbane (Token)", "raid"),
-        neck     = item(29381, "H Sethekk Halls - Talon King Ikiss", "heroic"),
-        shoulder = item(30257, "Karazhan - Prince Malchezaar (Token)", "raid"),
-        back     = item(28609, "Aldor - Exalted", "reputation"),
-        chest    = item(29762, "Karazhan - Maiden of Virtue", "raid"),
-        wrist    = item(30100, "Karazhan - Various", "raid"),
-        hands    = item(30257, "Karazhan - Prince Malchezaar (Token)", "raid"),
-        waist    = item(30064, "Karazhan - Shade of Aran", "raid"),
-        legs     = item(30247, "Karazhan - Nightbane (Token)", "raid"),
-        feet     = item(30104, "Karazhan - Moroes", "raid"),
-        ring1    = item(29348, "H Arcatraz - Harbinger Skyriss", "heroic"),
-        ring2    = item(30054, "Karazhan - Shade of Aran", "raid"),
-        trinket1 = item(29175, "H Old Hillsbrad - Epoch Hunter", "heroic"),
-        trinket2 = item(29376, "Karazhan - Netherspite", "raid"),
-        mainhand = item(30091, "Karazhan - Prince Malchezaar", "raid"),
-        offhand  = item(30109, "Karazhan - Maiden of Virtue", "raid"),
-        ranged   = item(29301, "H Shattered Halls - Kargath Bladefist", "heroic"),
-    },
-    phase2 = {
-        head     = item(30247, "Karazhan - Nightbane (Token)", "raid"),
-        neck     = item(30621, "SSC - Lady Vashj", "raid"),
-        shoulder = item(30679, "SSC - Leotheras the Blind", "raid"),
-        back     = item(30730, "The Eye - Al'ar", "raid"),
-        chest    = item(30669, "SSC - Hydross the Unstable", "raid"),
-        wrist    = item(30677, "SSC - Hydross the Unstable", "raid"),
-        hands    = item(30670, "SSC - Morogrim Tidewalker", "raid"),
-        waist    = item(30872, "The Eye - High Astromancer Solarian", "raid"),
-        legs     = item(30689, "SSC - Fathom-Lord Karathress", "raid"),
-        feet     = item(30667, "SSC - The Lurker Below", "raid"),
-        ring1    = item(30627, "SSC - Lady Vashj", "raid"),
-        ring2    = item(30834, "The Eye - Kael'thas Sunstrider", "raid"),
-        trinket1 = item(30668, "SSC - Hydross the Unstable", "raid"),
-        trinket2 = item(29175, "H Old Hillsbrad - Epoch Hunter", "heroic"),
-        mainhand = item(30739, "The Eye - Kael'thas Sunstrider", "raid"),
-        offhand  = item(30736, "The Eye - Kael'thas Sunstrider", "raid"),
-        ranged   = item(30759, "The Eye - Kael'thas Sunstrider", "raid"),
-    },
-    phase3 = {
-        head     = item(32461, "Black Temple - Illidan (Token)", "raid"),
-        neck     = item(32349, "Black Temple - Shade of Akama", "raid"),
-        shoulder = item(32461, "Black Temple - Illidan (Token)", "raid"),
-        back     = item(32524, "Black Temple - Gurtogg Bloodboil", "raid"),
-        chest    = item(32461, "Black Temple - Illidan (Token)", "raid"),
-        wrist    = item(32514, "Black Temple - High Warlord Naj'entus", "raid"),
-        hands    = item(32461, "Black Temple - Illidan (Token)", "raid"),
-        waist    = item(32583, "Black Temple - Reliquary of Souls", "raid"),
-        legs     = item(32461, "Black Temple - Illidan (Token)", "raid"),
-        feet     = item(32241, "Hyjal Summit - Archimonde", "raid"),
-        ring1    = item(32527, "Black Temple - Teron Gorefiend", "raid"),
-        ring2    = item(32531, "Black Temple - Mother Shahraz", "raid"),
-        trinket1 = item(32658, "Black Temple - Illidan Stormrage", "raid"),
-        trinket2 = item(30668, "SSC - Hydross the Unstable", "raid"),
-        mainhand = item(32336, "Black Temple - Illidan Stormrage", "raid"),
-        offhand  = item(32331, "Black Temple - Gurtogg Bloodboil", "raid"),
-        ranged   = item(32336, "Black Temple - Illidan Stormrage", "raid"),
-    },
-    phase4 = {
-        head     = item(34432, "Sunwell - M'uru (Token)", "raid"),
-        neck     = item(34362, "Sunwell - Trash", "raid"),
-        shoulder = item(34432, "Sunwell - M'uru (Token)", "raid"),
-        back     = item(34015, "Sunwell - Brutallus", "raid"),
-        chest    = item(34432, "Sunwell - M'uru (Token)", "raid"),
-        wrist    = item(34009, "Sunwell - Felmyst", "raid"),
-        hands    = item(34432, "Sunwell - M'uru (Token)", "raid"),
-        waist    = item(34017, "Sunwell - Brutallus", "raid"),
-        legs     = item(34432, "Sunwell - M'uru (Token)", "raid"),
-        feet     = item(34005, "Sunwell - Kalecgos", "raid"),
-        ring1    = item(34362, "Sunwell - Trash", "raid"),
-        ring2    = item(34182, "Sunwell - Eredar Twins", "raid"),
-        trinket1 = item(34427, "Sunwell - M'uru", "raid"),
-        trinket2 = item(34472, "Sunwell - Kil'jaeden", "raid"),
-        mainhand = item(34186, "Sunwell - Eredar Twins", "raid"),
-        offhand  = item(34185, "Sunwell - Kalecgos", "raid"),
-        ranged   = item(34201, "Sunwell - Kil'jaeden", "raid"),
-    },
-}
-
--- Paladin - Protection (Tank) -- shares many slots with warrior prot
-DB["PALADIN"]["Protection"] = {
-    prebis = DB["WARRIOR"]["Protection"].prebis,
-    phase1 = DB["WARRIOR"]["Protection"].phase1,
-    phase2 = DB["WARRIOR"]["Protection"].phase2,
-    phase3 = DB["WARRIOR"]["Protection"].phase3,
-    phase4 = DB["WARRIOR"]["Protection"].phase4,
-}
-
--- Paladin - Retribution (DPS)
-DB["PALADIN"]["Retribution"] = {
-    prebis = DB["WARRIOR"]["Fury"].prebis,
-    phase1 = DB["WARRIOR"]["Fury"].phase1,
-    phase2 = DB["WARRIOR"]["Fury"].phase2,
-    phase3 = DB["WARRIOR"]["Fury"].phase3,
-    phase4 = DB["WARRIOR"]["Fury"].phase4,
-}
+DB["PALADIN"]["Holy"]        = EMPTY_PHASES()
+DB["PALADIN"]["Protection"]  = EMPTY_PHASES()
+DB["PALADIN"]["Retribution"] = EMPTY_PHASES()
 
 -- =================================================================
--- HUNTER
+-- HUNTER -- TODO
 -- =================================================================
 DB["HUNTER"] = {}
-
-DB["HUNTER"]["Marksmanship"] = {
-    prebis = {
-        head     = item(29127, "H Sethekk Halls - Talon King Ikiss", "heroic"),
-        neck     = item(29381, "H Sethekk Halls - Talon King Ikiss", "heroic"),
-        shoulder = item(29075, "H Shattered Halls - Kargath Bladefist", "heroic"),
-        back     = item(28722, "H Slave Pens - Quagmirran", "heroic"),
-        chest    = item(29088, "H Underbog - The Black Stalker", "heroic"),
-        wrist    = item(28515, "H Mechanar - Nethermancer Sepethrea", "heroic"),
-        hands    = item(28508, "H Auchenai Crypts - Exarch Maladaar", "heroic"),
-        waist    = item(29378, "H Sethekk Halls - Talon King Ikiss", "heroic"),
-        legs     = item(29071, "H Shattered Halls - Kargath Bladefist", "heroic"),
-        feet     = item(28545, "H Mechanar - Mechano-Lord Capacitus", "heroic"),
-        ring1    = item(29383, "H Arcatraz - Harbinger Skyriss", "heroic"),
-        ring2    = item(28780, "H Black Morass - Medivh", "heroic"),
-        trinket1 = item(28190, "H Mana Tombs - Nexus-Prince Shaffar", "heroic"),
-        trinket2 = item(28830, "H Shattered Halls - Warchief Kargath", "heroic"),
-        mainhand = item(28826, "H Shattered Halls - Grand Warlock Nethekurse", "heroic"),
-        offhand  = nil,
-        ranged   = item(29098, "H Shattered Halls - Kargath Bladefist", "heroic"),
-    },
-    phase1 = {
-        head     = item(30247, "Karazhan - Nightbane (Token)", "raid"),
-        neck     = item(29381, "H Sethekk Halls - Talon King Ikiss", "heroic"),
-        shoulder = item(30257, "Karazhan - Prince Malchezaar (Token)", "raid"),
-        back     = item(28722, "H Slave Pens - Quagmirran", "heroic"),
-        chest    = item(30132, "Gruul's Lair - Gruul the Dragonkiller", "raid"),
-        wrist    = item(30100, "Karazhan - Various", "raid"),
-        hands    = item(30257, "Karazhan - Prince Malchezaar (Token)", "raid"),
-        waist    = item(28711, "H Underbog - Hungarfen", "heroic"),
-        legs     = item(30247, "Karazhan - Nightbane (Token)", "raid"),
-        feet     = item(30104, "Karazhan - Moroes", "raid"),
-        ring1    = item(29383, "H Arcatraz - Harbinger Skyriss", "heroic"),
-        ring2    = item(30052, "Karazhan - Prince Malchezaar", "raid"),
-        trinket1 = item(29434, "Karazhan - Moroes", "raid"),
-        trinket2 = item(28190, "H Mana Tombs - Nexus-Prince Shaffar", "heroic"),
-        mainhand = item(30091, "Karazhan - Prince Malchezaar", "raid"),
-        offhand  = nil,
-        ranged   = item(30724, "Karazhan - Maiden of Virtue", "raid"),
-    },
-    phase2 = {
-        head     = item(30247, "Karazhan - Nightbane (Token)", "raid"),
-        neck     = item(30621, "SSC - Lady Vashj", "raid"),
-        shoulder = item(30679, "SSC - Leotheras the Blind", "raid"),
-        back     = item(30730, "The Eye - Al'ar", "raid"),
-        chest    = item(30132, "Gruul's Lair - Gruul the Dragonkiller", "raid"),
-        wrist    = item(30677, "SSC - Hydross the Unstable", "raid"),
-        hands    = item(30670, "SSC - Morogrim Tidewalker", "raid"),
-        waist    = item(30872, "The Eye - High Astromancer Solarian", "raid"),
-        legs     = item(30689, "SSC - Fathom-Lord Karathress", "raid"),
-        feet     = item(30667, "SSC - The Lurker Below", "raid"),
-        ring1    = item(30627, "SSC - Lady Vashj", "raid"),
-        ring2    = item(30834, "The Eye - Kael'thas Sunstrider", "raid"),
-        trinket1 = item(29434, "Karazhan - Moroes", "raid"),
-        trinket2 = item(28190, "H Mana Tombs - Nexus-Prince Shaffar", "heroic"),
-        mainhand = item(30739, "The Eye - Kael'thas Sunstrider", "raid"),
-        offhand  = nil,
-        ranged   = item(30771, "The Eye - Kael'thas Sunstrider", "raid"),
-    },
-    phase3 = {
-        head     = item(32461, "Black Temple - Illidan (Token)", "raid"),
-        neck     = item(32349, "Black Temple - Shade of Akama", "raid"),
-        shoulder = item(32461, "Black Temple - Illidan (Token)", "raid"),
-        back     = item(32524, "Black Temple - Gurtogg Bloodboil", "raid"),
-        chest    = item(32461, "Black Temple - Illidan (Token)", "raid"),
-        wrist    = item(32514, "Black Temple - High Warlord Naj'entus", "raid"),
-        hands    = item(32461, "Black Temple - Illidan (Token)", "raid"),
-        waist    = item(32583, "Black Temple - Reliquary of Souls", "raid"),
-        legs     = item(32461, "Black Temple - Illidan (Token)", "raid"),
-        feet     = item(32241, "Hyjal Summit - Archimonde", "raid"),
-        ring1    = item(32527, "Black Temple - Teron Gorefiend", "raid"),
-        ring2    = item(32531, "Black Temple - Mother Shahraz", "raid"),
-        trinket1 = item(32658, "Black Temple - Illidan Stormrage", "raid"),
-        trinket2 = item(29434, "Karazhan - Moroes", "raid"),
-        mainhand = item(32336, "Black Temple - Illidan Stormrage", "raid"),
-        offhand  = nil,
-        ranged   = item(32336, "Black Temple - Illidan Stormrage", "raid"),
-    },
-    phase4 = {
-        head     = item(34432, "Sunwell - M'uru (Token)", "raid"),
-        neck     = item(34362, "Sunwell - Trash", "raid"),
-        shoulder = item(34432, "Sunwell - M'uru (Token)", "raid"),
-        back     = item(34015, "Sunwell - Brutallus", "raid"),
-        chest    = item(34432, "Sunwell - M'uru (Token)", "raid"),
-        wrist    = item(34009, "Sunwell - Felmyst", "raid"),
-        hands    = item(34432, "Sunwell - M'uru (Token)", "raid"),
-        waist    = item(34017, "Sunwell - Brutallus", "raid"),
-        legs     = item(34432, "Sunwell - M'uru (Token)", "raid"),
-        feet     = item(34005, "Sunwell - Kalecgos", "raid"),
-        ring1    = item(34362, "Sunwell - Trash", "raid"),
-        ring2    = item(34182, "Sunwell - Eredar Twins", "raid"),
-        trinket1 = item(34427, "Sunwell - M'uru", "raid"),
-        trinket2 = item(34472, "Sunwell - Kil'jaeden", "raid"),
-        mainhand = item(34186, "Sunwell - Eredar Twins", "raid"),
-        offhand  = nil,
-        ranged   = item(34201, "Sunwell - Kil'jaeden", "raid"),
-    },
-}
-
-DB["HUNTER"]["Survival"]     = DB["HUNTER"]["Marksmanship"]
-DB["HUNTER"]["Beast Mastery"] = DB["HUNTER"]["Marksmanship"]
+DB["HUNTER"]["Marksmanship"]  = EMPTY_PHASES()
+DB["HUNTER"]["Survival"]      = EMPTY_PHASES()
+DB["HUNTER"]["Beast Mastery"] = EMPTY_PHASES()
 
 -- =================================================================
--- ROGUE
+-- ROGUE -- TODO
 -- =================================================================
 DB["ROGUE"] = {}
-
-DB["ROGUE"]["Combat"] = {
-    prebis = {
-        head     = item(23275, "Crafted (Blacksmithing 350)", "crafted"),
-        neck     = item(29381, "H Sethekk Halls - Talon King Ikiss", "heroic"),
-        shoulder = item(29075, "H Shattered Halls - Kargath Bladefist", "heroic"),
-        back     = item(28722, "H Slave Pens - Quagmirran", "heroic"),
-        chest    = item(29088, "H Underbog - The Black Stalker", "heroic"),
-        wrist    = item(28515, "H Mechanar - Nethermancer Sepethrea", "heroic"),
-        hands    = item(28508, "H Auchenai Crypts - Exarch Maladaar", "heroic"),
-        waist    = item(29378, "H Sethekk Halls - Talon King Ikiss", "heroic"),
-        legs     = item(29071, "H Shattered Halls - Kargath Bladefist", "heroic"),
-        feet     = item(28545, "H Mechanar - Mechano-Lord Capacitus", "heroic"),
-        ring1    = item(29383, "H Arcatraz - Harbinger Skyriss", "heroic"),
-        ring2    = item(28780, "H Black Morass - Medivh", "heroic"),
-        trinket1 = item(28190, "H Mana Tombs - Nexus-Prince Shaffar", "heroic"),
-        trinket2 = item(28830, "H Shattered Halls - Warchief Kargath", "heroic"),
-        mainhand = item(28826, "H Shattered Halls - Grand Warlock Nethekurse", "heroic"),
-        offhand  = item(29350, "Crafted (Blacksmithing 375) - Eternium Runed Blade", "crafted"),
-        ranged   = item(28435, "H Ramparts - Watchkeeper Gargolmar", "heroic"),
-    },
-    phase1 = DB["WARRIOR"]["Fury"].phase1,
-    phase2 = DB["WARRIOR"]["Fury"].phase2,
-    phase3 = DB["WARRIOR"]["Fury"].phase3,
-    phase4 = DB["WARRIOR"]["Fury"].phase4,
-}
-DB["ROGUE"]["Assassination"] = DB["ROGUE"]["Combat"]
+DB["ROGUE"]["Combat"]        = EMPTY_PHASES()
+DB["ROGUE"]["Assassination"] = EMPTY_PHASES()
 
 -- =================================================================
 -- PRIEST
 -- =================================================================
 DB["PRIEST"] = {}
+DB["PRIEST"]["Holy"]       = EMPTY_PHASES()   -- TODO
+DB["PRIEST"]["Discipline"] = EMPTY_PHASES()   -- TODO
 
-DB["PRIEST"]["Holy"] = {
+-- Shadow Priest BIS — sourced from Wowhead TBC Classic guides
+DB["PRIEST"]["Shadow"] = {
     prebis = {
-        head     = item(24266, "Crafted (Tailoring 375) - Spellstrike Hood", "crafted"),
-        neck     = item(28327, "H Slave Pens - Quagmirran", "heroic"),
-        shoulder = item(28797, "H Sethekk Halls - Talon King Ikiss", "heroic"),
-        back     = item(28609, "Aldor - Exalted", "reputation"),
-        chest    = item(21884, "Crafted (Tailoring 360) - Frozen Shadoweave Robe", "crafted"),
-        wrist    = item(28503, "H Auchenai Crypts - Exarch Maladaar", "heroic"),
-        hands    = item(28507, "H Auchenai Crypts - Exarch Maladaar", "heroic"),
-        waist    = item(24262, "Crafted (Tailoring 355)", "crafted"),
-        legs     = item(24264, "Crafted (Tailoring 375) - Spellstrike Infusion", "crafted"),
-        feet     = item(21987, "Crafted (Tailoring 360) - Frozen Shadoweave Boots", "crafted"),
-        ring1    = item(29348, "H Arcatraz - Harbinger Skyriss", "heroic"),
-        ring2    = item(28793, "H Underbog - The Black Stalker", "heroic"),
-        trinket1 = item(29175, "H Old Hillsbrad - Epoch Hunter", "heroic"),
-        trinket2 = item(28190, "H Mana Tombs - Nexus-Prince Shaffar", "heroic"),
-        mainhand = item(29350, "Crafted (Blacksmithing 375) - Eternium Runed Blade", "crafted"),
-        offhand  = item(28606, "Scryers - Exalted", "reputation"),
-        ranged   = item(29301, "H Shattered Halls - Kargath Bladefist", "heroic"),
+        head     = item(24266, "Tailoring (Spellstrike Hood)", "crafted"),
+        neck     = item(28245, "PvP — Honor (Pendant of Dominance)", "pvp"),
+        shoulder = item(21869, "Tailoring/Shadoweave (Frozen Shadoweave Shoulders)", "crafted"),
+        back     = item(31201, "Chief Engineer Lorthander, Netherstorm (Illidari Cloak of Shadow Wrath)", "world"),
+        chest    = item(21871, "Tailoring/Shadoweave (Frozen Shadoweave Robe)", "crafted"),
+        wrist    = item(31225, "Ambassador Jerrikar, Shadowmoon Valley (Illidari Bindings of Shadow Wrath)", "world"),
+        hands    = item(31166, "Speaker Mar'grom, Blade's Edge (Nethersteel-Lined Handwraps of Shadow Wrath)", "world"),
+        waist    = item(31199, "Voidhunter Yar, Nagrand (Voidweave Cilice of Shadow Wrath)", "world"),
+        legs     = item(24262, "Tailoring (Spellstrike Pants)", "crafted"),
+        feet     = item(21870, "Tailoring/Shadoweave (Frozen Shadoweave Boots)", "crafted"),
+        ring1    = item(21709, "AQ40 - C'Thun (Ring of the Fallen God)", "raid"),
+        ring2    = item(23031, "Naxx40 - Noth the Plaguebringer (Band of the Inevitable)", "raid"),
+        trinket1 = item(29370, "Vendor - Badges of Justice (Icon of the Silver Crescent)", "raid"),
+        trinket2 = item(27683, "H Slave Pens - Quagmirran (Quagmirran's Eye)", "heroic"),
+        mainhand = item(30832, "Lower City Exalted (Gavel of Unearthed Secrets)", "reputation"),
+        offhand  = item(29272, "Vendor - Badges of Justice (Orb of the Soul-Eater)", "raid"),
+        ranged   = item(25295, "World Drop (Flawless Wand of Shadow Wrath)", "world"),
     },
-    phase1 = DB["PALADIN"]["Holy"].phase1,
-    phase2 = DB["PALADIN"]["Holy"].phase2,
-    phase3 = DB["PALADIN"]["Holy"].phase3,
-    phase4 = DB["PALADIN"]["Holy"].phase4,
-}
-DB["PRIEST"]["Discipline"] = DB["PRIEST"]["Holy"]
-DB["PRIEST"]["Shadow"]     = {
-    prebis = DB["PRIEST"]["Holy"].prebis,
-    phase1 = DB["PALADIN"]["Holy"].phase1,
-    phase2 = DB["PALADIN"]["Holy"].phase2,
-    phase3 = DB["PALADIN"]["Holy"].phase3,
-    phase4 = DB["PALADIN"]["Holy"].phase4,
+    -- Phase 1 (Karazhan)
+    phase1 = {
+        head     = item(24266, "Tailoring (Spellstrike Hood)", "crafted"),
+        neck     = item(30666, "Karazhan - Trash (Ritssyn's Lost Pendant)", "raid"),
+        shoulder = item(21869, "Tailoring/Shadoweave (Frozen Shadoweave Shoulders)", "crafted"),
+        back     = item(31201, "Chief Engineer Lorthander, Netherstorm (Illidari Cloak of Shadow Wrath)", "world"),
+        chest    = item(21871, "Tailoring/Shadoweave (Frozen Shadoweave Robe)", "crafted"),
+        wrist    = item(30684, "Karazhan - Rokad the Ravager (Ravager's Cuffs of Shadow Wrath)", "raid"),
+        hands    = item(31166, "Speaker Mar'grom, Blade's Edge (Nethersteel-Lined Handwraps of Shadow Wrath)", "world"),
+        waist    = item(30675, "Karazhan - Hyakiss the Lurker (Lurker's Cord of Shadow Wrath)", "raid"),
+        legs     = item(24262, "Tailoring (Spellstrike Pants)", "crafted"),
+        feet     = item(30680, "Karazhan - Shadikith the Glider (Glider's Foot-Wraps of Shadow Wrath)", "raid"),
+        ring1    = item(21709, "AQ40 - C'Thun (Ring of the Fallen God)", "raid"),
+        ring2    = item(23031, "Naxx40 - Noth the Plaguebringer (Band of the Inevitable)", "raid"),
+        trinket1 = item(29370, "Vendor - Badges of Justice (Icon of the Silver Crescent)", "raid"),
+        trinket2 = item(27683, "H Slave Pens - Quagmirran (Quagmirran's Eye)", "heroic"),
+        mainhand = item(28770, "Karazhan - Prince Malchezaar (Nathrezim Mindblade)", "raid"),
+        offhand  = item(29272, "Vendor - Badges of Justice (Orb of the Soul-Eater)", "raid"),
+        ranged   = item(25295, "World Drop (Flawless Wand of Shadow Wrath)", "world"),
+    },
+    -- Phase 2 (SSC + The Eye)
+    phase2 = {
+        head     = item(30161, "SSC - Lady Vashj (Hood of the Avatar)", "raid"),
+        neck     = item(30666, "Karazhan - Trash (Ritssyn's Lost Pendant)", "raid"),
+        shoulder = item(30163, "TK - Void Reaver (Wings of the Avatar)", "raid"),
+        back     = item(31201, "Chief Engineer Lorthander, Netherstorm (Illidari Cloak)", "world"),
+        chest    = item(30107, "SSC - Lady Vashj (Vestments of the Sea-Witch)", "raid"),
+        wrist    = item(31225, "Ambassador Jerrikar, Shadowmoon Valley (Illidari Bindings)", "world"),
+        hands    = item(31166, "Speaker Mar'grom, Blade's Edge (Nethersteel-Lined Handwraps)", "world"),
+        waist    = item(30038, "Tailoring (Belt of Blasting)", "crafted"),
+        legs     = item(29972, "TK - High Astromancer Solarian (Trousers of the Astromancer)", "raid"),
+        feet     = item(30050, "SSC - Hydross the Unstable (Boots of the Shifting Nightmare)", "raid"),
+        ring1    = item(30109, "SSC - Lady Vashj (Ring of Endless Coils)", "raid"),
+        ring2    = item(29922, "TK - Al'ar (Band of Al'ar)", "raid"),
+        trinket1 = item(29370, "Vendor - Badges of Justice (Icon of the Silver Crescent)", "raid"),
+        trinket2 = item(23207, "Naxx40 - Kel'Thuzad (Mark of the Champion)", "raid"),
+        mainhand = item(28770, "Karazhan - Prince Malchezaar (Nathrezim Mindblade)", "raid"),
+        offhand  = item(29272, "Vendor - Badges of Justice (Orb of the Soul-Eater)", "raid"),
+        ranged   = item(29982, "TK - High Astromancer Solarian (Wand of the Forgotten Star)", "raid"),
+    },
+    -- Phase 3 (Black Temple + Hyjal)
+    phase3 = {
+        head     = item(31064, "Hyjal - Archimonde (Hood of Absolution)", "raid"),
+        neck     = item(32349, "BT - Essence of Anger (Translucent Spellthread Necklace)", "raid"),
+        shoulder = item(31070, "BT - Mother Shahraz (Shoulderpads of Absolution)", "raid"),
+        back     = item(32590, "BT - Trash (Nethervoid Cloak)", "raid"),
+        chest    = item(31065, "BT - Illidan Stormrage (Shroud of Absolution)", "raid"),
+        wrist    = item(32586, "Tailoring (Bracers of Nimble Thought)", "crafted"),
+        hands    = item(31061, "Hyjal - Azgalor (Handguards of Absolution)", "raid"),
+        waist    = item(32256, "BT - Supremus (Waistwrap of Infinity)", "raid"),
+        legs     = item(30916, "Hyjal - Kaz'rogal (Leggings of Channeled Elements)", "raid"),
+        feet     = item(32239, "BT - High Warlord Naj'entus (Slippers of the Seacaller)", "raid"),
+        ring1    = item(32527, "BT - Trash (Ring of Ancient Knowledge)", "raid"),
+        ring2    = item(32528, "BT (Blessed Band of Karabor)", "raid"),
+        trinket1 = item(32483, "BT - Illidan Stormrage (The Skull of Gul'dan)", "raid"),
+        trinket2 = item(31856, "Quest - Darkmoon Blessings Deck (Darkmoon Card: Crusade)", "quest"),
+        mainhand = item(32374, "BT - Illidan Stormrage (Zhar'doom, Greatstaff of the Devourer)", "raid"),
+        offhand  = nil,  -- Zhar'doom is 2H
+        ranged   = item(29982, "TK - High Astromancer Solarian (Wand of the Forgotten Star)", "raid"),
+    },
+    -- Phase 4 (Zul'Aman)
+    phase4 = {
+        head     = item(31064, "Hyjal - Archimonde (Hood of Absolution)", "raid"),
+        neck     = item(33466, "ZA - Zul'jin (Loop of Cursed Bones)", "raid"),
+        shoulder = item(31070, "BT - Mother Shahraz (Shoulderpads of Absolution)", "raid"),
+        back     = item(32590, "BT - Trash (Nethervoid Cloak)", "raid"),
+        chest    = item(31065, "BT - Illidan Stormrage (Shroud of Absolution)", "raid"),
+        wrist    = item(32586, "Tailoring (Bracers of Nimble Thought)", "crafted"),
+        hands    = item(31061, "Hyjal - Azgalor (Handguards of Absolution)", "raid"),
+        waist    = item(32256, "BT - Supremus (Waistwrap of Infinity)", "raid"),
+        legs     = item(30916, "Hyjal - Kaz'rogal (Leggings of Channeled Elements)", "raid"),
+        feet     = item(32239, "BT - High Warlord Naj'entus (Slippers of the Seacaller)", "raid"),
+        ring1    = item(32527, "BT - Trash (Ring of Ancient Knowledge)", "raid"),
+        ring2    = item(30109, "SSC - Lady Vashj (Ring of Endless Coils)", "raid"),
+        trinket1 = item(33829, "ZA - Hex Lord Malacrass (Hex Shrunken Head)", "raid"),
+        trinket2 = item(32483, "BT - Illidan Stormrage (The Skull of Gul'dan)", "raid"),
+        mainhand = item(32374, "BT - Illidan Stormrage (Zhar'doom, Greatstaff of the Devourer)", "raid"),
+        offhand  = item(33334, "Vendor - Badges of Justice (Fetish of the Primal Gods)", "raid"),
+        ranged   = item(33192, "Vendor - Badges of Justice (Carved Witch Doctor's Stick)", "raid"),
+    },
+    -- Phase 5 (Sunwell Plateau)
+    phase5 = {
+        head     = item(34340, "SWP - Kil'jaeden (Dark Conjuror's Collar)", "raid"),
+        neck     = item(34204, "SWP - Eredar Twins (Amulet of Unfettered Magics)", "raid"),
+        shoulder = item(34210, "SWP - Eredar Twins (Amice of the Convoker)", "raid"),
+        back     = item(34242, "SWP - Kil'jaeden (Tattered Cape of Antonidas)", "raid"),
+        chest    = item(34232, "SWP - M'uru (Fel Conquerer Raiments)", "raid"),
+        wrist    = item(34434, "SWP - Kalecgos (Bracers of Absolution) — set bonus", "raid"),
+        hands    = item(34344, "SWP - Kil'jaeden (Handguards of Defiled Worlds)", "raid"),
+        waist    = item(34528, "SWP - Brutallus (Cord of Absolution)", "raid"),
+        legs     = item(34181, "SWP - Brutallus (Leggings of Calamity)", "raid"),
+        feet     = item(34563, "SWP - Felmyst (Treads of Absolution)", "raid"),
+        ring1    = item(34230, "SWP - M'uru (Ring of Omnipotence)", "raid"),
+        ring2    = item(32527, "BT - Trash (Ring of Ancient Knowledge)", "raid"),
+        trinket1 = item(34429, "SWP - M'uru (Shifting Naaru Sliver)", "raid"),
+        trinket2 = item(33829, "ZA - Hex Lord Malacrass (Hex Shrunken Head)", "raid"),
+        mainhand = item(34336, "SWP (Sunflare)", "raid"),
+        offhand  = item(34179, "SWP - Brutallus (Heart of the Pit)", "raid"),
+        ranged   = item(34347, "SWP - Trash (Wand of the Demonsoul)", "raid"),
+    },
 }
 
 -- =================================================================
--- MAGE
+-- MAGE -- TODO
 -- =================================================================
 DB["MAGE"] = {}
-
-DB["MAGE"]["Fire"] = {
-    prebis = DB["PRIEST"]["Holy"].prebis,
-    phase1 = {
-        head     = item(30247, "Karazhan - Nightbane (Token)", "raid"),
-        neck     = item(29381, "H Sethekk Halls - Talon King Ikiss", "heroic"),
-        shoulder = item(30257, "Karazhan - Prince Malchezaar (Token)", "raid"),
-        back     = item(28609, "Aldor - Exalted", "reputation"),
-        chest    = item(29762, "Karazhan - Maiden of Virtue", "raid"),
-        wrist    = item(30100, "Karazhan - Various", "raid"),
-        hands    = item(30257, "Karazhan - Prince Malchezaar (Token)", "raid"),
-        waist    = item(30064, "Karazhan - Shade of Aran", "raid"),
-        legs     = item(30247, "Karazhan - Nightbane (Token)", "raid"),
-        feet     = item(30104, "Karazhan - Moroes", "raid"),
-        ring1    = item(29348, "H Arcatraz - Harbinger Skyriss", "heroic"),
-        ring2    = item(30054, "Karazhan - Shade of Aran", "raid"),
-        trinket1 = item(29175, "H Old Hillsbrad - Epoch Hunter", "heroic"),
-        trinket2 = item(29376, "Karazhan - Netherspite", "raid"),
-        mainhand = item(30091, "Karazhan - Prince Malchezaar", "raid"),
-        offhand  = item(30109, "Karazhan - Maiden of Virtue", "raid"),
-        ranged   = item(29301, "H Shattered Halls - Kargath Bladefist", "heroic"),
-    },
-    phase2 = DB["PALADIN"]["Holy"].phase2,
-    phase3 = DB["PALADIN"]["Holy"].phase3,
-    phase4 = DB["PALADIN"]["Holy"].phase4,
-}
-DB["MAGE"]["Arcane"] = DB["MAGE"]["Fire"]
-DB["MAGE"]["Frost"]  = DB["MAGE"]["Fire"]
+DB["MAGE"]["Fire"]   = EMPTY_PHASES()
+DB["MAGE"]["Arcane"] = EMPTY_PHASES()
+DB["MAGE"]["Frost"]  = EMPTY_PHASES()
 
 -- =================================================================
--- WARLOCK
+-- WARLOCK -- TODO
 -- =================================================================
 DB["WARLOCK"] = {}
-DB["WARLOCK"]["Destruction"] = DB["MAGE"]["Fire"]
-DB["WARLOCK"]["Affliction"]  = DB["MAGE"]["Fire"]
-DB["WARLOCK"]["Demonology"]  = DB["MAGE"]["Fire"]
+DB["WARLOCK"]["Destruction"] = EMPTY_PHASES()
+DB["WARLOCK"]["Affliction"]  = EMPTY_PHASES()
+DB["WARLOCK"]["Demonology"]  = EMPTY_PHASES()
 
 -- =================================================================
--- DRUID
+-- DRUID -- TODO
 -- =================================================================
 DB["DRUID"] = {}
-DB["DRUID"]["Balance"]     = DB["MAGE"]["Fire"]
-DB["DRUID"]["Restoration"] = DB["PRIEST"]["Holy"]
-DB["DRUID"]["Feral"]       = DB["ROGUE"]["Combat"]
+DB["DRUID"]["Balance"]     = EMPTY_PHASES()
+DB["DRUID"]["Restoration"] = EMPTY_PHASES()
+DB["DRUID"]["Feral"]       = EMPTY_PHASES()
 
 -- =================================================================
--- SHAMAN
+-- SHAMAN -- TODO
 -- =================================================================
 DB["SHAMAN"] = {}
-DB["SHAMAN"]["Restoration"] = DB["PRIEST"]["Holy"]
-DB["SHAMAN"]["Elemental"]   = DB["MAGE"]["Fire"]
-DB["SHAMAN"]["Enhancement"] = DB["ROGUE"]["Combat"]
+DB["SHAMAN"]["Restoration"] = EMPTY_PHASES()
+DB["SHAMAN"]["Elemental"]   = EMPTY_PHASES()
+DB["SHAMAN"]["Enhancement"] = EMPTY_PHASES()
 
 -- =================================================================
 -- Class metadata (display, colour, specs, icon)
