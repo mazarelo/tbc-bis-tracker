@@ -7,6 +7,22 @@ local addon = TBCBisTracker
 addon.UI = {}
 local UI = addon.UI
 
+-- Re-fire the current tooltip's owner OnEnter when shift state changes,
+-- so pressing/releasing Shift mid-hover toggles the side-by-side comparison.
+local modWatcher = CreateFrame("Frame")
+modWatcher:RegisterEvent("MODIFIER_STATE_CHANGED")
+modWatcher:SetScript("OnEvent", function(_, _, key)
+    if key ~= "LSHIFT" and key ~= "RSHIFT" then return end
+    if not GameTooltip:IsShown() then return end
+    local owner = GameTooltip:GetOwner()
+    if not owner then return end
+    if not (owner.itemId and owner.itemId > 0) and not (owner.GetParent and owner:GetParent() == DropDownList1) then
+        return
+    end
+    local handler = owner:GetScript("OnEnter")
+    if handler then handler(owner) end
+end)
+
 -- ─────────────────────────────────────────────
 -- Layout constants
 -- ─────────────────────────────────────────────
@@ -133,59 +149,26 @@ end
 -- ─────────────────────────────────────────────
 
 function UI:BuildClassButtons()
-    local f = self.frame
-    local btnSize = 36
-    local totalW  = #CLASS_ORDER * (btnSize + 4)
-    local startX  = (FRAME_W - totalW) / 2 - 10
+    -- Class is locked to the character; title bar already shows class/spec/phase.
+    local _, playerClass = UnitClass("player")
+    if not playerClass then playerClass = TBCBisTrackerDB.lastClass end
+    if not playerClass then return end
 
-    self.classBtns = {}
-    for i, class in ipairs(CLASS_ORDER) do
-        local info = addon.CLASS_INFO[class]
-        local btn  = CreateFrame("Button", nil, f)
-        btn:SetSize(btnSize, btnSize)
-        btn:SetPoint("TOPLEFT", f, "TOPLEFT", startX + (i-1) * (btnSize + 4), -36)
+    TBCBisTrackerDB.lastClass = playerClass
+    local info = addon.CLASS_INFO[playerClass]
+    if not info then return end
 
-        local icon = btn:CreateTexture(nil, "BACKGROUND")
-        icon:SetAllPoints()
-        icon:SetTexture(info.icon)
-
-        local border = btn:CreateTexture(nil, "OVERLAY")
-        border:SetAllPoints()
-        border:SetTexture("Interface\\Buttons\\UI-ActionButton-Border")
-        border:SetBlendMode("ADD")
-        border:SetAlpha(0)
-        btn.border = border
-
-        btn:SetScript("OnClick", function()
-            TBCBisTrackerDB.lastClass = class
-            -- Set first spec for this class
-            local specs = info.specs
-            TBCBisTrackerDB.lastSpec = specs[1]
-            UI:RefreshClassButtons()
-            UI:RefreshSpecSelector()
-            UI:Refresh()
-        end)
-
-        btn:SetScript("OnEnter", function(self)
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-            GameTooltip:SetText("|cff" .. info.color .. info.name .. "|r", 1, 1, 1)
-            GameTooltip:Show()
-        end)
-        btn:SetScript("OnLeave", function() GameTooltip:Hide() end)
-
-        self.classBtns[class] = btn
+    -- Normalize lastSpec for this class (e.g. saved spec from a different class alt)
+    local valid = {}
+    for _, s in ipairs(info.specs) do valid[s] = true end
+    if not (TBCBisTrackerDB.lastSpec and valid[TBCBisTrackerDB.lastSpec]) then
+        TBCBisTrackerDB.lastSpec = info.specs[1]
     end
+    self.classBtns = {}
 end
 
 function UI:RefreshClassButtons()
-    local selectedClass = TBCBisTrackerDB.lastClass
-    for class, btn in pairs(self.classBtns) do
-        if class == selectedClass then
-            btn.border:SetAlpha(1)
-        else
-            btn.border:SetAlpha(0)
-        end
-    end
+    -- No-op: only the player's class is shown.
 end
 
 -- ─────────────────────────────────────────────
@@ -197,7 +180,7 @@ function UI:BuildSpecSelector()
     self.specBtns = {}
     self.specBtnRow = CreateFrame("Frame", nil, f)
     self.specBtnRow:SetSize(FRAME_W - 40, 22)
-    self.specBtnRow:SetPoint("TOPLEFT", f, "TOPLEFT", 20, -78)
+    self.specBtnRow:SetPoint("TOPLEFT", f, "TOPLEFT", 20, -38)
 end
 
 local SPEC_POOL_SIZE = 4
@@ -283,7 +266,7 @@ function UI:BuildPhaseTabs()
     local f = self.frame
     self.phaseTabs = {}
     local tabW    = (FRAME_W - 40) / #addon.PHASES
-    local yOffset = -100
+    local yOffset = -64
 
     for i, phase in ipairs(addon.PHASES) do
         local btn = CreateFrame("Button", nil, f)
@@ -387,7 +370,10 @@ function UI:ShowImportPopup()
         button2 = "Cancel",
         hasEditBox = true,
         editBoxWidth = 350,
-        OnShow = function(s) s.editBox:SetText(""); s.editBox:SetFocus() end,
+        OnShow = function(s)
+            local eb = (s and s.editBox) or _G["StaticPopup1EditBox"] or _G["StaticPopup2EditBox"]
+            if eb then eb:SetText(""); eb:SetFocus() end
+        end,
         OnAccept = function(s)
             local eb = (s and s.editBox) or _G["StaticPopup1EditBox"] or _G["StaticPopup2EditBox"]
             local input = eb and eb:GetText() or ""
@@ -420,7 +406,7 @@ function UI:BuildMissingFilter()
     local f = self.frame
     local chk = CreateFrame("CheckButton", "TBCBisTrackerMissingChk", f, "UICheckButtonTemplate")
     chk:SetSize(20, 20)
-    chk:SetPoint("TOPRIGHT", f, "TOPRIGHT", -30, -132)
+    chk:SetPoint("TOPRIGHT", f, "TOPRIGHT", -30, -98)
     chk:SetChecked(TBCBisTrackerDB.showMissingOnly or false)
 
     local lbl = f:CreateFontString(nil, "OVERLAY")
@@ -441,7 +427,7 @@ end
 
 function UI:BuildColumnHeaders()
     local f      = self.frame
-    local yOff   = -136
+    local yOff   = -100
     local xStart = 20
 
     local headers = {
@@ -479,8 +465,8 @@ end
 
 function UI:BuildScrollFrame()
     local f       = self.frame
-    local scrollY = -154
-    local scrollH = FRAME_H - 154 - 40  -- leave room for progress bar
+    local scrollY = -118
+    local scrollH = FRAME_H - 118 - 40  -- leave room for progress bar
 
     -- Scroll frame
     local sf = CreateFrame("ScrollFrame", "TBCBisTrackerScroll", f, "UIPanelScrollFrameTemplate")
@@ -562,7 +548,7 @@ function UI:CreateRowFrame(parent, idx)
     chk:SetPoint("LEFT", row, "LEFT", x + 4, 0)
     row.chk = chk
 
-    -- Hover highlight
+    -- Hover highlight + tooltip; shift = side-by-side comparison
     row:SetScript("OnEnter", function(self)
         self.bg:SetVertexColor(0.20, 0.20, 0.30, 0.8)
         if self.itemId and self.itemId > 0 then
@@ -571,6 +557,9 @@ function UI:CreateRowFrame(parent, idx)
             GameTooltip:AddLine(" ")
             GameTooltip:AddLine("|cffaaaaaa" .. (addon.WOWHEAD_BASE .. self.itemId) .. "|r", 1, 1, 1, true)
             GameTooltip:Show()
+            if IsShiftKeyDown() and GameTooltip_ShowCompareItem then
+                GameTooltip_ShowCompareItem(GameTooltip)
+            end
         end
     end)
     row:SetScript("OnLeave", function(self)
@@ -606,9 +595,11 @@ function UI:CreateRowFrame(parent, idx)
                 hasEditBox = true,
                 editBoxWidth = 350,
                 OnShow = function(s)
-                    s.editBox:SetText(addon.WOWHEAD_BASE .. capturedId)
-                    s.editBox:HighlightText()
-                    s.editBox:SetFocus()
+                    local eb = (s and s.editBox) or _G["StaticPopup1EditBox"] or _G["StaticPopup2EditBox"]
+                    if not eb then return end
+                    eb:SetText(addon.WOWHEAD_BASE .. capturedId)
+                    eb:HighlightText()
+                    eb:SetFocus()
                 end,
                 EditBoxOnEscapePressed = function(s) s:GetParent():Hide() end,
                 timeout = 0, whileDead = true, hideOnEscape = true,
@@ -673,6 +664,94 @@ local function routeSlotForItem(equipLoc, droppedSlot)
     return nil
 end
 
+function UI:ShowSearchDialog(slot)
+    StaticPopupDialogs["TBCBIS_SEARCH"] = {
+        text = "Search items by name (target slot: " .. (addon.SLOT_LABELS[slot] or slot) .. "):",
+        button1 = "Search",
+        button2 = "Cancel",
+        hasEditBox = true,
+        editBoxWidth = 250,
+        OnShow = function(s)
+            local eb = (s and s.editBox) or _G["StaticPopup1EditBox"] or _G["StaticPopup2EditBox"]
+            if eb then eb:SetText(""); eb:SetFocus() end
+        end,
+        OnAccept = function(s)
+            local eb = (s and s.editBox) or _G["StaticPopup1EditBox"] or _G["StaticPopup2EditBox"]
+            local query = eb and eb:GetText() or ""
+            if query == "" then return end
+            local results = addon:SearchItems(query, 20)
+            if #results == 0 then
+                addon:Print("No items found for: " .. query)
+                return
+            end
+            UI:ShowSearchResults(slot, query, results)
+        end,
+        EditBoxOnEnterPressed = function(s)
+            local parent = s:GetParent()
+            local dialog = StaticPopupDialogs[parent.which]
+            if dialog and dialog.OnAccept then dialog.OnAccept(parent) end
+            parent:Hide()
+        end,
+        EditBoxOnEscapePressed = function(s) s:GetParent():Hide() end,
+        timeout = 0, whileDead = true, hideOnEscape = true,
+    }
+    StaticPopup_Show("TBCBIS_SEARCH")
+end
+
+function UI:ShowSearchResults(slot, query, results)
+    if not self.searchDropdown then
+        self.searchDropdown = CreateFrame("Frame", "TBCBisTrackerSearchDropdown", UIParent, "UIDropDownMenuTemplate")
+    end
+    self.searchMenuItemIds = {}
+    UIDropDownMenu_Initialize(self.searchDropdown, function(_, level)
+        local title = UIDropDownMenu_CreateInfo()
+        title.text = "Results for \"" .. query .. "\" — click to import"
+        title.isTitle = true
+        title.notCheckable = true
+        UIDropDownMenu_AddButton(title, level)
+        for i, r in ipairs(results) do
+            local label = r.name or ("item:" .. r.id)
+            local color = addon:GetItemQualityColor(r.id) or "|cffffffff"
+            local info = UIDropDownMenu_CreateInfo()
+            info.text = color .. label .. "|r"
+            info.notCheckable = true
+            info.func = function()
+                UI:ImportOrSelect(slot, r.id, "Search import")
+                CloseDropDownMenus()
+            end
+            UIDropDownMenu_AddButton(info, level)
+            UI.searchMenuItemIds[i + 1] = r.id  -- offset +1 for the title row
+        end
+        local cancel = UIDropDownMenu_CreateInfo()
+        cancel.text = "Cancel"
+        cancel.notCheckable = true
+        cancel.func = function() CloseDropDownMenus() end
+        UIDropDownMenu_AddButton(cancel, level)
+    end, "MENU")
+    ToggleDropDownMenu(1, nil, self.searchDropdown, "cursor", 0, 0)
+
+    -- Attach item tooltips on hover
+    C_Timer.After(0, function()
+        for i = 1, 32 do
+            local btn = _G["DropDownList1Button" .. i]
+            if not btn or not btn:IsShown() then break end
+            local id = UI.searchMenuItemIds[i]
+            if id and not btn.tbcbisSearchHooked then
+                btn.tbcbisSearchHooked = true
+                btn:HookScript("OnEnter", function(s)
+                    GameTooltip:SetOwner(s, "ANCHOR_RIGHT")
+                    GameTooltip:SetHyperlink("item:" .. id .. ":0:0:0:0:0:0:0")
+                    GameTooltip:Show()
+                    if IsShiftKeyDown() and GameTooltip_ShowCompareItem then
+                        GameTooltip_ShowCompareItem(GameTooltip)
+                    end
+                end)
+                btn:HookScript("OnLeave", function() GameTooltip:Hide() end)
+            end
+        end
+    end)
+end
+
 function UI:ImportFromCursor(droppedSlot)
     if not CursorHasItem() then return end
     local cursorType, _, itemLink = GetCursorInfo()
@@ -735,6 +814,17 @@ function UI:ShowAlternativesMenu(anchorFrame, slot)
         sep.notCheckable = true
         UIDropDownMenu_AddButton(sep, level)
 
+        local search = UIDropDownMenu_CreateInfo()
+        local searchLabel = "|cffaaff00Search by name...|r"
+        if addon.atlasLootDetected then searchLabel = searchLabel .. " |cff888888(AtlasLoot)|r" end
+        search.text = searchLabel
+        search.notCheckable = true
+        search.func = function()
+            CloseDropDownMenus()
+            UI:ShowSearchDialog(slot)
+        end
+        UIDropDownMenu_AddButton(search, level)
+
         local imp = UIDropDownMenu_CreateInfo()
         imp.text = "|cff00ff00Import from Wowhead...|r"
         imp.notCheckable = true
@@ -745,7 +835,10 @@ function UI:ShowAlternativesMenu(anchorFrame, slot)
                 button2 = "Cancel",
                 hasEditBox = true,
                 editBoxWidth = 350,
-                OnShow = function(s) s.editBox:SetFocus() end,
+                OnShow = function(s)
+                    local eb = (s and s.editBox) or _G["StaticPopup1EditBox"] or _G["StaticPopup2EditBox"]
+                    if eb then eb:SetFocus() end
+                end,
                 OnAccept = function(s)
                     local eb = (s and s.editBox) or _G["StaticPopup1EditBox"] or _G["StaticPopup2EditBox"]
                     local input = eb and eb:GetText() or ""
@@ -825,6 +918,9 @@ function UI:ShowAlternativesMenu(anchorFrame, slot)
                     GameTooltip:AddLine(" ")
                     GameTooltip:AddLine("|cffaaaaaa" .. addon.WOWHEAD_BASE .. id .. "|r", 1, 1, 1, true)
                     GameTooltip:Show()
+                    if IsShiftKeyDown() and GameTooltip_ShowCompareItem then
+                        GameTooltip_ShowCompareItem(GameTooltip)
+                    end
                 end)
                 btn:HookScript("OnLeave", function() GameTooltip:Hide() end)
             end

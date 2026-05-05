@@ -9,7 +9,7 @@ local L     = addon.L
 -- Constants
 -- ─────────────────────────────────────────────
 
-addon.PHASES = { "prebis", "phase1", "phase2", "phase3", "phase4", "phase5" }
+addon.PHASES = { "prebis", "phase1", "phase2", "phase3", "phase4", "phase5", "pvp" }
 
 addon.PHASE_LABELS = {
     prebis = "Pre-BIS",
@@ -18,6 +18,7 @@ addon.PHASE_LABELS = {
     phase3 = "Phase 3",
     phase4 = "Phase 4",
     phase5 = "Phase 5",
+    pvp    = "PvP",
 }
 
 addon.PHASE_DESCRIPTIONS = {
@@ -27,6 +28,7 @@ addon.PHASE_DESCRIPTIONS = {
     phase3 = "Phase 3 — Black Temple · Battle for Mount Hyjal",
     phase4 = "Phase 4 — Zul'Aman",
     phase5 = "Phase 5 — Sunwell Plateau",
+    pvp    = "PvP — Honor + Arena gear (Battlegrounds, Arena Seasons)",
 }
 
 addon.SLOTS = {
@@ -258,6 +260,7 @@ function addon:AddCustomAlt(class, spec, phase, slot, itemId, source)
         if it.id == itemId then return false end
     end
     table.insert(ca[key][phase][slot], { id = itemId, source = source or "Custom (imported)", sourceType = "world" })
+    self._itemIndex = nil  -- invalidate search index
     return true
 end
 
@@ -337,6 +340,109 @@ function addon:ImportSetup(text)
         end
     end
     return true, ("imported " .. applied .. " slots into " .. class .. "/" .. spec .. "/" .. phase)
+end
+
+-- ─────────────────────────────────────────────
+-- Item search index (built from internal DB; AtlasLoot can extend it)
+-- ─────────────────────────────────────────────
+
+function addon:BuildItemIndex()
+    local idx = {}
+    local seen = {}
+
+    local function add(it)
+        if it and it.id and not seen[it.id] then
+            seen[it.id] = true
+            table.insert(idx, it)
+        end
+    end
+
+    -- Walk the static DB
+    for _, classData in pairs(self.DB or {}) do
+        if type(classData) == "table" then
+            for _, specData in pairs(classData) do
+                if type(specData) == "table" then
+                    for _, phase in ipairs(self.PHASES) do
+                        local pdata = specData[phase]
+                        if pdata then
+                            for _, slot in ipairs(self.SLOTS) do
+                                local list = pdata[slot]
+                                if list then
+                                    if list.id then add(list)
+                                    else for _, it in ipairs(list) do add(it) end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    -- Include user custom imports
+    if TBCBisTrackerCharDB and TBCBisTrackerCharDB.customAlts then
+        for _, byPhase in pairs(TBCBisTrackerCharDB.customAlts) do
+            for _, bySlot in pairs(byPhase) do
+                for _, slotItems in pairs(bySlot) do
+                    if type(slotItems) == "table" then
+                        for _, it in ipairs(slotItems) do add(it) end
+                    end
+                end
+            end
+        end
+    end
+
+    -- Best-effort AtlasLoot harvest
+    self.atlasLootDetected = false
+    if IsAddOnLoaded and IsAddOnLoaded("AtlasLootClassic") then
+        self.atlasLootDetected = true
+        -- AtlasLoot's data structure varies by version; safe harvest harmless on failure
+        local ok = pcall(function()
+            local al = _G.AtlasLoot
+            if not al or type(al) ~= "table" then return end
+            -- Walk any registered data tables looking for items with [1]=number ids
+            for _, modName in ipairs({ "AtlasLootClassic_DungeonsAndRaids", "AtlasLootClassic_Crafting", "AtlasLootClassic_Factions", "AtlasLootClassic_PvP", "AtlasLootClassic_Collections" }) do
+                local mod = _G[modName]
+                if mod and type(mod) == "table" then
+                    local function walk(t)
+                        if type(t) ~= "table" then return end
+                        for k, v in pairs(t) do
+                            if type(v) == "table" then
+                                if type(v[1]) == "number" and v[2] and type(v[2]) == "number" and v[2] > 100 then
+                                    add({ id = v[2], source = "AtlasLoot data", sourceType = "world" })
+                                else
+                                    walk(v)
+                                end
+                            end
+                        end
+                    end
+                    walk(mod)
+                end
+            end
+        end)
+    end
+
+    self._itemIndex = idx
+    return idx
+end
+
+-- Search the index for items whose cached name (or source string) contains the query.
+function addon:SearchItems(query, limit)
+    if not self._itemIndex then self:BuildItemIndex() end
+    query = tostring(query or ""):lower():match("^%s*(.-)%s*$")
+    if query == "" then return {} end
+    limit = limit or 20
+    local matches = {}
+    for _, it in ipairs(self._itemIndex) do
+        local name = GetItemInfo(it.id)
+        local hay = (name or it.source or ""):lower()
+        if hay:find(query, 1, true) then
+            table.insert(matches, { id = it.id, name = name, source = it.source })
+            if #matches >= limit then break end
+        end
+    end
+    return matches
 end
 
 -- Parse a Wowhead URL, in-game item link, or bare numeric id.
@@ -659,6 +765,17 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1)
             local classInfo = addon.CLASS_INFO and addon.CLASS_INFO[playerClass]
             if classInfo and classInfo.specs and classInfo.specs[1] then
                 TBCBisTrackerDB.lastSpec = classInfo.specs[1]
+            end
+        end
+
+        -- Normalize lastSpec: if the saved spec was renamed/removed (e.g. Druid "Feral" → "Feral - Tank"/"Feral - DPS"),
+        -- fall back to the first valid spec for the class.
+        local cls = TBCBisTrackerDB.lastClass
+        if cls and addon.CLASS_INFO and addon.CLASS_INFO[cls] then
+            local valid = {}
+            for _, s in ipairs(addon.CLASS_INFO[cls].specs) do valid[s] = true end
+            if TBCBisTrackerDB.lastSpec and not valid[TBCBisTrackerDB.lastSpec] then
+                TBCBisTrackerDB.lastSpec = addon.CLASS_INFO[cls].specs[1]
             end
         end
 
