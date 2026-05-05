@@ -505,9 +505,13 @@ function UI:CreateRowFrame(parent, idx)
         GameTooltip:Hide()
     end)
 
-    -- Click handlers: shift+left = chat-link item; right = alternatives menu
+    -- Click handlers: cursor-drop = import; shift+left = chat-link; right = alts menu
     row:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     row:SetScript("OnClick", function(self, button)
+        if button == "LeftButton" and CursorHasItem() then
+            UI:ImportFromCursor(self.slotKey)
+            return
+        end
         if button == "LeftButton" and IsShiftKeyDown() and self.itemId and self.itemId > 0 then
             local _, link = GetItemInfo(self.itemId)
             if link then
@@ -522,7 +526,50 @@ function UI:CreateRowFrame(parent, idx)
         end
     end)
 
+    -- Drag-drop: drop a bag or equipped item onto the row to import it as an alternative
+    row:SetScript("OnReceiveDrag", function(self)
+        if self.slotKey then UI:ImportFromCursor(self.slotKey) end
+    end)
+
     return row
+end
+
+-- Set selected alternative by item id; returns true if found
+local function selectAltById(class, spec, phase, slot, itemId)
+    local alts = addon:GetSlotAlternatives(class, spec, phase, slot)
+    if not alts then return false end
+    for i, alt in ipairs(alts) do
+        if alt.id == itemId then
+            addon:SetSelectedAlt(class, spec, phase, slot, i)
+            return true
+        end
+    end
+    return false
+end
+
+function UI:ImportOrSelect(slot, itemId, sourceLabel)
+    if not itemId then return end
+    local class = TBCBisTrackerDB.lastClass
+    local spec  = TBCBisTrackerDB.lastSpec
+    local phase = TBCBisTrackerDB.lastPhase
+    local nameOrId = GetItemInfo(itemId) or itemId
+    if selectAltById(class, spec, phase, slot, itemId) then
+        addon:Print(nameOrId .. " — already in list; selected.")
+    else
+        addon:AddCustomAlt(class, spec, phase, slot, itemId, sourceLabel or "Custom")
+        selectAltById(class, spec, phase, slot, itemId)
+        addon:Print("Added " .. nameOrId .. " to " .. (addon.SLOT_LABELS[slot] or slot) .. " and selected.")
+    end
+    UI:Refresh()
+end
+
+function UI:ImportFromCursor(slot)
+    if not CursorHasItem() then return end
+    local cursorType, _, itemLink = GetCursorInfo()
+    ClearCursor()
+    if cursorType ~= "item" or not itemLink then return end
+    local itemId = tonumber(itemLink:match("item:(%d+)"))
+    UI:ImportOrSelect(slot, itemId, "Custom (drag-drop)")
 end
 
 function UI:ShowAlternativesMenu(anchorFrame, slot)
@@ -587,13 +634,7 @@ function UI:ShowAlternativesMenu(anchorFrame, slot)
                         addon:Print("Could not parse a Wowhead item URL/ID from: " .. tostring(input))
                         return
                     end
-                    local added = addon:AddCustomAlt(class, spec, phase, slot, id, "Custom (Wowhead import)")
-                    if added then
-                        addon:Print("Added item " .. id .. " as alternative for " .. (addon.SLOT_LABELS[slot] or slot) .. ".")
-                    else
-                        addon:Print("Item " .. id .. " is already an alternative for that slot.")
-                    end
-                    UI:Refresh()
+                    UI:ImportOrSelect(slot, id, "Custom (Wowhead import)")
                 end,
                 EditBoxOnEnterPressed = function(s)
                     local parent = s:GetParent()
