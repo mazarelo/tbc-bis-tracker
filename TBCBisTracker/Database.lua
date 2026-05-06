@@ -4289,8 +4289,7 @@ DB["DRUID"]["Balance"] = {
             item(30340, "Quest: The Horrors of Pollution (Starkiller's Bauble)", "quest"),
             item(25936, "Quest: Torgos! (Terokkar Tablet of Vim)", "quest"),
             item(25620, "Quest: A Spirit Ally? (Ancient Crystal Talisman)", "quest"),
-            item(25619, "QWide character in print at ./build_lua.pl line 64.
-uest: Overlord Gorefist (Glowing Crystal Insignia)", "quest"),
+            item(25619, "Quest: Overlord Gorefist (Glowing Crystal Insignia)", "quest"),
         },
         mainhand         = {
             item(28770, "Prince Malchezaar (Karazhan) (Nathrezim Mindblade)", "raid"),
@@ -4933,8 +4932,7 @@ DB["DRUID"]["Feral - DPS"] = {
         mainhand         = {
             item(31334, "World Drop: The Outland (Staff of Natural Fury)", "world"),
             item(29359, "Warp Splinter (H The Botanica) (Feral Staff of Lashing)", "heroic"),
-            item(29171, "Vendor: Fedryen Swiftspear - Requires Exalted with Cenarion Expedition (Earthwarden)", "reputation"Wide character in print at ./build_lua.pl line 64.
-),
+            item(29171, "Vendor: Fedryen Swiftspear - Requires Exalted with Cenarion Expedition (Earthwarden)", "reputation"),
             item(27877, "Avatar of the Martyred (H Auchenai Crypts) (Draenic Wildstaff)", "heroic"),
             item(28325, "Thorngrin the Tender (The Botanica) (Dreamer's Dragonstaff)", "dungeon"),
             item(30010, "Quest: Nexus-King Salhadaar (Fleshling Simulation Staff)", "quest"),
