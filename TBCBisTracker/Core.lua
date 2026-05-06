@@ -915,53 +915,54 @@ end
 -- ─────────────────────────────────────────────
 
 local function CreateMinimapButton()
+    if _G.TBCBisTrackerMinimapBtn then return _G.TBCBisTrackerMinimapBtn end
+
     local btn = CreateFrame("Button", "TBCBisTrackerMinimapBtn", Minimap)
-    btn:SetSize(32, 32)
     btn:SetFrameStrata("MEDIUM")
     btn:SetFrameLevel(8)
-    btn:SetClampedToScreen(true)
+    btn:SetSize(31, 31)
+    btn:SetMovable(true)
+    btn:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    btn:RegisterForDrag("LeftButton")
+
+    -- Anchor immediately so the button has a valid position even before UpdatePosition runs
+    btn:SetPoint("CENTER", Minimap, "CENTER", 0, 0)
 
     local bg = btn:CreateTexture(nil, "BACKGROUND")
     bg:SetSize(20, 20)
-    bg:SetPoint("TOPLEFT", 6, -6)
     bg:SetTexture("Interface\\Minimap\\UI-Minimap-Background")
+    bg:SetPoint("TOPLEFT", 7, -5)
 
     local icon = btn:CreateTexture(nil, "ARTWORK")
-    icon:SetSize(18, 18)
-    icon:SetPoint("TOPLEFT", 7, -6)
+    icon:SetSize(17, 17)
     icon:SetTexture("Interface\\Icons\\INV_Misc_Map_01")
     icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+    icon:SetPoint("TOPLEFT", 7, -6)
 
     local border = btn:CreateTexture(nil, "OVERLAY")
-    border:SetSize(54, 54)
-    border:SetPoint("TOPLEFT")
+    border:SetSize(53, 53)
     border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
+    border:SetPoint("TOPLEFT")
 
-    local highlight = btn:CreateTexture(nil, "HIGHLIGHT")
-    highlight:SetSize(20, 20)
-    highlight:SetPoint("TOPLEFT", 6, -6)
-    highlight:SetTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
-    highlight:SetBlendMode("ADD")
+    btn:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight", "ADD")
 
     -- Position around minimap
     local MINIMAP_RADIUS = 80
     local function UpdatePosition()
-        local pos   = TBCBisTrackerDB.minimap.pos or 220
+        local pos = tonumber(TBCBisTrackerDB.minimap.pos) or 220
         local angle = math.rad(pos)
         btn:ClearAllPoints()
         btn:SetPoint("CENTER", Minimap, "CENTER",
             math.cos(angle) * MINIMAP_RADIUS, math.sin(angle) * MINIMAP_RADIUS)
     end
 
-    -- Drag to reposition
-    btn:SetMovable(true)
-    btn:RegisterForDrag("LeftButton")
     btn:SetScript("OnDragStart", function(self)
         self:LockHighlight()
     end)
     btn:SetScript("OnDragStop", function(self)
         self:UnlockHighlight()
         local cx, cy  = Minimap:GetCenter()
+        if not cx then return end
         local mx, my  = GetCursorPosition()
         local scale   = UIParent:GetEffectiveScale()
         mx, my = mx / scale, my / scale
@@ -970,7 +971,6 @@ local function CreateMinimapButton()
         UpdatePosition()
     end)
 
-    btn:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     btn:SetScript("OnClick", function(self, button)
         if button == "LeftButton" then
             addon.UI:Toggle()
@@ -981,6 +981,7 @@ local function CreateMinimapButton()
         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
         GameTooltip:SetText("|cffffd700TBC BIS Tracker|r", 1, 1, 1)
         GameTooltip:AddLine("Left-click to toggle", 1, 1, 1)
+        GameTooltip:AddLine("Drag to reposition", 0.7, 0.7, 0.7)
         GameTooltip:Show()
     end)
     btn:SetScript("OnLeave", function()

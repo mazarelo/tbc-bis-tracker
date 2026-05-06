@@ -518,7 +518,7 @@ end
 function UI:BuildScrollFrame()
     local f       = self.frame
     local scrollY = -118
-    local scrollH = FRAME_H - 118 - 40  -- leave room for progress bar
+    local scrollH = FRAME_H - 118 - 80  -- leave room for progress bar + badge/tier status
 
     -- Scroll frame
     local sf = CreateFrame("ScrollFrame", "TBCBisTrackerScroll", f, "UIPanelScrollFrameTemplate")
