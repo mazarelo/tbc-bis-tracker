@@ -140,12 +140,13 @@ addon.SLOT_INVENTORY_IDS = {
 
 -- Account-wide settings (DOES NOT include tracking data)
 local DEFAULT_DB = {
-    minimap    = { hide = false, pos = 220 },
-    lastClass  = nil,
-    lastSpec   = nil,
-    lastPhase  = "prebis",
+    minimap      = { hide = false, pos = 220 },
+    lastClass    = nil,
+    lastSpec     = nil,
+    lastPhase    = "prebis",
     showMissingOnly = false,
-    windowPos  = { point = "CENTER", x = 0, y = 0 },
+    sourceFilter = "all",
+    windowPos    = { point = "CENTER", x = 0, y = 0 },
 }
 
 -- Per-character tracking data
@@ -413,6 +414,136 @@ function addon:GetBadgeCost(entry)
     if n then return tonumber(n) end
     if entry.id and self.BADGE_COSTS[entry.id] then return self.BADGE_COSTS[entry.id] end
     return nil
+end
+
+-- ─────────────────────────────────────────────
+-- Profession lookup for crafted items
+-- ─────────────────────────────────────────────
+
+local KNOWN_PROFESSIONS = {
+    Tailoring = true, Leatherworking = true, Blacksmithing = true,
+    Engineering = true, Alchemy = true, Jewelcrafting = true, Enchanting = true,
+}
+
+-- Returns "Tailoring" / "Leatherworking" / nil from a source string like
+-- "Tailoring (Spellstrike Hood)" or "Tailoring/Shadoweave (...)" or "Leatherworking 365 (...)"
+function addon:ParseCraftingProfession(entry)
+    if not entry or entry.sourceType ~= "crafted" or not entry.source then return nil end
+    -- Take the first capitalized word from the source string
+    for word in entry.source:gmatch("([%a]+)") do
+        if KNOWN_PROFESSIONS[word] then return word end
+    end
+    return nil
+end
+
+function addon:GetPlayerProfessionLevel(profName)
+    if not GetNumSkillLines or not profName then return nil end
+    for i = 1, GetNumSkillLines() do
+        local skillName, _, _, skillRank, _, _, skillMaxRank = GetSkillLineInfo(i)
+        if skillName == profName then
+            return skillRank, skillMaxRank
+        end
+    end
+    return nil
+end
+
+-- ─────────────────────────────────────────────
+-- Reputation lookup
+-- ─────────────────────────────────────────────
+
+addon.STANDING_NAMES = { "Hated", "Hostile", "Unfriendly", "Neutral", "Friendly", "Honored", "Revered", "Exalted" }
+local STANDING_INDEX = {}
+for i, n in ipairs(addon.STANDING_NAMES) do STANDING_INDEX[n] = i end
+addon.STANDING_INDEX = STANDING_INDEX
+
+-- Returns faction, standing, standingId, or nil.
+function addon:ParseRepLocation(loc)
+    if not loc or loc == "" then return nil end
+    for _, st in ipairs(self.STANDING_NAMES) do
+        local before = loc:match("^(.-)%s+" .. st)
+        if before then
+            before = before:gsub("[%s%-]+$", "")
+            return before, st, STANDING_INDEX[st]
+        end
+    end
+    return nil
+end
+
+-- Best-effort lookup by name (case-insensitive, ignoring "The " prefix).
+function addon:GetCurrentReputation(factionName)
+    if not factionName or not GetNumFactions then return nil end
+    local target = factionName:lower():gsub("^the%s+", ""):gsub("^%s*(.-)%s*$", "%1")
+    if target == "" then return nil end
+    for i = 1, GetNumFactions() do
+        local name, _, standingId, barMin, barMax, barValue, _, _, isHeader, _, hasRep = GetFactionInfo(i)
+        if name and (not isHeader or hasRep) then
+            local norm = name:lower():gsub("^the%s+", "")
+            if norm == target or norm:find(target, 1, true) or target:find(norm, 1, true) then
+                return name, standingId, barMin, barMax, barValue
+            end
+        end
+    end
+    return nil
+end
+
+-- "Where to farm" breakdown — groups unobtained items by source type, then by location.
+-- Returns ordered list of { type, label, count, locations = { {location, count, items}, ... } }
+function addon:GetFarmBreakdown(class, spec, phase)
+    if not class or not spec or not phase then return {} end
+    local typeOrder = { "raid", "heroic", "dungeon", "crafted", "reputation", "world", "quest", "pvp" }
+    local typeLabels = {
+        raid       = "Raid",
+        heroic     = "Heroic Dungeon",
+        dungeon    = "Dungeon",
+        crafted    = "Crafted / Profession",
+        reputation = "Reputation",
+        world      = "World / Open World",
+        quest      = "Quest",
+        pvp        = "PvP",
+    }
+    local buckets = {}
+    for _, slot in ipairs(self.SLOTS) do
+        if not self:IsObtained(class, spec, phase, slot) then
+            local entry = self:GetSlotItem(class, spec, phase, slot)
+            if entry then
+                local t = entry.sourceType or "world"
+                buckets[t] = buckets[t] or { count = 0, locations = {} }
+                buckets[t].count = buckets[t].count + 1
+                local loc = (entry.source or "Unknown"):match("^(.-)%s*%(") or entry.source or "Unknown"
+                loc = loc:match("^%s*(.-)%s*$")
+                local found
+                for _, l in ipairs(buckets[t].locations) do
+                    if l.location == loc then
+                        l.count = l.count + 1
+                        table.insert(l.items, { slot = slot, entry = entry })
+                        found = true
+                        break
+                    end
+                end
+                if not found then
+                    table.insert(buckets[t].locations, {
+                        location = loc, count = 1,
+                        items = { { slot = slot, entry = entry } },
+                    })
+                end
+            end
+        end
+    end
+
+    local out = {}
+    for _, t in ipairs(typeOrder) do
+        if buckets[t] then
+            -- Sort locations by count desc
+            table.sort(buckets[t].locations, function(a, b) return a.count > b.count end)
+            table.insert(out, {
+                type = t,
+                label = typeLabels[t] or t,
+                count = buckets[t].count,
+                locations = buckets[t].locations,
+            })
+        end
+    end
+    return out
 end
 
 -- Returns a per-tier summary: { [tier] = { total=N, obtained=M, slots = {slot,...} } }
@@ -687,6 +818,18 @@ function addon:ResetAllData()
     end
 end
 
+-- Reset all selectedAlt picks for a (class, spec, phase) back to index 1 (the BiS).
+-- Custom-imported alts and obtained checkmarks are kept.
+function addon:ResetSelectionsToBiS(class, spec, phase)
+    if not class or not spec or not phase then return end
+    local key = self:GetSpecKey(class, spec)
+    if TBCBisTrackerCharDB.selected and TBCBisTrackerCharDB.selected[key] then
+        TBCBisTrackerCharDB.selected[key][phase] = nil
+    end
+    self:Print("Reset all selections back to BiS for " .. (self.PHASE_LABELS[phase] or phase) .. ".")
+    if self.UI and self.UI.Refresh then self.UI:Refresh() end
+end
+
 -- Reset obtained checkmarks for a single (class, spec, phase). Selections + custom alts kept.
 function addon:ResetPhase(class, spec, phase)
     if not class or not spec or not phase then return end
@@ -873,6 +1016,8 @@ SlashCmdList["TBCBISTRACKER"] = function(msg)
         if addon.UI and addon.UI.ShowExportPopup then addon.UI:ShowExportPopup() end
     elseif cmd == "import" then
         if addon.UI and addon.UI.ShowImportPopup then addon.UI:ShowImportPopup() end
+    elseif cmd == "bis" or cmd == "reset bis" then
+        addon:ResetSelectionsToBiS(TBCBisTrackerDB.lastClass, TBCBisTrackerDB.lastSpec, TBCBisTrackerDB.lastPhase)
     elseif cmd == "help" or cmd == "" then
         if cmd == "" then
             addon.UI:Toggle()
@@ -880,6 +1025,7 @@ SlashCmdList["TBCBISTRACKER"] = function(msg)
             addon:Print("/tbcbis           — toggle window")
             addon:Print("/tbcbis export    — export current spec/phase setup")
             addon:Print("/tbcbis import    — import a setup string")
+            addon:Print("/tbcbis bis       — reset selected alts back to BiS for current phase")
             addon:Print("/tbcbis reset     — reset checkmarks for current phase")
             addon:Print("/tbcbis reset all — reset ALL tracking data")
             addon:Print("/tbcbis hide      — hide minimap button")
@@ -900,6 +1046,60 @@ eventFrame:RegisterEvent("ADDON_LOADED")
 eventFrame:RegisterEvent("PLAYER_LOGIN")
 eventFrame:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
 eventFrame:RegisterEvent("BAG_UPDATE_DELAYED")
+eventFrame:RegisterEvent("LOOT_OPENED")
+eventFrame:RegisterEvent("START_LOOT_ROLL")
+
+-- ─────────────────────────────────────────────
+-- Loot announcement: alert when a BIS-tracked item appears in loot
+-- ─────────────────────────────────────────────
+
+local recentLootAnnouncements = {}  -- itemId -> timestamp; suppress duplicates
+
+local function announceTrackedItem(itemId, contextText)
+    if not itemId then return end
+    local now = GetTime and GetTime() or 0
+    if recentLootAnnouncements[itemId] and (now - recentLootAnnouncements[itemId]) < 30 then return end
+
+    local matches = addon:GetItemTrackingInfo(itemId)
+    if not matches or #matches == 0 then return end
+    recentLootAnnouncements[itemId] = now
+
+    local _, link = GetItemInfo(itemId)
+    link = link or ("item:" .. itemId)
+
+    for _, m in ipairs(matches) do
+        local tag
+        if m.isSelected then
+            tag = "|cffffd700[BIS]|r"
+        elseif m.idx == 1 then
+            tag = "|cff00ff00[BIS]|r"
+        else
+            tag = "|cffaaaaaa[Alt " .. m.idx .. "/" .. m.total .. "]|r"
+        end
+        local ctx = contextText and (" " .. contextText) or ""
+        addon:Print(tag .. " " .. link .. " — " .. (addon.PHASE_LABELS[m.phase] or m.phase) .. " " .. (addon.SLOT_LABELS[m.slot] or m.slot) .. ctx)
+    end
+end
+
+local function scanLootWindow()
+    if not GetNumLootItems then return end
+    for slot = 1, GetNumLootItems() do
+        local link = GetLootSlotLink and GetLootSlotLink(slot)
+        if link then
+            local itemId = tonumber(link:match("item:(%d+)"))
+            if itemId then announceTrackedItem(itemId, "(loot window)") end
+        end
+    end
+end
+
+local function scanLootRoll(rollId)
+    if not GetLootRollItemLink then return end
+    local link = GetLootRollItemLink(rollId)
+    if link then
+        local itemId = tonumber(link:match("item:(%d+)"))
+        if itemId then announceTrackedItem(itemId, "(group loot)") end
+    end
+end
 
 eventFrame:SetScript("OnEvent", function(self, event, arg1)
     if event == "ADDON_LOADED" and arg1 == "TBCBisTracker" then
@@ -968,6 +1168,12 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1)
         if addon.UI and addon.UI.RefreshBadgeStatus then
             addon.UI:RefreshBadgeStatus()
         end
+
+    elseif event == "LOOT_OPENED" then
+        scanLootWindow()
+
+    elseif event == "START_LOOT_ROLL" then
+        scanLootRoll(arg1)
     end
 end)
 

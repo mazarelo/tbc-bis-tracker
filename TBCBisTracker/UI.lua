@@ -125,6 +125,9 @@ function UI:Build()
     -- ── Checkbox: show missing only ──
     self:BuildMissingFilter()
 
+    -- ── Source-type filter dropdown ──
+    self:BuildSourceFilter()
+
     -- ── Export/Import buttons ──
     self:BuildExportImportButtons()
 
@@ -142,6 +145,9 @@ function UI:Build()
 
     -- ── Tier set bonus tracker ──
     self:BuildTierStatus()
+
+    -- ── Farm plan (bottom-right hover) ──
+    self:BuildFarmPlan()
 
     -- Initial population
     self:RefreshClassButtons()
@@ -391,6 +397,46 @@ function UI:ShowImportPopup()
         timeout = 0, whileDead = true, hideOnEscape = true,
     }
     StaticPopup_Show("TBCBIS_IMPORT")
+end
+
+local SOURCE_FILTER_OPTIONS = { "all", "raid", "heroic", "dungeon", "crafted", "reputation", "world", "quest", "pvp" }
+local SOURCE_FILTER_LABELS = {
+    all        = "All sources",
+    raid       = "Raid only",
+    heroic     = "Heroic only",
+    dungeon    = "Dungeon only",
+    crafted    = "Crafted only",
+    reputation = "Reputation only",
+    world      = "World drop only",
+    quest      = "Quest only",
+    pvp        = "PvP only",
+}
+
+function UI:BuildSourceFilter()
+    local f = self.frame
+    local dd = CreateFrame("Frame", "TBCBisTrackerSourceFilterDropdown", f, "UIDropDownMenuTemplate")
+    dd:SetPoint("TOPRIGHT", f, "TOPRIGHT", -150, -32)
+    UIDropDownMenu_SetWidth(dd, 110)
+    self.sourceFilterDropdown = dd
+
+    UIDropDownMenu_Initialize(dd, function(_, level)
+        for _, opt in ipairs(SOURCE_FILTER_OPTIONS) do
+            local info = UIDropDownMenu_CreateInfo()
+            info.text = SOURCE_FILTER_LABELS[opt] or opt
+            info.value = opt
+            info.checked = (TBCBisTrackerDB.sourceFilter or "all") == opt
+            info.func = function()
+                TBCBisTrackerDB.sourceFilter = opt
+                UIDropDownMenu_SetSelectedValue(dd, opt)
+                UIDropDownMenu_SetText(dd, SOURCE_FILTER_LABELS[opt])
+                UI:Refresh()
+                CloseDropDownMenus()
+            end
+            UIDropDownMenu_AddButton(info, level)
+        end
+    end)
+    UIDropDownMenu_SetSelectedValue(dd, TBCBisTrackerDB.sourceFilter or "all")
+    UIDropDownMenu_SetText(dd, SOURCE_FILTER_LABELS[TBCBisTrackerDB.sourceFilter or "all"])
 end
 
 function UI:BuildExportImportButtons()
@@ -975,6 +1021,100 @@ function UI:BuildBadgeStatus()
     self.badgeHover = hoverFrame
 end
 
+function UI:BuildFarmPlan()
+    local f = self.frame
+    local fs = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    fs:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -22, 42)
+    fs:SetJustifyH("RIGHT")
+    fs:SetText("|cff00d0ff[Hover for farm plan]|r")
+    self.farmHint = fs
+
+    local hover = CreateFrame("Frame", nil, f)
+    hover:SetSize(160, 16)
+    hover:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -18, 38)
+    hover:EnableMouse(true)
+    hover:SetScript("OnEnter", function(self)
+        local class = TBCBisTrackerDB.lastClass
+        local spec  = TBCBisTrackerDB.lastSpec
+        local phase = TBCBisTrackerDB.lastPhase
+        local groups = addon:GetFarmBreakdown(class, spec, phase)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText("Farm plan — " .. (addon.PHASE_LABELS[phase] or phase))
+        if not groups or #groups == 0 then
+            GameTooltip:AddLine("Nothing left to farm — all items obtained!", 1, 0.84, 0)
+        else
+            for _, group in ipairs(groups) do
+                GameTooltip:AddLine(" ")
+                GameTooltip:AddDoubleLine("|cffffd700" .. group.label .. "|r", group.count .. " unobtained", 1, 0.84, 0, 0.9, 0.9, 0.9)
+                for _, sub in ipairs(group.locations or {}) do
+                    if group.type == "reputation" then
+                        local fname, requiredStanding, requiredId = addon:ParseRepLocation(sub.location)
+                        if fname and requiredStanding then
+                            local matched, currentId = addon:GetCurrentReputation(fname)
+                            local statusText
+                            if currentId then
+                                local current = addon.STANDING_NAMES[currentId] or "?"
+                                if currentId >= requiredId then
+                                    statusText = "|cff00ff00✓ " .. current .. "|r"
+                                else
+                                    statusText = "|cffff8800" .. current .. " → " .. requiredStanding .. "|r"
+                                end
+                            else
+                                statusText = "|cff888888not yet discovered|r"
+                            end
+                            GameTooltip:AddDoubleLine("  " .. (matched or fname) .. " (" .. requiredStanding .. ")", statusText, 0.8, 0.85, 0.95, 1, 1, 1)
+                        else
+                            GameTooltip:AddDoubleLine("  " .. sub.location, sub.count, 0.8, 0.85, 0.95, 1, 1, 1)
+                        end
+                    else
+                        GameTooltip:AddDoubleLine("  " .. sub.location, sub.count, 0.8, 0.85, 0.95, 1, 1, 1)
+                    end
+                end
+            end
+        end
+        GameTooltip:Show()
+    end)
+    hover:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    self.farmHover = hover
+end
+
+function UI:BuildTierStatus()
+    local f = self.frame
+    local fs = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    fs:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 22, 58)
+    fs:SetJustifyH("LEFT")
+    self.tierStatus = fs
+end
+
+function UI:RefreshTierStatus()
+    if not self.tierStatus then return end
+    local class = TBCBisTrackerDB.lastClass
+    local spec  = TBCBisTrackerDB.lastSpec
+    local phase = TBCBisTrackerDB.lastPhase
+    local progress = addon:GetTierProgress(class, spec, phase)
+
+    -- Stable ordering (T4, T5, T6, T6.5)
+    local order = { "T4", "T5", "T6", "T6.5" }
+    local parts = {}
+    for _, t in ipairs(order) do
+        local p = progress[t]
+        if p and p.total > 0 then
+            local bonus
+            if p.obtained >= 4 then bonus = " |cffff8000(4pc!)|r"
+            elseif p.obtained >= 2 then bonus = " |cff00ff00(2pc)|r"
+            else bonus = ""
+            end
+            local color = (p.obtained >= p.total) and "|cffffd700" or "|cffaaaaaa"
+            table.insert(parts, color .. t .. ": " .. p.obtained .. "/" .. p.total .. "|r" .. bonus)
+        end
+    end
+    if #parts == 0 then
+        self.tierStatus:SetText("")
+    else
+        self.tierStatus:SetText("|cff888888Tier set:|r  " .. table.concat(parts, "   "))
+    end
+end
+
 function UI:RefreshBadgeStatus()
     if not self.badgeStatus then return end
     local class = TBCBisTrackerDB.lastClass
@@ -1058,6 +1198,7 @@ function UI:Refresh()
     local rowIdx = 0
     local obtained, total = 0, 0
 
+    local sourceFilter = TBCBisTrackerDB.sourceFilter or "all"
     for _, slot in ipairs(addon.SLOTS) do
         local entry, selectedIdx, altCount = addon:GetSlotItem(class, spec, phase, slot)
         local isObtained = entry and addon:IsObtained(class, spec, phase, slot) or false
@@ -1067,7 +1208,9 @@ function UI:Refresh()
             if isObtained then obtained = obtained + 1 end
         end
 
-        if not (missingOnly and isObtained) then
+        local matchesSource = (sourceFilter == "all") or (entry and entry.sourceType == sourceFilter)
+
+        if not (missingOnly and isObtained) and matchesSource then
             rowIdx = rowIdx + 1
             local row = self.rowPool[rowIdx]
             if not row then break end
@@ -1101,6 +1244,18 @@ function UI:Refresh()
                 local srcText  = entry.source or "Unknown"
                 if entry.note then
                     srcText = entry.note .. " (" .. srcText .. ")"
+                end
+                -- For crafted items, append the player's profession status inline
+                if entry.sourceType == "crafted" then
+                    local prof = addon:ParseCraftingProfession(entry)
+                    if prof then
+                        local level = addon:GetPlayerProfessionLevel(prof)
+                        if level then
+                            srcText = srcText .. " |cff00ff00[your " .. prof .. ": " .. level .. "]|r"
+                        else
+                            srcText = srcText .. " |cffff6060[no " .. prof .. "]|r"
+                        end
+                    end
                 end
                 row.srcLbl:SetText(srcColor .. srcText .. "|r")
 
@@ -1146,6 +1301,7 @@ function UI:Refresh()
     self:UpdateProgress(obtained, total)
     self:RefreshPhaseTabs()
     self:RefreshBadgeStatus()
+    self:RefreshTierStatus()
 end
 
 function UI:UpdateProgress(obtained, total)
