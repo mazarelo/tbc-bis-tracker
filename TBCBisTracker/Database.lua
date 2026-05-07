@@ -89,14 +89,14 @@ DB["WARRIOR"]["Fury"] = {
             item(30738, "Doom-Lord Kazzak (Ring of Reciprocity)", "world"),
             item(30834, "Lower City Exalted (Shapeshifter's Signet)", "reputation"),
             item(29379, "Vendor - 25 Badges of Justice (Ring of Arathi Warlords)", "raid"),
-            item(30365, "Quest: Shutting Down Manaforge Ara (Overseer's Signet)", "quest"),
+            item(30365, "Quest: Shutting Down Manaforge Ara (Overseer's Signet)", "quest", nil, 10323),
             item(28553, "Spirit Shards (Band of the Exorcist)", "reputation"),
         },
         ring2 = {
             item(30834, "Lower City Exalted (Shapeshifter's Signet)", "reputation"),
             item(30738, "Doom-Lord Kazzak (Ring of Reciprocity)", "world"),
             item(29379, "Vendor - 25 Badges of Justice (Ring of Arathi Warlords)", "raid"),
-            item(30365, "Quest: Shutting Down Manaforge Ara (Overseer's Signet)", "quest"),
+            item(30365, "Quest: Shutting Down Manaforge Ara (Overseer's Signet)", "quest", nil, 10323),
             item(28553, "Spirit Shards (Band of the Exorcist)", "reputation"),
         },
         trinket1 = {
@@ -106,7 +106,7 @@ DB["WARRIOR"]["Fury"] = {
             item(28288, "Mechanar - Pathaleon (Abacus of Violent Odds)", "dungeon"),
             item(29776, "Quest: Ar'kelos the Guardian (Core of Ar'kelos)", "quest", nil, 10176),
             item(28041, "Quest: Cruel's Intentions (Bladefist's Breadth)", "quest", nil, 10400),
-            item(25937, "Quest: Torgos! (Terokkar Tablet of Precision)", "quest"),
+            item(25937, "Quest: Torgos! (Terokkar Tablet of Precision)", "quest", nil, 10036),
         },
         trinket2 = {
             item(28034, "Black Morass - Temporus (Hourglass of the Unraveller)", "dungeon"),
@@ -115,7 +115,7 @@ DB["WARRIOR"]["Fury"] = {
             item(28288, "Mechanar - Pathaleon (Abacus of Violent Odds)", "dungeon"),
             item(29776, "Quest: Ar'kelos the Guardian (Core of Ar'kelos)", "quest", nil, 10176),
             item(28041, "Quest: Cruel's Intentions (Bladefist's Breadth)", "quest", nil, 10400),
-            item(25937, "Quest: Torgos! (Terokkar Tablet of Precision)", "quest"),
+            item(25937, "Quest: Torgos! (Terokkar Tablet of Precision)", "quest", nil, 10036),
         },
         mainhand = {
             item(28432, "Blacksmithing (Black Planar Edge)", "crafted"),
@@ -362,7 +362,7 @@ DB["WARRIOR"]["Protection"] = {
             item(35411, "Lower City Honored (Savage Plate Shoulders)", "reputation"),
             item(27847, "H Auchenai Crypts - Shirrak (Fanblade Pauldrons)", "heroic"),
             item(27803, "H Shadow Labyrinth - Murmur (Shoulderguards of the Bold)", "heroic"),
-            item(29316, "Quest: Return to Andormu (Warchief's Mantle)", "quest"),
+            item(29316, "Quest: Return to Andormu (Warchief's Mantle)", "quest", nil, 10285),
         },
         back = {
             item(27804, "H Steamvault - Warlord Kalithresh (Devilshark Cape)", "heroic"),
@@ -384,14 +384,14 @@ DB["WARRIOR"]["Protection"] = {
             item(29463, "H Steamvault - Warlord Kalithresh (Amber Bands of the Aggressor)", "heroic"),
             item(27459, "H Hellfire Ramparts - Reinforced Fel Iron Chest (Vambraces of Daring)", "heroic"),
             item(28167, "Quest: The Soul Devices (Sha'tari Wrought Armguards)", "quest", nil, 10091),
-            item(30225, "Quest: You're Hired! (Junior Technician 3rd Grade Bracers)", "quest"),
+            item(30225, "Quest: You're Hired! (Junior Technician 3rd Grade Bracers)", "quest", nil, 10186),
         },
         hands = {
             item(27475, "H Steamvault - Warlord Kalithresh (Gauntlets of the Bold)", "heroic"),
             item(32072, "H Botanica - Warp Splinter (Gauntlets of Dissension)", "heroic"),
             item(23517, "Blacksmithing (Felsteel Gloves)", "crafted"),
             item(29134, "Scryers Revered (Gauntlets of the Chosen)", "reputation"),
-            item(30375, "Quest: Turning Point (Gauntlets of the Vanquisher)", "quest"),
+            item(30375, "Quest: Turning Point (Gauntlets of the Vanquisher)", "quest", nil, 10507),
             item(30341, "Quest: The Flesh Lies... (Flesh Handler's Gauntlets)", "quest", nil, 10345),
         },
         waist = {
@@ -400,14 +400,14 @@ DB["WARRIOR"]["Protection"] = {
             item(27672, "H Slave Pens - Quagmirran (Girdle of the Immovable)", "heroic"),
             item(27985, "H Sethekk Halls - Talon King Ikiss (Deathforge Girdle)", "heroic"),
             item(31460, "Quest: How to Break Into the Arcatraz (Sha'tari Vindicator's Waistguard)", "quest", nil, 10704),
-            item(25922, "Quest: The Terror of Marshlight Lake (Fearless Girdle)", "quest"),
+            item(25922, "Quest: The Terror of Marshlight Lake (Fearless Girdle)", "quest", nil, 9902),
         },
         legs = {
             item(29184, "Keepers of Time Revered (Timewarden's Leggings)", "reputation"),
             item(23518, "Blacksmithing (Felsteel Leggings)", "crafted"),
             item(30533, "H Mechanar - Pathaleon (Vanquisher's Legplates)", "heroic"),
             item(27527, "H Shattered Halls - Warchief Kargath (Greaves of the Shatterer)", "heroic"),
-            item(28175, "Quest: Hero of the Mag'har (Mag'hari Warlord's Legplates)", "quest"),
+            item(28175, "Quest: Hero of the Mag'har (Mag'hari Warlord's Legplates)", "quest", nil, 10212),
             item(29783, "Quest: Destroy Naberius! (Legguards of the Resolute Defender)", "quest", nil, 10320),
         },
         feet = {
@@ -433,7 +433,7 @@ DB["WARRIOR"]["Protection"] = {
         ring2 = {
             item(29384, "Vendor - 25 Badges of Justice (Ring of Unyielding Force)", "raid"),
             item(30834, "Lower City Exalted (Shapeshifter's Signet)", "reputation"),
-            item(30006, "Quest: Dealing with the Overmaster (Wind Trader's Band)", "quest"),
+            item(30006, "Quest: Dealing with the Overmaster (Wind Trader's Band)", "quest", nil, 10318),
             item(31078, "Quest: Dissension Amongst the Ranks (Protector's Mark of the Redemption)", "quest", nil, 10776),
         },
         trinket1 = {
@@ -464,11 +464,11 @@ DB["WARRIOR"]["Protection"] = {
             item(32082, "H Mana-Tombs - Nexus-Prince Shaffar (The Fel Barrier)", "heroic"),
             item(28316, "Botanica - High Botanist Freywinn (Aegis of the Sunbird)", "dungeon"),
             item(27887, "Shadow Labyrinth - Ambassador Hellmaw (Platinum Shield of the Valorous)", "dungeon"),
-            item(31490, "Quest: Ally of the Netherwing (Netherwing Protector's Shield)", "quest"),
+            item(31490, "Quest: Ally of the Netherwing (Netherwing Protector's Shield)", "quest", nil, 10870),
         },
         ranged = {
             item(34622, "World Drop - Outland (Spinesever)", "world"),
-            item(30227, "Quest: Mark V is Alive! (Mark V's Throwing Star)", "quest"),
+            item(30227, "Quest: Mark V is Alive! (Mark V's Throwing Star)", "quest", nil, 10191),
             item(27817, "H Mana-Tombs - Pandemonius (Starbolt Longbow)", "heroic"),
             item(29115, "Consortium Revered (Consortium Blaster)", "reputation"),
         },
@@ -733,7 +733,7 @@ DB["PALADIN"]["Holy"] = {
         legs = {
             item(24261, "Tailoring (Whitemend Pants)", "crafted"),
             item(30543, "H Steamvault - Warlord Kalithresh (Pontifex Kilt)", "heroic"),
-            item(29342, "Quest: Undercutting the Competition (Consortium Plated Legguards)", "quest"),
+            item(29342, "Quest: Undercutting the Competition (Consortium Plated Legguards)", "quest", nil, 10165),
             item(31343, "World Drop (Kamaei's Cerulean Skirt)", "world"),
         },
         feet = {
@@ -745,7 +745,7 @@ DB["PALADIN"]["Holy"] = {
         neck = {
             item(32531, "Quest: Gezzarak the Huntress, Terokkar (Gezzarak's Fang)", "quest"),
             item(29374, "Vendor - 25 Badges of Justice (Necklace of Eternal Hope)", "raid"),
-            item(29334, "Quest: Brother Against Brother (Sethekk Oracle's Focus)", "quest"),
+            item(29334, "Quest: Brother Against Brother (Sethekk Oracle's Focus)", "quest", nil, 10097),
             item(31691, "Quest: The Hound-Master (Natasha's Guardian Cord)", "quest", nil, 10912),
         },
         ring1 = {
@@ -962,8 +962,8 @@ DB["PALADIN"]["Protection"] = {
             item(27847, "Shirrak the Dead Watcher (H Auchenai Crypts) (Fanblade Pauldrons)", "heroic"),
             item(27739, "Laj (The Botanica) (Spaulders of the Righteous)", "dungeon"),
             item(27803, "Murmur (Shadow Labyrinth) (Shoulderguards of the Bold)", "dungeon"),
-            item(29316, "Quest: Return to Andormu (Warchief's Mantle)", "quest"),
-            item(30291, "Quest: Success! (Nexus-Guard's Pauldrons)", "quest"),
+            item(29316, "Quest: Return to Andormu (Warchief's Mantle)", "quest", nil, 10285),
+            item(30291, "Quest: Success! (Nexus-Guard's Pauldrons)", "quest", nil, 10440),
         },
         back         = {
             item(27804, "Warlord Kalithresh (The Steamvault) (Devilshark Cape)", "dungeon"),
@@ -1273,7 +1273,7 @@ DB["PALADIN"]["Protection"] = {
             item(28747, "Chess Event - Karazhan (Battlescar Boots)", "raid"),
         },
         neck = {
-            item(30007, "Quest Reward from Verdant Sphere. Drop: Kael'thas Sunstrider (Tempest Keep) (The Darkener's Grasp)", "quest"),
+            item(30007, "Quest Reward from Verdant Sphere. Drop: Kael'thas Sunstrider (Tempest Keep) (The Darkener's Grasp)", "quest", nil, 11007),
             item(28530, "Moroes (Karazhan) (Brooch of Unquenchable Fury)", "raid"),
             item(30008, "Morogrim Tidewalker (Serpentshrine Cavern) (Pendant of the Lost Ages)", "raid"),
             item(28516, "Maiden of Virtue (Karazhan) (Barbed Choker of Discipline)", "raid"),
@@ -1394,14 +1394,14 @@ DB["PALADIN"]["Retribution"] = {
             item(29119, "Vendor: Exalted with The Consortium (Haramad's Bargain)", "reputation"),
             item(29349, "Quagmirran (The Slave Pens) (Adamantine Chain of the Unbroken)", "dungeon"),
             item(31275, "Random World Drop (Bind on Equip) (Necklace of Trophies)", "world"),
-            item(31694, "Quest: The Hound-Master (Natasha's Pack Collar)", "quest"),
+            item(31694, "Quest: The Hound-Master (Natasha's Pack Collar)", "quest", nil, 10912),
         },
         ring1         = {
             item(30834, "Vendor: Nakodu - Requires Exalted with Lower City (Shapeshifter's Signet)", "reputation"),
             item(29177, "Vendor: Almaador - Requires Exalted with The Sha'tar (A'dal's Command)", "reputation"),
             item(31920, "Yor (H Mana-Tombs) (Shaffar's Band of Brutality)", "heroic"),
-            item(30365, "Quest: Shutting Down Manaforge Ara (Overseer's Signet)", "quest"),
-            item(31380, "Quest: Battle of the Crimson Watch (Acrobat's Mark of the Sha'tar)", "quest"),
+            item(30365, "Quest: Shutting Down Manaforge Ara (Overseer's Signet)", "quest", nil, 10323),
+            item(31380, "Quest: Battle of the Crimson Watch (Acrobat's Mark of the Sha'tar)", "quest", nil, 10781),
         },
         ring2         = {},
         trinket1         = {
@@ -1671,7 +1671,7 @@ DB["HUNTER"]["Marksmanship"] = {
     prebis = {
         head         = {
             item(28275, "Pathaleon the Calculator (The Mechanar) (Beast Lord Helm)", "dungeon"),
-            item(22438, "Quest: Cryptstalker Headpiece (Naxxramas) (Cryptstalker Headpiece)", "quest"),
+            item(22438, "Quest: Cryptstalker Headpiece (Naxxramas) (Cryptstalker Headpiece)", "quest", nil, 9056),
             item(31109, "Quest: Teron Gorefiend, I am.../ Teron Gorefiend, I am... - Karazhan (Stealther's Helmet of Second Sight)", "quest", nil, 10645),
             item(31281, "World Drop: The Outland (Mask of Veiled Death)", "world"),
             item(27414, "Exarch Maladaar (Auchenai Crypts) (Mok'Nathal Beast-Mask)", "dungeon"),
@@ -1679,7 +1679,7 @@ DB["HUNTER"]["Marksmanship"] = {
         shoulder         = {
             item(27801, "Warlord Kalithresh (The Steamvault) (Beast Lord Mantle)", "dungeon"),
             item(25790, "Quest: Fel Embers (Expedition Scout's Epaulets)", "quest", nil, 9494),
-            item(22439, "Quest: Cryptstalker Spaulders (Naxxramas)/color (Cryptstalker Spaulders)", "quest"),
+            item(22439, "Quest: Cryptstalker Spaulders (Naxxramas)/color (Cryptstalker Spaulders)", "quest", nil, 9057),
             item(27797, "Avatar of the Martyred (H Auchenai Crypts) (Wastewalker Shoulderpads)", "heroic"),
             item(27434, "Epoch Hunter (Hold Hillsbrad Foothills) (Mantle of Perenolde)", "dungeon"),
         },
@@ -1695,41 +1695,41 @@ DB["HUNTER"]["Marksmanship"] = {
             item(29525, "Elemental Leatherworking (Bind on Creation) (Primalstrike Vest)", "crafted"),
             item(29515, "Dragonscale Leatherworking (Bind on Creation) (Ebon Netherscale Breastplate)", "crafted"),
             item(30933, "Quest: Varedis Must Be Stopped (Hauberk of Karabor)", "quest", nil, 10692),
-            item(22436, "Quest: Cryptstalker Tunic (Naxxramas) (Cryptstalker Tunic)", "quest"),
+            item(22436, "Quest: Cryptstalker Tunic (Naxxramas) (Cryptstalker Tunic)", "quest", nil, 9054),
         },
         wrist         = {
             item(29527, "Elemental Leatherworking (Bind on Creation) (Primalstrike Bracers)", "crafted"),
             item(29246, "Epoch Hunter (Old Hillsbrad Foothills) (Nightfall Wristguards)", "dungeon"),
             item(25697, "Leatherworking (Felstalker Bracers)", "crafted"),
             item(29517, "Dragonscale Leatherworking (Bind on Creation) (Ebon Netherscale Bracers)", "crafted"),
-            item(22443, "Quest: Cryptstalker Wristguards (Naxxramas) (Cryptstalker Wristguards)", "quest"),
+            item(22443, "Quest: Cryptstalker Wristguards (Naxxramas) (Cryptstalker Wristguards)", "quest", nil, 9061),
         },
         hands         = {
             item(27474, "Warchief Kargath Bladefist - The Shattered Halls (Beast Lord Handguards)", "dungeon"),
             item(16463, "Vendor: Captain DirgehammerVendor: Lady Palanseer (Marshal's Chain Grips)", "dungeon"),
             item(30951, "The Cipher of Damnation - The Third Fragment Recovered (Ar'tor's Mainstay)", "dungeon"),
-            item(22441, "Quest: Cryptstalker Handguards (Naxxramas) (Cryptstalker Handguards)", "quest"),
-            item(30003, "Quest: Dealing with the Overmaster (Gloves of the Nether-Stalker)", "quest"),
+            item(22441, "Quest: Cryptstalker Handguards (Naxxramas) (Cryptstalker Handguards)", "quest", nil, 9059),
+            item(30003, "Quest: Dealing with the Overmaster (Gloves of the Nether-Stalker)", "quest", nil, 10318),
         },
         waist         = {
             item(29526, "Elemental Leatherworking (Bind on Creation) (Primalstrike Belt)", "crafted"),
             item(27760, "Ghaz'an (H The Underbog) (Dunewind Sash)", "heroic"),
             item(29516, "Dragonscale Leatherworking (Bind on Creation) (Ebon Netherscale Belt)", "crafted"),
             item(25695, "Leatherworking (Felstalker Belt)", "crafted"),
-            item(22442, "Quest: Cryptstalker Girdle (Naxxramas) (Cryptstalker Girdle)", "quest"),
+            item(22442, "Quest: Cryptstalker Girdle (Naxxramas) (Cryptstalker Girdle)", "quest", nil, 9060),
         },
         legs         = {
             item(27874, "Warlord Kalithresh (The Steamvault) (Beast Lord Leggings)", "dungeon"),
             item(30538, "Quagmirran (H The Slave Pens) (Midnight Legguards)", "heroic"),
             item(27837, "Nexus-Prince Shaffar (H Mana-Tombs) (Wastewalker Leggings)", "heroic"),
-            item(22437, "Quest: Cryptstalker Legguards (Naxxramas) (Cryptstalker Legguards)", "quest"),
+            item(22437, "Quest: Cryptstalker Legguards (Naxxramas) (Cryptstalker Legguards)", "quest", nil, 9055),
         },
         feet         = {
             item(25686, "Leatherworking (Fel Leather Boots)", "crafted"),
             item(31288, "World Drop: The Outland (The Master's Treads)", "world"),
-            item(22440, "Quest: Cryptstalker Boots (Naxxramas) (Cryptstalker Boots)", "quest"),
+            item(22440, "Quest: Cryptstalker Boots (Naxxramas) (Cryptstalker Boots)", "quest", nil, 9058),
             item(29262, "Warp Splinter (H The Botanica) (Boots of the Endless Hunt)", "heroic"),
-            item(30401, "Quest: A Fate Worse Than Death (Farahlite Studded Boots)", "quest"),
+            item(30401, "Quest: A Fate Worse Than Death (Farahlite Studded Boots)", "quest", nil, 10185),
         },
         neck         = {
             item(29381, "Vendor - 25 Badges of Justice (Choker of Vile Intent)", "raid"),
@@ -2017,7 +2017,7 @@ DB["HUNTER"]["Survival"] = {
     prebis = {
         head         = {
             item(28275, "Pathaleon the Calculator (The Mechanar) (Beast Lord Helm)", "dungeon"),
-            item(22438, "Quest: Cryptstalker Headpiece (Naxxramas) (Cryptstalker Headpiece)", "quest"),
+            item(22438, "Quest: Cryptstalker Headpiece (Naxxramas) (Cryptstalker Headpiece)", "quest", nil, 9056),
             item(31109, "Quest: Teron Gorefiend, I am.../ Teron Gorefiend, I am... (Stealther's Helmet of Second Sight)", "quest", nil, 10645),
             item(31281, "World Drop: The Outland (Mask of Veiled Death)", "world"),
             item(27414, "Exarch Maladaar (Auchenai Crypts) (Mok'Nathal Beast-Mask)", "dungeon"),
@@ -2025,7 +2025,7 @@ DB["HUNTER"]["Survival"] = {
         shoulder         = {
             item(27801, "Warlord Kalithresh (The Steamvault) (Beast Lord Mantle)", "dungeon"),
             item(25790, "Quest: Fel Embers (Expedition Scout's Epaulets)", "quest", nil, 9494),
-            item(22439, "Quest: Cryptstalker Spaulders (Naxxramas)/color (Cryptstalker Spaulders)", "quest"),
+            item(22439, "Quest: Cryptstalker Spaulders (Naxxramas)/color (Cryptstalker Spaulders)", "quest", nil, 9057),
             item(27797, "Avatar of the Martyred (H Auchenai Crypts) (Wastewalker Shoulderpads)", "heroic"),
             item(27434, "Epoch Hunter (Hold Hillsbrad Foothills) (Mantle of Perenolde)", "dungeon"),
         },
@@ -2040,42 +2040,42 @@ DB["HUNTER"]["Survival"] = {
             item(28228, "Warp Splinter (The Botanica) (Beast Lord Cuirass)", "dungeon"),
             item(29525, "Elemental Leatherworking (Bind on Creation) (Primalstrike Vest)", "crafted"),
             item(30933, "Quest: Varedis Must Be Stopped (Hauberk of Karabor)", "quest", nil, 10692),
-            item(22436, "Quest: Cryptstalker Tunic (Naxxramas) (Cryptstalker Tunic)", "quest"),
+            item(22436, "Quest: Cryptstalker Tunic (Naxxramas) (Cryptstalker Tunic)", "quest", nil, 9054),
         },
         wrist         = {
             item(25697, "Leatherworking (Felstalker Bracers)", "crafted"),
             item(29246, "Epoch Hunter (Old Hillsbrad Foothills) (Nightfall Wristguards)", "dungeon"),
             item(29527, "Elemental Leatherworking (Bind on Creation) (Primalstrike Bracers)", "crafted"),
-            item(22443, "Quest: Cryptstalker Wristguards (Naxxramas) (Cryptstalker Wristguards)", "quest"),
+            item(22443, "Quest: Cryptstalker Wristguards (Naxxramas) (Cryptstalker Wristguards)", "quest", nil, 9061),
         },
         hands         = {
             item(27474, "Warchief Kargath Bladefist - The Shattered Halls (Beast Lord Handguards)", "dungeon"),
             item(30951, "The Cipher of Damnation - The Third Fragment Recovered (Ar'tor's Mainstay)", "dungeon"),
             item(16463, "Vendor: Captain DirgehammerVendor: Lady Palanseer (Marshal's Chain Grips)", "dungeon"),
-            item(22441, "Quest: Cryptstalker Handguards (Naxxramas) (Cryptstalker Handguards)", "quest"),
-            item(30003, "Quest: Dealing with the Overmaster (Gloves of the Nether-Stalker)", "quest"),
+            item(22441, "Quest: Cryptstalker Handguards (Naxxramas) (Cryptstalker Handguards)", "quest", nil, 9059),
+            item(30003, "Quest: Dealing with the Overmaster (Gloves of the Nether-Stalker)", "quest", nil, 10318),
         },
         waist         = {
             item(27760, "Ghaz'an (H The Underbog) (Dunewind Sash)", "heroic"),
             item(29247, "Aeonus (H The Black Morass) (Girdle of the Deathdealer)", "heroic"),
             item(29526, "Elemental Leatherworking (Bind on Creation) (Primalstrike Belt)", "crafted"),
             item(25695, "Leatherworking (Felstalker Belt)", "crafted"),
-            item(22442, "Quest: Cryptstalker Girdle (Naxxramas) (Cryptstalker Girdle)", "quest"),
+            item(22442, "Quest: Cryptstalker Girdle (Naxxramas) (Cryptstalker Girdle)", "quest", nil, 9060),
         },
         legs         = {
             item(27837, "Nexus-Prince Shaffar (H Mana-Tombs) (Wastewalker Leggings)", "heroic"),
             item(27874, "Warlord Kalithresh (The Steamvault) (Beast Lord Leggings)", "dungeon"),
             item(28219, "Captain Skarloc (H Old Hillsbrad Foothills) (Emerald-Scale Greaves)", "heroic"),
             item(27430, "Captain Skarloc (Old Hillsbrad Foothills) (Scaled Greaves of Patience)", "dungeon"),
-            item(22437, "Quest: Cryptstalker Legguards (Naxxramas) (Cryptstalker Legguards)", "quest"),
+            item(22437, "Quest: Cryptstalker Legguards (Naxxramas) (Cryptstalker Legguards)", "quest", nil, 9055),
             item(30538, "Quagmirran (H The Slave Pens) (Midnight Legguards)", "heroic"),
         },
         feet         = {
             item(29262, "Warp Splinter (H The Botanica) (Boots of the Endless Hunt)", "heroic"),
             item(31288, "World Drop: The Outland (The Master's Treads)", "world"),
-            item(22440, "Quest: Cryptstalker Boots (Naxxramas) (Cryptstalker Boots)", "quest"),
+            item(22440, "Quest: Cryptstalker Boots (Naxxramas) (Cryptstalker Boots)", "quest", nil, 9058),
             item(25686, "Leatherworking (Fel Leather Boots)", "crafted"),
-            item(30401, "Quest: A Fate Worse Than Death (Farahlite Studded Boots)", "quest"),
+            item(30401, "Quest: A Fate Worse Than Death (Farahlite Studded Boots)", "quest", nil, 10185),
         },
         neck         = {
             item(28343, "Warp Splinter (The Botanica) (Jagged Bark Pendant)", "dungeon"),
@@ -2372,7 +2372,7 @@ DB["HUNTER"]["Beast Mastery"] = {
     prebis = {
         head         = {
             item(28275, "Pathaleon the Calculator (The Mechanar) (Beast Lord Helm)", "dungeon"),
-            item(22438, "Quest: Cryptstalker Headpiece (Naxxramas) (Cryptstalker Headpiece)", "quest"),
+            item(22438, "Quest: Cryptstalker Headpiece (Naxxramas) (Cryptstalker Headpiece)", "quest", nil, 9056),
             item(31109, "Quest: Teron Gorefiend, I am.../ Teron Gorefiend, I am... - Karazhan (Stealther's Helmet of Second Sight)", "quest", nil, 10645),
             item(31281, "World Drop: The Outland (Mask of Veiled Death)", "world"),
             item(27414, "Exarch Maladaar (Auchenai Crypts) (Mok'Nathal Beast-Mask)", "dungeon"),
@@ -2380,7 +2380,7 @@ DB["HUNTER"]["Beast Mastery"] = {
         shoulder         = {
             item(27801, "Warlord Kalithresh (The Steamvault) (Beast Lord Mantle)", "dungeon"),
             item(25790, "Quest: Fel Embers (Expedition Scout's Epaulets)", "quest", nil, 9494),
-            item(22439, "Quest: Cryptstalker Spaulders (Naxxramas)/color (Cryptstalker Spaulders)", "quest"),
+            item(22439, "Quest: Cryptstalker Spaulders (Naxxramas)/color (Cryptstalker Spaulders)", "quest", nil, 9057),
             item(27797, "Avatar of the Martyred (H Auchenai Crypts) (Wastewalker Shoulderpads)", "heroic"),
             item(27434, "Epoch Hunter (Hold Hillsbrad Foothills) (Mantle of Perenolde)", "dungeon"),
         },
@@ -2396,41 +2396,41 @@ DB["HUNTER"]["Beast Mastery"] = {
             item(29525, "Elemental Leatherworking (Bind on Creation) (Primalstrike Vest)", "crafted"),
             item(29515, "Dragonscale Leatherworking (Bind on Creation) (Ebon Netherscale Breastplate)", "crafted"),
             item(30933, "Quest: Varedis Must Be Stopped (Hauberk of Karabor)", "quest", nil, 10692),
-            item(22436, "Quest: Cryptstalker Tunic (Naxxramas) (Cryptstalker Tunic)", "quest"),
+            item(22436, "Quest: Cryptstalker Tunic (Naxxramas) (Cryptstalker Tunic)", "quest", nil, 9054),
         },
         wrist         = {
             item(29527, "Elemental Leatherworking (Bind on Creation) (Primalstrike Bracers)", "crafted"),
             item(29246, "Epoch Hunter (Old Hillsbrad Foothills) (Nightfall Wristguards)", "dungeon"),
             item(25697, "Leatherworking (Felstalker Bracers)", "crafted"),
             item(29517, "Dragonscale Leatherworking (Bind on Creation) (Ebon Netherscale Bracers)", "crafted"),
-            item(22443, "Quest: Cryptstalker Wristguards (Naxxramas) (Cryptstalker Wristguards)", "quest"),
+            item(22443, "Quest: Cryptstalker Wristguards (Naxxramas) (Cryptstalker Wristguards)", "quest", nil, 9061),
         },
         hands         = {
             item(27474, "Warchief Kargath Bladefist - The Shattered Halls (Beast Lord Handguards)", "dungeon"),
             item(16463, "Vendor: Captain DirgehammerVendor: Lady Palanseer (Marshal's Chain Grips)", "dungeon"),
             item(30951, "The Cipher of Damnation - The Third Fragment Recovered (Ar'tor's Mainstay)", "dungeon"),
-            item(22441, "Quest: Cryptstalker Handguards (Naxxramas) (Cryptstalker Handguards)", "quest"),
-            item(30003, "Quest: Dealing with the Overmaster (Gloves of the Nether-Stalker)", "quest"),
+            item(22441, "Quest: Cryptstalker Handguards (Naxxramas) (Cryptstalker Handguards)", "quest", nil, 9059),
+            item(30003, "Quest: Dealing with the Overmaster (Gloves of the Nether-Stalker)", "quest", nil, 10318),
         },
         waist         = {
             item(29526, "Elemental Leatherworking (Bind on Creation) (Primalstrike Belt)", "crafted"),
             item(27760, "Ghaz'an (H The Underbog) (Dunewind Sash)", "heroic"),
             item(29516, "Dragonscale Leatherworking (Bind on Creation) (Ebon Netherscale Belt)", "crafted"),
             item(25695, "Leatherworking (Felstalker Belt)", "crafted"),
-            item(22442, "Quest: Cryptstalker Girdle (Naxxramas) (Cryptstalker Girdle)", "quest"),
+            item(22442, "Quest: Cryptstalker Girdle (Naxxramas) (Cryptstalker Girdle)", "quest", nil, 9060),
         },
         legs         = {
             item(27874, "Warlord Kalithresh (The Steamvault) (Beast Lord Leggings)", "dungeon"),
             item(30538, "Quagmirran (H The Slave Pens) (Midnight Legguards)", "heroic"),
             item(27837, "Nexus-Prince Shaffar (H Mana-Tombs) (Wastewalker Leggings)", "heroic"),
-            item(22437, "Quest: Cryptstalker Legguards (Naxxramas) (Cryptstalker Legguards)", "quest"),
+            item(22437, "Quest: Cryptstalker Legguards (Naxxramas) (Cryptstalker Legguards)", "quest", nil, 9055),
         },
         feet         = {
             item(25686, "Leatherworking (Fel Leather Boots)", "crafted"),
             item(31288, "World Drop: The Outland (The Master's Treads)", "world"),
-            item(22440, "Quest: Cryptstalker Boots (Naxxramas) (Cryptstalker Boots)", "quest"),
+            item(22440, "Quest: Cryptstalker Boots (Naxxramas) (Cryptstalker Boots)", "quest", nil, 9058),
             item(29262, "Warp Splinter (H The Botanica) (Boots of the Endless Hunt)", "heroic"),
-            item(30401, "Quest: A Fate Worse Than Death (Farahlite Studded Boots)", "quest"),
+            item(30401, "Quest: A Fate Worse Than Death (Farahlite Studded Boots)", "quest", nil, 10185),
         },
         neck         = {
             item(29381, "Vendor - 25 Badges of Justice (Choker of Vile Intent)", "raid"),
@@ -2736,7 +2736,7 @@ DB["ROGUE"]["Combat"] = {
             item(24259, "Tailoring (Vengeance Wrap)", "crafted"),
             item(27878, "Avatar of the Martyred (H Auchenai Crypts) (Auchenai Death Shroud)", "heroic"),
             item(29382, "Vendor - 25 Badges of Justice (Blood Knight War Cloak)", "raid"),
-            item(28032, "Quest: Bring Me The Egg! (Delicate Green Poncho)", "quest"),
+            item(28032, "Quest: Bring Me The Egg! (Delicate Green Poncho)", "quest", nil, 10111),
         },
         chest         = {
             item(28264, "Keli'dan the Breaker (H The Blood Furnace) (Wastewalker Tunic)", "heroic"),
@@ -2751,13 +2751,13 @@ DB["ROGUE"]["Combat"] = {
         hands         = {
             item(25685, "Leatherworking (Fel Leather Gloves)", "crafted"),
             item(27531, "Warchief Kargath Bladefist (The Shattered Halls) (Wastewalker Gloves)", "dungeon"),
-            item(30003, "Quest: Dealing with the Overmaster (Gloves of the Nether-Stalker)", "quest"),
+            item(30003, "Quest: Dealing with the Overmaster (Gloves of the Nether-Stalker)", "quest", nil, 10318),
         },
         waist         = {
             item(29247, "Aeonus (H The Black Morass) (Girdle of the Deathdealer)", "heroic"),
             item(29526, "Elemental Leatherworking (BoP) (Primalstrike Belt)", "crafted"),
             item(30372, "Quest: Turning Point (Socrethar's Girdle)", "quest", nil, 10507),
-            item(31464, "Quest: How to Break Into the Arcatraz (Naaru Belt of Precision)", "quest"),
+            item(31464, "Quest: How to Break Into the Arcatraz (Naaru Belt of Precision)", "quest", nil, 10704),
         },
         legs         = {
             item(27837, "Nexus-Prince Shaffar (H Mana-Tombs) (Wastewalker Leggings)", "heroic"),
@@ -2766,7 +2766,7 @@ DB["ROGUE"]["Combat"] = {
         },
         feet         = {
             item(25686, "Leatherworking (Fel Leather Boots)", "crafted"),
-            item(30939, "Quest: The Cipher of Damnation - The Third Fragment Recovered (Felboar Hide Shoes)", "quest"),
+            item(30939, "Quest: The Cipher of Damnation - The Third Fragment Recovered (Felboar Hide Shoes)", "quest", nil, 10579),
         },
         neck         = {
             item(29381, "Vendor - 25 Badges of Justice (Choker of Vile Intent)", "raid"),
@@ -2808,7 +2808,7 @@ DB["ROGUE"]["Combat"] = {
         ranged         = {
             item(29151, "Vendor: Logistics Officer Ulrike - Requires Exalted with Honor HoldVendor.. (Veteran's Musket)", "reputation"),
             item(30279, "Quest: Declawing Doomclaw (Mama's Insurance)", "quest", nil, 10235),
-            item(30227, "Quest: Mark V is Alive! (Mark V's Throwing Star)", "quest"),
+            item(30227, "Quest: Mark V is Alive! (Mark V's Throwing Star)", "quest", nil, 10191),
         },
     },
     phase1 = {
@@ -3018,7 +3018,7 @@ DB["ROGUE"]["Assassination"] = {
             item(24259, "Tailoring (Vengeance Wrap)", "crafted"),
             item(27878, "Avatar of the Martyred (H Auchenai Crypts) (Auchenai Death Shroud)", "heroic"),
             item(29382, "Vendor - 25 Badges of Justice (Blood Knight War Cloak)", "raid"),
-            item(28032, "Quest: Bring Me The Egg! (Delicate Green Poncho)", "quest"),
+            item(28032, "Quest: Bring Me The Egg! (Delicate Green Poncho)", "quest", nil, 10111),
         },
         chest         = {
             item(28264, "Keli'dan the Breaker (H The Blood Furnace) (Wastewalker Tunic)", "heroic"),
@@ -3033,13 +3033,13 @@ DB["ROGUE"]["Assassination"] = {
         hands         = {
             item(25685, "Leatherworking (Fel Leather Gloves)", "crafted"),
             item(27531, "Warchief Kargath Bladefist (The Shattered Halls) (Wastewalker Gloves)", "dungeon"),
-            item(30003, "Quest: Dealing with the Overmaster (Gloves of the Nether-Stalker)", "quest"),
+            item(30003, "Quest: Dealing with the Overmaster (Gloves of the Nether-Stalker)", "quest", nil, 10318),
         },
         waist         = {
             item(29247, "Aeonus (H The Black Morass) (Girdle of the Deathdealer)", "heroic"),
             item(29526, "Elemental Leatherworking (BoP) (Primalstrike Belt)", "crafted"),
             item(30372, "Quest: Turning Point (Socrethar's Girdle)", "quest", nil, 10507),
-            item(31464, "Quest: How to Break Into the Arcatraz (Naaru Belt of Precision)", "quest"),
+            item(31464, "Quest: How to Break Into the Arcatraz (Naaru Belt of Precision)", "quest", nil, 10704),
         },
         legs         = {
             item(27837, "Nexus-Prince Shaffar (H Mana-Tombs) (Wastewalker Leggings)", "heroic"),
@@ -3048,7 +3048,7 @@ DB["ROGUE"]["Assassination"] = {
         },
         feet         = {
             item(25686, "Leatherworking (Fel Leather Boots)", "crafted"),
-            item(30939, "Quest: The Cipher of Damnation - The Third Fragment Recovered (Felboar Hide Shoes)", "quest"),
+            item(30939, "Quest: The Cipher of Damnation - The Third Fragment Recovered (Felboar Hide Shoes)", "quest", nil, 10579),
         },
         neck         = {
             item(29381, "Vendor - 25 Badges of Justice (Choker of Vile Intent)", "raid"),
@@ -3090,7 +3090,7 @@ DB["ROGUE"]["Assassination"] = {
         ranged         = {
             item(29151, "Vendor: Logistics Officer Ulrike - Requires Exalted with Honor HoldVendor.. (Veteran's Musket)", "reputation"),
             item(30279, "Quest: Declawing Doomclaw (Mama's Insurance)", "quest", nil, 10235),
-            item(30227, "Quest: Mark V is Alive! (Mark V's Throwing Star)", "quest"),
+            item(30227, "Quest: Mark V is Alive! (Mark V's Throwing Star)", "quest", nil, 10191),
         },
     },
     phase1 = {
@@ -3329,7 +3329,7 @@ DB["PRIEST"]["Holy"] = {
             item(30543, "H Steamvault - Warlord Kalithresh (Pontifex Kilt)", "heroic"),
             item(31343, "World Drop (Kamaei's Cerulean Skirt)", "world"),
             item(28218, "H Old Hillsbrad - Captain Skarloc (Pontiff's Pantaloons of Prophecy)", "heroic"),
-            item(30256, "Quest: Special Delivery to Shattrath (Pants of the Naaru)", "quest"),
+            item(30256, "Quest: Special Delivery to Shattrath (Pants of the Naaru)", "quest", nil, 10280),
             item(24261, "Tailoring (Whitemend Pants)", "crafted"),
         },
         feet = {
@@ -3339,7 +3339,7 @@ DB["PRIEST"]["Holy"] = {
         },
         neck = {
             item(29374, "Vendor - 25 Badges of Justice (Necklace of Eternal Hope)", "raid"),
-            item(30377, "Quest: Shutting Down Manaforge Ara (Karja's Medallion)", "quest"),
+            item(30377, "Quest: Shutting Down Manaforge Ara (Karja's Medallion)", "quest", nil, 10323),
             item(31691, "Quest: The Hound-Master (Natasha's Guardian Cord)", "quest", nil, 10912),
         },
         ring1 = {
@@ -3592,7 +3592,7 @@ DB["PRIEST"]["Discipline"] = {
             item(30543, "H Steamvault - Warlord Kalithresh (Pontifex Kilt)", "heroic"),
             item(31343, "World Drop (Kamaei's Cerulean Skirt)", "world"),
             item(28218, "H Old Hillsbrad - Captain Skarloc (Pontiff's Pantaloons of Prophecy)", "heroic"),
-            item(30256, "Quest: Special Delivery to Shattrath (Pants of the Naaru)", "quest"),
+            item(30256, "Quest: Special Delivery to Shattrath (Pants of the Naaru)", "quest", nil, 10280),
             item(24261, "Tailoring (Whitemend Pants)", "crafted"),
         },
         feet = {
@@ -3602,7 +3602,7 @@ DB["PRIEST"]["Discipline"] = {
         },
         neck = {
             item(29374, "Vendor - 25 Badges of Justice (Necklace of Eternal Hope)", "raid"),
-            item(30377, "Quest: Shutting Down Manaforge Ara (Karja's Medallion)", "quest"),
+            item(30377, "Quest: Shutting Down Manaforge Ara (Karja's Medallion)", "quest", nil, 10323),
             item(31691, "Quest: The Hound-Master (Natasha's Guardian Cord)", "quest", nil, 10912),
         },
         ring1 = {
@@ -3841,7 +3841,7 @@ DB["PRIEST"]["Shadow"] = {
             item(24266, "Tailoring (Spellstrike Hood)", "crafted"),
             item(28804, "Gruul - Gruul (Collar of Cho'gall)", "raid"),
             item(29058, "Karazhan - Prince Malchezaar (Soul-Collar of the Incarnate)", "raid"),
-            item(31104, "Quest: Teron Gorefiend, I am... (Evoker's Helmet of Second Sight)", "quest"),
+            item(31104, "Quest: Teron Gorefiend, I am... (Evoker's Helmet of Second Sight)", "quest", nil, 10645),
         },
         shoulder = {
             item(21869, "Tailoring/Shadoweave (Frozen Shadoweave Shoulders)", "crafted"),
@@ -3904,7 +3904,7 @@ DB["PRIEST"]["Shadow"] = {
             item(20966, "Jewelcrafting (Jade Pendant of Blasting)", "crafted"),
             item(28245, "PvP - Honor (Pendant of Dominance)", "pvp"),
             item(18814, "MC - Ragnaros (Choker of the Fire Lord)", "raid"),
-            item(31693, "Quest: The Hound-Master (Natasha's Arcane Filament)", "quest"),
+            item(31693, "Quest: The Hound-Master (Natasha's Arcane Filament)", "quest", nil, 10912),
         },
         ring1 = {
             item(21709, "AQ40 - C'Thun (Ring of the Fallen God)", "raid"),
@@ -4148,7 +4148,7 @@ DB["MAGE"]["Fire"] = {
             item(28415, "Harbinger Skyriss (The Arcatraz) (Hood of Oblivion)", "dungeon"),
             item(28278, "Pathaleon the Calculator (The Mechanar) (Incanter's Cowl)", "dungeon"),
             item(24266, "Tailoring - can be purchased on the Auction House (Spellstrike Hood)", "crafted"),
-            item(28169, "Quest: Hero of the Mag'har (Mag'hari Ritualist's Horns)", "quest"),
+            item(28169, "Quest: Hero of the Mag'har (Mag'hari Ritualist's Horns)", "quest", nil, 10212),
         },
         shoulder         = {
             item(27796, "Quagmirran (H The Slave Pens) (Mana-Etched Spaulders)", "heroic"),
@@ -4212,13 +4212,13 @@ DB["MAGE"]["Fire"] = {
             item(28410, "Vendor: Honor Points (PvP) (General's Silk Footguards)", "pvp"),
             item(27821, "Tavarok (H Mana-Tombs) (Extravagant Boots of Malice)", "heroic"),
             item(29242, "Quagmirran (H The Slave Pens) (Boots of Blasphemy)", "heroic"),
-            item(22500, "Quest: Frostfire Sandals (Classic - Naxxramas) (Frostfire Sandals)", "quest"),
+            item(22500, "Quest: Frostfire Sandals (Classic - Naxxramas) (Frostfire Sandals)", "quest", nil, 9099),
         },
         neck         = {
             item(28134, "Blackheart the Inciter (Shadow Labyrinth) (Brooch of Heightened Potential)", "dungeon"),
             item(24121, "Profession Jewelcrafting can be purchased on the Auction House (Chain of the Twilight Owl)", "crafted"),
             item(24116, "Profession Jewelcrafting can be purchased on the Auction House (Eye of the Night)", "crafted"),
-            item(29333, "Quest: Brother Against Brother (Torc of the Sethekk Prophet)", "quest"),
+            item(29333, "Quest: Brother Against Brother (Torc of the Sethekk Prophet)", "quest", nil, 10097),
             item(31692, "Quest: The Hound-Master (Natasha's Ember Necklace)", "quest", nil, 10912),
             item(27758, "Ghaz'an (H The Underbog) (Hydra-fang Necklace)", "heroic"),
         },
@@ -4360,7 +4360,7 @@ DB["MAGE"]["Fire"] = {
             item(29126, "Vendor: Quartermaster Enuril (The Scryers Exalted) (Seer's Signet)", "dungeon"),
             item(23062, "Kel'Thuzad (Classic - Naxxramas) (Frostfire Ring)", "raid"),
             item(28227, "Epoch Hunter (H Old Hillsbrad Foothills) (Sparking Arcanite Ring)", "heroic"),
-            item(30366, "Quest: Shutting Down Manaforge Ara (Manastorm Band)", "quest"),
+            item(30366, "Quest: Shutting Down Manaforge Ara (Manastorm Band)", "quest", nil, 10365),
             item(29172, "Vendor: Fedryen Swiftspear (Cenarion Expedition Exalted) (Ashyen's Gift)", "dungeon"),
             item(28555, "Vendor: Spirit Sage Gartok / Spirit Sage Zran (50 Spirit Shard) (Seal of the Exorcist)", "raid"),
         },
@@ -4545,7 +4545,7 @@ DB["MAGE"]["Arcane"] = {
             item(28415, "Harbinger Skyriss (The Arcatraz) (Hood of Oblivion)", "dungeon"),
             item(28278, "Pathaleon the Calculator (The Mechanar) (Incanter's Cowl)", "dungeon"),
             item(24266, "Tailoring - can be purchased on the Auction House (Spellstrike Hood)", "crafted"),
-            item(28169, "Quest: Hero of the Mag'har (Mag'hari Ritualist's Horns)", "quest"),
+            item(28169, "Quest: Hero of the Mag'har (Mag'hari Ritualist's Horns)", "quest", nil, 10212),
         },
         shoulder         = {
             item(27796, "Quagmirran (H The Slave Pens) (Mana-Etched Spaulders)", "heroic"),
@@ -4609,13 +4609,13 @@ DB["MAGE"]["Arcane"] = {
             item(28410, "Vendor: Honor Points (PvP) (General's Silk Footguards)", "pvp"),
             item(27821, "Tavarok (H Mana-Tombs) (Extravagant Boots of Malice)", "heroic"),
             item(29242, "Quagmirran (H The Slave Pens) (Boots of Blasphemy)", "heroic"),
-            item(22500, "Quest: Frostfire Sandals (Classic - Naxxramas) (Frostfire Sandals)", "quest"),
+            item(22500, "Quest: Frostfire Sandals (Classic - Naxxramas) (Frostfire Sandals)", "quest", nil, 9099),
         },
         neck         = {
             item(28134, "Blackheart the Inciter (Shadow Labyrinth) (Brooch of Heightened Potential)", "dungeon"),
             item(24121, "Profession Jewelcrafting can be purchased on the Auction House (Chain of the Twilight Owl)", "crafted"),
             item(24116, "Profession Jewelcrafting can be purchased on the Auction House (Eye of the Night)", "crafted"),
-            item(29333, "Quest: Brother Against Brother (Torc of the Sethekk Prophet)", "quest"),
+            item(29333, "Quest: Brother Against Brother (Torc of the Sethekk Prophet)", "quest", nil, 10097),
             item(31692, "Quest: The Hound-Master (Natasha's Ember Necklace)", "quest", nil, 10912),
             item(27758, "Ghaz'an (H The Underbog) (Hydra-fang Necklace)", "heroic"),
         },
@@ -4757,7 +4757,7 @@ DB["MAGE"]["Arcane"] = {
             item(29126, "Vendor: Quartermaster Enuril (The Scryers Exalted) (Seer's Signet)", "dungeon"),
             item(23062, "Kel'Thuzad (Classic - Naxxramas) (Frostfire Ring)", "raid"),
             item(28227, "Epoch Hunter (H Old Hillsbrad Foothills) (Sparking Arcanite Ring)", "heroic"),
-            item(30366, "Quest: Shutting Down Manaforge Ara (Manastorm Band)", "quest"),
+            item(30366, "Quest: Shutting Down Manaforge Ara (Manastorm Band)", "quest", nil, 10365),
             item(29172, "Vendor: Fedryen Swiftspear (Cenarion Expedition Exalted) (Ashyen's Gift)", "dungeon"),
             item(28555, "Vendor: Spirit Sage Gartok / Spirit Sage Zran (50 Spirit Shard) (Seal of the Exorcist)", "raid"),
         },
@@ -4930,7 +4930,7 @@ DB["MAGE"]["Frost"] = {
             item(28415, "Harbinger Skyriss (The Arcatraz) (Hood of Oblivion)", "dungeon"),
             item(28278, "Pathaleon the Calculator (The Mechanar) (Incanter's Cowl)", "dungeon"),
             item(24266, "Tailoring - can be purchased on the Auction House (Spellstrike Hood)", "crafted"),
-            item(28169, "Quest: Hero of the Mag'har (Mag'hari Ritualist's Horns)", "quest"),
+            item(28169, "Quest: Hero of the Mag'har (Mag'hari Ritualist's Horns)", "quest", nil, 10212),
         },
         shoulder         = {
             item(27796, "Quagmirran (H The Slave Pens) (Mana-Etched Spaulders)", "heroic"),
@@ -4994,13 +4994,13 @@ DB["MAGE"]["Frost"] = {
             item(28410, "Vendor: Honor Points (PvP) (General's Silk Footguards)", "pvp"),
             item(27821, "Tavarok (H Mana-Tombs) (Extravagant Boots of Malice)", "heroic"),
             item(29242, "Quagmirran (H The Slave Pens) (Boots of Blasphemy)", "heroic"),
-            item(22500, "Quest: Frostfire Sandals (Classic - Naxxramas) (Frostfire Sandals)", "quest"),
+            item(22500, "Quest: Frostfire Sandals (Classic - Naxxramas) (Frostfire Sandals)", "quest", nil, 9099),
         },
         neck         = {
             item(28134, "Blackheart the Inciter (Shadow Labyrinth) (Brooch of Heightened Potential)", "dungeon"),
             item(24121, "Profession Jewelcrafting can be purchased on the Auction House (Chain of the Twilight Owl)", "crafted"),
             item(24116, "Profession Jewelcrafting can be purchased on the Auction House (Eye of the Night)", "crafted"),
-            item(29333, "Quest: Brother Against Brother (Torc of the Sethekk Prophet)", "quest"),
+            item(29333, "Quest: Brother Against Brother (Torc of the Sethekk Prophet)", "quest", nil, 10097),
             item(31692, "Quest: The Hound-Master (Natasha's Ember Necklace)", "quest", nil, 10912),
             item(27758, "Ghaz'an (H The Underbog) (Hydra-fang Necklace)", "heroic"),
         },
@@ -5142,7 +5142,7 @@ DB["MAGE"]["Frost"] = {
             item(29126, "Vendor: Quartermaster Enuril (The Scryers Exalted) (Seer's Signet)", "dungeon"),
             item(23062, "Kel'Thuzad (Classic - Naxxramas) (Frostfire Ring)", "raid"),
             item(28227, "Epoch Hunter (H Old Hillsbrad Foothills) (Sparking Arcanite Ring)", "heroic"),
-            item(30366, "Quest: Shutting Down Manaforge Ara (Manastorm Band)", "quest"),
+            item(30366, "Quest: Shutting Down Manaforge Ara (Manastorm Band)", "quest", nil, 10365),
             item(29172, "Vendor: Fedryen Swiftspear (Cenarion Expedition Exalted) (Ashyen's Gift)", "dungeon"),
             item(28555, "Vendor: Spirit Sage Gartok / Spirit Sage Zran (50 Spirit Shard) (Seal of the Exorcist)", "raid"),
         },
@@ -5327,14 +5327,14 @@ DB["WARLOCK"]["Destruction"] = {
     prebis = {
         head         = {
             item(24266, "Tailoring - can be purchased on the Auction House (Spellstrike Hood)", "crafted"),
-            item(31104, "Quest: Teron Gorefiend, I am... (Evoker's Helmet of Second Sight)", "quest"),
+            item(31104, "Quest: Teron Gorefiend, I am... (Evoker's Helmet of Second Sight)", "quest", nil, 10645),
             item(28278, "Pathaleon the Calculator (The Mechanar) (Incanter's Cowl)", "dungeon"),
             item(28415, "Harbinger Skyriss (The Arcatraz) (Hood of Oblivion)", "dungeon"),
-            item(28169, "Quest: Hero of the Mag'har (Mag'hari Ritualist's Horns)", "quest"),
+            item(28169, "Quest: Hero of the Mag'har (Mag'hari Ritualist's Horns)", "quest", nil, 10212),
         },
         shoulder         = {
             item(21869, "Tailoring (Shadoweave Tailor) - BoP only (Frozen Shadoweave Shoulders)", "crafted"),
-            item(22507, "Quest: Plagueheart Shoulderpads (Classic - Naxxramas) (Plagueheart Shoulderpads)", "quest"),
+            item(22507, "Quest: Plagueheart Shoulderpads (Classic - Naxxramas) (Plagueheart Shoulderpads)", "quest", nil, 9106),
             item(27796, "Quagmirran (H The Slave Pens) (Mana-Etched Spaulders)", "heroic"),
             item(27994, "Chrono Lord Deja (The Black Morass) (Mantle of Three Terrors)", "dungeon"),
             item(30925, "Quest: The Cipher of Damnation - The Third Fragment Recovered (Spaulders of the Torn-heart)", "quest", nil, 10579),
@@ -5354,7 +5354,7 @@ DB["WARLOCK"]["Destruction"] = {
             item(28191, "Epoch Hunter (H Old Hillsbrad Foothills) (Mana-Etched Vestments)", "heroic"),
         },
         wrist         = {
-            item(21186, "Quest: Stalwart's Battlegear (Classic - Ahn'Qiraj) (Rockfury Bracers)", "quest"),
+            item(21186, "Quest: Stalwart's Battlegear (Classic - Ahn'Qiraj) (Rockfury Bracers)", "quest", nil, 8574),
             item(24250, "Tailoring - can be purchased on the Auction House (Bracers of Havok)", "crafted"),
             item(27462, "Omor the Unscarred (H Hellfire Ramparts) (Crimson Bracers of Gloom)", "heroic"),
         },
@@ -5386,7 +5386,7 @@ DB["WARLOCK"]["Destruction"] = {
             item(27821, "Tavarok (H Mana-Tombs) (Extravagant Boots of Malice)", "heroic"),
             item(28406, "Harbinger Skyriss (The Arcatraz) (Sigil-Laced Boots)", "dungeon"),
             item(28179, "Quest: Into the Heart of the Labyrinth (Shadow Labyrinth) (Shattrath Jumpers)", "quest", nil, 10095),
-            item(22508, "Quest: Plagueheart Sandals (Classic - Naxxramas) (Plagueheart Sandals)", "quest"),
+            item(22508, "Quest: Plagueheart Sandals (Classic - Naxxramas) (Plagueheart Sandals)", "quest", nil, 9107),
         },
         neck         = {
             item(28134, "Blackheart the Inciter (Shadow Labyrinth) (Brooch of Heightened Potential)", "dungeon"),
@@ -5653,14 +5653,14 @@ DB["WARLOCK"]["Affliction"] = {
     prebis = {
         head         = {
             item(24266, "Tailoring - can be purchased on the Auction House (Spellstrike Hood)", "crafted"),
-            item(31104, "Quest: Teron Gorefiend, I am... (Evoker's Helmet of Second Sight)", "quest"),
+            item(31104, "Quest: Teron Gorefiend, I am... (Evoker's Helmet of Second Sight)", "quest", nil, 10645),
             item(28278, "Pathaleon the Calculator (The Mechanar) (Incanter's Cowl)", "dungeon"),
             item(28415, "Harbinger Skyriss (The Arcatraz) (Hood of Oblivion)", "dungeon"),
-            item(28169, "Quest: Hero of the Mag'har (Mag'hari Ritualist's Horns)", "quest"),
+            item(28169, "Quest: Hero of the Mag'har (Mag'hari Ritualist's Horns)", "quest", nil, 10212),
         },
         shoulder         = {
             item(21869, "Tailoring (Shadoweave Tailor) - BoP only (Frozen Shadoweave Shoulders)", "crafted"),
-            item(22507, "Quest: Plagueheart Shoulderpads (Classic - Naxxramas) (Plagueheart Shoulderpads)", "quest"),
+            item(22507, "Quest: Plagueheart Shoulderpads (Classic - Naxxramas) (Plagueheart Shoulderpads)", "quest", nil, 9106),
             item(27796, "Quagmirran (H The Slave Pens) (Mana-Etched Spaulders)", "heroic"),
             item(27994, "Chrono Lord Deja (The Black Morass) (Mantle of Three Terrors)", "dungeon"),
             item(30925, "Quest: The Cipher of Damnation - The Third Fragment Recovered (Spaulders of the Torn-heart)", "quest", nil, 10579),
@@ -5680,7 +5680,7 @@ DB["WARLOCK"]["Affliction"] = {
             item(28191, "Epoch Hunter (H Old Hillsbrad Foothills) (Mana-Etched Vestments)", "heroic"),
         },
         wrist         = {
-            item(21186, "Quest: Stalwart's Battlegear (Classic - Ahn'Qiraj) (Rockfury Bracers)", "quest"),
+            item(21186, "Quest: Stalwart's Battlegear (Classic - Ahn'Qiraj) (Rockfury Bracers)", "quest", nil, 8574),
             item(24250, "Tailoring - can be purchased on the Auction House (Bracers of Havok)", "crafted"),
             item(27462, "Omor the Unscarred (H Hellfire Ramparts) (Crimson Bracers of Gloom)", "heroic"),
         },
@@ -5712,7 +5712,7 @@ DB["WARLOCK"]["Affliction"] = {
             item(27821, "Tavarok (H Mana-Tombs) (Extravagant Boots of Malice)", "heroic"),
             item(28406, "Harbinger Skyriss (The Arcatraz) (Sigil-Laced Boots)", "dungeon"),
             item(28179, "Quest: Into the Heart of the Labyrinth (Shadow Labyrinth) (Shattrath Jumpers)", "quest", nil, 10095),
-            item(22508, "Quest: Plagueheart Sandals (Classic - Naxxramas) (Plagueheart Sandals)", "quest"),
+            item(22508, "Quest: Plagueheart Sandals (Classic - Naxxramas) (Plagueheart Sandals)", "quest", nil, 9107),
         },
         neck         = {
             item(28134, "Blackheart the Inciter (Shadow Labyrinth) (Brooch of Heightened Potential)", "dungeon"),
@@ -5976,14 +5976,14 @@ DB["WARLOCK"]["Demonology"] = {
     prebis = {
         head         = {
             item(24266, "Tailoring - can be purchased on the Auction House (Spellstrike Hood)", "crafted"),
-            item(31104, "Quest: Teron Gorefiend, I am... (Evoker's Helmet of Second Sight)", "quest"),
+            item(31104, "Quest: Teron Gorefiend, I am... (Evoker's Helmet of Second Sight)", "quest", nil, 10645),
             item(28278, "Pathaleon the Calculator (The Mechanar) (Incanter's Cowl)", "dungeon"),
             item(28415, "Harbinger Skyriss (The Arcatraz) (Hood of Oblivion)", "dungeon"),
-            item(28169, "Quest: Hero of the Mag'har (Mag'hari Ritualist's Horns)", "quest"),
+            item(28169, "Quest: Hero of the Mag'har (Mag'hari Ritualist's Horns)", "quest", nil, 10212),
         },
         shoulder         = {
             item(21869, "Tailoring (Shadoweave Tailor) - BoP only (Frozen Shadoweave Shoulders)", "crafted"),
-            item(22507, "Quest: Plagueheart Shoulderpads (Classic - Naxxramas) (Plagueheart Shoulderpads)", "quest"),
+            item(22507, "Quest: Plagueheart Shoulderpads (Classic - Naxxramas) (Plagueheart Shoulderpads)", "quest", nil, 9106),
             item(27796, "Quagmirran (H The Slave Pens) (Mana-Etched Spaulders)", "heroic"),
             item(27994, "Chrono Lord Deja (The Black Morass) (Mantle of Three Terrors)", "dungeon"),
             item(30925, "Quest: The Cipher of Damnation - The Third Fragment Recovered (Spaulders of the Torn-heart)", "quest", nil, 10579),
@@ -6003,7 +6003,7 @@ DB["WARLOCK"]["Demonology"] = {
             item(28191, "Epoch Hunter (H Old Hillsbrad Foothills) (Mana-Etched Vestments)", "heroic"),
         },
         wrist         = {
-            item(21186, "Quest: Stalwart's Battlegear (Classic - Ahn'Qiraj) (Rockfury Bracers)", "quest"),
+            item(21186, "Quest: Stalwart's Battlegear (Classic - Ahn'Qiraj) (Rockfury Bracers)", "quest", nil, 8574),
             item(24250, "Tailoring - can be purchased on the Auction House (Bracers of Havok)", "crafted"),
             item(27462, "Omor the Unscarred (H Hellfire Ramparts) (Crimson Bracers of Gloom)", "heroic"),
         },
@@ -6035,7 +6035,7 @@ DB["WARLOCK"]["Demonology"] = {
             item(27821, "Tavarok (H Mana-Tombs) (Extravagant Boots of Malice)", "heroic"),
             item(28406, "Harbinger Skyriss (The Arcatraz) (Sigil-Laced Boots)", "dungeon"),
             item(28179, "Quest: Into the Heart of the Labyrinth (Shadow Labyrinth) (Shattrath Jumpers)", "quest", nil, 10095),
-            item(22508, "Quest: Plagueheart Sandals (Classic - Naxxramas) (Plagueheart Sandals)", "quest"),
+            item(22508, "Quest: Plagueheart Sandals (Classic - Naxxramas) (Plagueheart Sandals)", "quest", nil, 9107),
         },
         neck         = {
             item(28134, "Blackheart the Inciter (Shadow Labyrinth) (Brooch of Heightened Potential)", "dungeon"),
@@ -6306,8 +6306,8 @@ DB["DRUID"]["Balance"] = {
     prebis = {
         head         = {
             item(24266, "Tailoring â can be purchased on the Auction House (Spellstrike Hood)", "crafted"),
-            item(31110, "Quest: Teron Gorefiend, I am... (Druidic Helmet of Second Sight)", "quest"),
-            item(28169, "Quest: Hero of the Mag'har (Mag'hari Ritualist's Horns)", "quest"),
+            item(31110, "Quest: Teron Gorefiend, I am... (Druidic Helmet of Second Sight)", "quest", nil, 10639),
+            item(28169, "Quest: Hero of the Mag'har (Mag'hari Ritualist's Horns)", "quest", nil, 10212),
             item(32089, "Vendor: Badges of Justice (Mana-Binders Cowl)", "raid"),
             item(28137, "Vendor: Arena Points (Season 1) (Gladiator's Wyrmhide Helm)", "pvp"),
             item(28278, "Pathaleon the Calculator (The Mechanar) (Incanter's Cowl)", "dungeon"),
@@ -6364,7 +6364,7 @@ DB["DRUID"]["Balance"] = {
             item(24262, "Tailoring - can be purchased on the Auction House (Spellstrike Pants)", "crafted"),
             item(29141, "Vendor: Provisioner Nasela / Trader Narasu (The Mag'har / Kurenai Revered) (Tempest Leggings)", "dungeon"),
             item(30531, "Aeonus (H The Black Morass) (Breeches of the Occultist)", "heroic"),
-            item(29343, "Quest: Undercutting the Competition (Haramad's Leggings of the Third Coin)", "quest"),
+            item(29343, "Quest: Undercutting the Competition (Haramad's Leggings of the Third Coin)", "quest", nil, 10165),
             item(30532, "Murmur (H Shadow Labyrinth) (Kirin Tor Master's Trousers)", "heroic"),
             item(28212, "Lieutenant Drake (H Old Hillsbrad Foothills) (Aran's Sorcerous Slacks)", "heroic"),
         },
@@ -6373,15 +6373,15 @@ DB["DRUID"]["Balance"] = {
             item(28406, "Harbinger Skyriss (The Arcatraz) (Sigil-Laced Boots)", "dungeon"),
             item(28179, "Quest: Into the Heart of the Labyrinth (Shattrath Jumpers)", "quest", nil, 10095),
             item(28410, "Vendor: 16800 Honor Points + 40 Eye of the Storm Mark of Honor (PvP) (General's Silk Footguards)", "pvp"),
-            item(29808, "Quest: Securing the Celestial Ridge (Shimmering Azure Boots)", "quest"),
-            item(30519, "Quest: The Flesh Lies... (Boots of the Nexus Warden)", "quest"),
+            item(29808, "Quest: Securing the Celestial Ridge (Shimmering Azure Boots)", "quest", nil, 10274),
+            item(30519, "Quest: The Flesh Lies... (Boots of the Nexus Warden)", "quest", nil, 10345),
         },
         neck         = {
             item(28134, "Blackheart the Inciter (Shadow Labyrinth) (Brooch of Heightened Potential)", "dungeon"),
             item(27758, "Ghaz'an (H The Underbog) (Hydra-fang Necklace)", "heroic"),
             item(31692, "Quest: The Hound-Master (Natasha's Ember Necklace)", "quest", nil, 10912),
             item(28245, "Vendor: 1800 Honor Points + 10 Eye of the Storm Mark of Honor (PvP) (Pendant of Dominance)", "pvp"),
-            item(29333, "Quest: Brother Against Brother (Torc of the Sethekk Prophet)", "quest"),
+            item(29333, "Quest: Brother Against Brother (Torc of the Sethekk Prophet)", "quest", nil, 10097),
             item(24462, "Ghaz'an (The Underbog) (Luminous Pearls of Insight)", "dungeon"),
         },
         ring1         = {
@@ -6406,7 +6406,7 @@ DB["DRUID"]["Balance"] = {
             item(23046, "Sapphiron (Classic - Naxxramas) (The Restrained Essence of Sapphiron)", "raid"),
             item(28223, "Epoch Hunter (H Old Hillsbrad Foothills) (Arcanist's Stone)", "heroic"),
             item(26055, "Shirrak the Dead Watcher (Auchenai Crypts) (Oculus of the Hidden Eye)", "dungeon"),
-            item(30340, "Quest: The Horrors of Pollution (Starkiller's Bauble)", "quest"),
+            item(30340, "Quest: The Horrors of Pollution (Starkiller's Bauble)", "quest", nil, 10413),
         },
         mainhand         = {
             item(23554, "Blacksmithing - can be purchased on the Auction House (Eternium Runed Blade)", "crafted"),
@@ -6432,7 +6432,7 @@ DB["DRUID"]["Balance"] = {
             item(28744, "Netherspite (Karazhan) (Uni-Mind Headdress)", "raid"),
             item(23828, "Engineering - BoP only (Gnomish Power Goggles)", "crafted"),
             item(24266, "Tailoring - can be purchased on the Auction House (Spellstrike Hood)", "crafted"),
-            item(31110, "Quest: Teron Gorefiend, I am... (Druidic Helmet of Second Sight)", "quest"),
+            item(31110, "Quest: Teron Gorefiend, I am... (Druidic Helmet of Second Sight)", "quest", nil, 10639),
             item(28804, "Gruul the Dragonkiller (Gruul's Lair) (Collar of Cho'gall)", "raid"),
         },
         shoulder         = {
@@ -6489,7 +6489,7 @@ DB["DRUID"]["Balance"] = {
             item(28594, "Barnes (Karazhan) (Trial-Fire Trousers)", "raid"),
             item(29141, "Vendor: Provisioner Nasela / Trader Narasu (The Mag'har / Kurenai Revered) (Tempest Leggings)", "dungeon"),
             item(30531, "Aeonus (H Black Morass) (Breeches of the Occultist)", "heroic"),
-            item(29343, "Quest: Undercutting the Competition (Haramad's Leggings of the Third Coin)", "quest"),
+            item(29343, "Quest: Undercutting the Competition (Haramad's Leggings of the Third Coin)", "quest", nil, 10165),
         },
         feet         = {
             item(28517, "Maiden of Virtue (Karazhan) (Boots of Foretelling)", "raid"),
@@ -6519,7 +6519,7 @@ DB["DRUID"]["Balance"] = {
             item(29352, "Nexus-Prince Shaffar (H Mana-Tombs) (Cobalt Band of Tyrigosa)", "heroic"),
             item(29367, "Vendor: G'eras (Badges of Justice) (Ring of Cryptic Dreams)", "raid"),
             item(29126, "Vendor: Quartermaster Enuril (The Scryers Exalted) (Seer's Signet)", "dungeon"),
-            item(31075, "Quest: Dissension Amongst the Ranks... (Evoker's Mark of the Redemption)", "quest"),
+            item(31075, "Quest: Dissension Amongst the Ranks... (Evoker's Mark of the Redemption)", "quest", nil, 10776),
         },
         trinket1         = {
             item(29370, "Vendor: G'eras (Badges of Justice) (Icon of the Silver Crescent)", "raid"),
@@ -6530,10 +6530,10 @@ DB["DRUID"]["Balance"] = {
         trinket2         = {
             item(28223, "Epoch Hunter (H Old Hillsbrad Foothills) (Arcanist's Stone)", "heroic"),
             item(26055, "Shirrak the Dead Watcher (Auchenai Crypts) (Oculus of the Hidden Eye)", "dungeon"),
-            item(30340, "Quest: The Horrors of Pollution (Starkiller's Bauble)", "quest"),
-            item(25936, "Quest: Torgos! (Terokkar Tablet of Vim)", "quest"),
-            item(25620, "Quest: A Spirit Ally? (Ancient Crystal Talisman)", "quest"),
-            item(25619, "Quest: Overlord Gorefist (Glowing Crystal Insignia)", "quest"),
+            item(30340, "Quest: The Horrors of Pollution (Starkiller's Bauble)", "quest", nil, 10413),
+            item(25936, "Quest: Torgos! (Terokkar Tablet of Vim)", "quest", nil, 10035),
+            item(25620, "Quest: A Spirit Ally? (Ancient Crystal Talisman)", "quest", nil, 9847),
+            item(25619, "Quest: Overlord Gorefist (Glowing Crystal Insignia)", "quest", nil, 9839),
         },
         mainhand         = {
             item(28770, "Prince Malchezaar (Karazhan) (Nathrezim Mindblade)", "raid"),
@@ -6727,7 +6727,7 @@ DB["DRUID"]["Restoration"] = {
             item(29506, "Leatherworking - can be purchased on the Auction House (Gloves of the Living Touch)", "crafted"),
             item(31375, "Vendor: Arena Points (Season 1) (Gladiator's Kodohide Gloves)", "pvp"),
             item(24393, "Broggok (The Blood Furnace) (Bloody Surgeon's Mitts)", "dungeon"),
-            item(29327, "Quest: Someone Else's Hard Work Pays Off (Mana-Tombs) (Cryo-mitts)", "quest"),
+            item(29327, "Quest: Someone Else's Hard Work Pays Off (Mana-Tombs) (Cryo-mitts)", "quest", nil, 10218),
             item(28268, "Avatar of the Martyred (Auchenai Crypts) (Natural Mender's Wraps)", "dungeon"),
             item(28304, "Commander Sarannis (The Botanica) (Prismatic Mittens of Mending)", "dungeon"),
         },
@@ -6750,13 +6750,13 @@ DB["DRUID"]["Restoration"] = {
         feet         = {
             item(27411, "Exarch Maladaar (Auchenai Crypts) (Slippers of Serenity)", "dungeon"),
             item(29251, "Pathaleon the Calculator (H The Mechanar) (Boots of the Pious)", "heroic"),
-            item(25792, "Quest: Fel Embers (The Shattered Halls) (Curate's Boots)", "quest"),
+            item(25792, "Quest: Fel Embers (The Shattered Halls) (Curate's Boots)", "quest", nil, 9494),
             item(31595, "Vendor: Honor Points (PvP) (General's Kodohide Boots)", "pvp"),
             item(28251, "Cache of the Legion (The Mechanar) (Boots of the Glade-Keeper)", "dungeon"),
             item(27525, "Warbringer O'mrogg (The Shattered Halls) (Jeweled Boots of Sanctification)", "dungeon"),
         },
         neck         = {
-            item(30377, "Quest: Shutting Down Manaforge Ara (Karja's Medallion)", "quest"),
+            item(30377, "Quest: Shutting Down Manaforge Ara (Karja's Medallion)", "quest", nil, 10323),
             item(31691, "Quest: The Hound-Master (Natasha's Guardian Cord)", "quest", nil, 10912),
             item(29374, "Vendor: G'eras (Badges of Justice) (Necklace of Eternal Hope)", "raid"),
             item(23036, "Heigan the Unclean (Classic - Naxxramas) (Necklace of Necropsy)", "raid"),
@@ -6876,14 +6876,14 @@ DB["DRUID"]["Restoration"] = {
             item(28663, "Shade of Aran (Karazhan) (Boots of the Incorrupt)", "raid"),
             item(27411, "Exarch Maladaar (Auchenai Crypts) (Slippers of Serenity)", "dungeon"),
             item(29251, "Pathaleon the Calculator (H The Mechanar) (Boots of the Pious)", "heroic"),
-            item(25792, "Quest: Fel Embers (Curate's Boots)", "quest"),
+            item(25792, "Quest: Fel Embers (Curate's Boots)", "quest", nil, 9494),
         },
         neck         = {
             item(30726, "Doomwalker (World Boss) (Archaic Charm of Presence)", "world"),
             item(28822, "Gruul the Dragonkiller (Gruul's Lair) (Teeth of Gruul)", "raid"),
             item(28609, "Nightbane (Karazhan) (Emberspur Talisman)", "raid"),
             item(28731, "Netherspite (Karazhan) (Shining Chain of the Afterworld)", "raid"),
-            item(30377, "Quest: Shutting Down Manaforge Ara (Karja's Medallion)", "quest"),
+            item(30377, "Quest: Shutting Down Manaforge Ara (Karja's Medallion)", "quest", nil, 10323),
             item(31691, "Quest: The Hound-Master (Natasha's Guardian Cord)", "quest", nil, 10912),
         },
         ring1         = {
@@ -7188,7 +7188,7 @@ DB["DRUID"]["Feral - Tank"] = {
         offhand = nil,  -- Druids use 2H weapons in Feral
         ranged = {
             item(23198, "Stratholme - Magistrate Barthilas (Idol of Brutality)", "dungeon"),
-            item(28064, "Quest: Colossal Menace (Idol of the Wild)", "quest"),
+            item(28064, "Quest: Colossal Menace (Idol of the Wild)", "quest", nil, 10132),
             item(27744, "H Underbog - Hungarfen (Idol of Ursoc)", "heroic"),
         },
     },
@@ -7325,7 +7325,7 @@ DB["DRUID"]["Feral - Tank"] = {
         offhand = nil,
         ranged = {
             item(23198, "Stratholme - Magistrate Barthilas (Idol of Brutality)", "dungeon"),
-            item(28064, "Quest: Colossal Menace (Idol of the Wild)", "quest"),
+            item(28064, "Quest: Colossal Menace (Idol of the Wild)", "quest", nil, 10132),
             item(33945, "Arena Points - 500 (Gladiator's Idol of Resolve)", "pvp"),
             item(27744, "H Underbog - Hungarfen (Idol of Ursoc)", "heroic"),
         },
@@ -7467,14 +7467,14 @@ DB["DRUID"]["Feral - DPS"] = {
             item(24259, "Tailoring (BoE) (Vengeance Wrap)", "crafted"),
             item(27878, "Avatar of the Martyred (H Auchenai Crypts) (Auchenai Death Shroud)", "heroic"),
             item(29382, "Vendor - 25 Badges of Justice (Blood Knight War Cloak)", "raid"),
-            item(28031, "Quest: Bring Me The Egg! (Nomad's Woven Cloak)", "quest"),
-            item(28032, "Quest: Bring Me The Egg! (Delicate Green Poncho)", "quest"),
+            item(28031, "Quest: Bring Me The Egg! (Nomad's Woven Cloak)", "quest", nil, 10111),
+            item(28032, "Quest: Bring Me The Egg! (Delicate Green Poncho)", "quest", nil, 10111),
         },
         chest         = {
             item(29525, "Elemental Leatherworking (BoP) (Primalstrike Vest)", "crafted"),
             item(28204, "Pathaleon the Calculator (The Mechanar) (Tunic of Assassination)", "dungeon"),
             item(24396, "Keli'dan the Breaker (The Blood Furnace) (Vest of Vengeance)", "dungeon"),
-            item(29340, "Quest: Everything Will Be Alright (Auchenai Monk's Tunic)", "quest"),
+            item(29340, "Quest: Everything Will Be Alright (Auchenai Monk's Tunic)", "quest", nil, 10164),
         },
         wrist         = {
             item(29246, "Epoch Hunter (H Old Hillsbrad Foothills) (Nightfall Wristguards)", "heroic"),
@@ -7491,7 +7491,7 @@ DB["DRUID"]["Feral - DPS"] = {
             item(29247, "Aeonus (H The Black Morass) (Girdle of the Deathdealer)", "heroic"),
             item(30372, "Quest: Turning Point (Socrethar's Girdle)", "quest", nil, 10507),
             item(27911, "Epoch Hunter (H Old Hillsbrad Foothills) (Epoch's Whispering Cinch)", "heroic"),
-            item(31464, "Quest: How to Break Into the Arcatraz (Naaru Belt of Precision)", "quest"),
+            item(31464, "Quest: How to Break Into the Arcatraz (Naaru Belt of Precision)", "quest", nil, 10704),
             item(27760, "Ghaz'an (H The Underbog) (Dunewind Sash)", "heroic"),
         },
         legs         = {
@@ -7506,7 +7506,7 @@ DB["DRUID"]["Feral - DPS"] = {
             item(25686, "Leatherworking (BoE) (Fel Leather Boots)", "crafted"),
             item(31288, "World Drop: The Outland (The Master's Treads)", "world"),
             item(29248, "Harbinger Skyriss (H The Arcatraz) (Shadowstep Striders)", "heroic"),
-            item(30939, "Quest: The Cipher of Damnation - The Third Fragment Recovered (Felboar Hide Shoes)", "quest"),
+            item(30939, "Quest: The Cipher of Damnation - The Third Fragment Recovered (Felboar Hide Shoes)", "quest", nil, 10579),
         },
         neck         = {
             item(24114, "Braided Eternium Chain - Jewelcrafting (360) (Braided Eternium Chain)", "crafted"),
@@ -7519,7 +7519,7 @@ DB["DRUID"]["Feral - DPS"] = {
         ring1         = {
             item(30834, "Vendor: Nakodu - Requires Exalted with Lower City (Shapeshifter's Signet)", "reputation"),
             item(31920, "Yor (H Mana-Tombs) (Shaffar's Band of Brutality)", "heroic"),
-            item(30365, "Quest: Shutting Down Manaforge Ara (Overseer's Signet)", "quest"),
+            item(30365, "Quest: Shutting Down Manaforge Ara (Overseer's Signet)", "quest", nil, 10323),
             item(27925, "Talon King Ikiss (Sethekk Halls) (Ravenclaw Band)", "dungeon"),
         },
         ring2         = {
@@ -7609,7 +7609,7 @@ DB["DRUID"]["Feral - DPS"] = {
             item(25686, "Leatherworking (BoE) (Fel Leather Boots)", "crafted"),
             item(31288, "World Drop: The Outland (The Master's Treads)", "world"),
             item(29248, "Harbinger Skyriss (H The Arcatraz) (Shadowstep Striders)", "heroic"),
-            item(30939, "Quest: The Cipher of Damnation - The Third Fragment Recovered (Felboar Hide Shoes)", "quest"),
+            item(30939, "Quest: The Cipher of Damnation - The Third Fragment Recovered (Felboar Hide Shoes)", "quest", nil, 10579),
         },
         neck         = {
             item(24114, "Braided Eternium Chain - Jewelcrafting (360) (Braided Eternium Chain)", "crafted"),
@@ -7627,7 +7627,7 @@ DB["DRUID"]["Feral - DPS"] = {
         },
         ring2         = {
             item(30738, "Doom Lord Kazzak (World Boss in Shadowmoon Valley) (Ring of Reciprocity)", "world"),
-            item(30365, "Quest: Shutting Down Manaforge Ara (Overseer's Signet)", "quest"),
+            item(30365, "Quest: Shutting Down Manaforge Ara (Overseer's Signet)", "quest", nil, 10323),
             item(29283, "Quest: Path of the Violet Assassin - Requires Exalted with The Violet Eye (Violet Signet of the Master Assassin)", "reputation"),
             item(27925, "Talon King Ikiss (Sethekk Halls) (Ravenclaw Band)", "dungeon"),
         },
@@ -8102,7 +8102,7 @@ DB["SHAMAN"]["Elemental"] = {
             item(28278, "Mechanar - Pathaleon (Incanter's Cowl)", "dungeon"),
             item(24266, "Tailoring (Spellstrike Hood)", "crafted"),
             item(31330, "World Drop (Lightning Crown)", "world"),
-            item(31107, "Quest: Teron Gorefiend, I am... (Shamanistic Helmet of Second Sight)", "quest"),
+            item(31107, "Quest: Teron Gorefiend, I am... (Shamanistic Helmet of Second Sight)", "quest", nil, 10639),
         },
         shoulder = {
             item(32078, "H Slave Pens - Quagmirran (Pauldrons of Wild Magic)", "heroic"),
@@ -8151,7 +8151,7 @@ DB["SHAMAN"]["Elemental"] = {
         neck = {
             item(31692, "Quest: The Hound-Master (Natasha's Ember Necklace)", "quest", nil, 10912),
             item(28134, "Shadow Labyrinth - Blackheart the Inciter (Brooch of Heightened Potential)", "dungeon"),
-            item(29333, "Quest: Brother Against Brother (Torc of the Sethekk Prophet)", "quest"),
+            item(29333, "Quest: Brother Against Brother (Torc of the Sethekk Prophet)", "quest", nil, 10097),
         },
         ring1 = {
             item(29126, "Scryers Exalted (Seer's Signet)", "reputation"),
@@ -8409,7 +8409,7 @@ DB["SHAMAN"]["Enhancement"] = {
             item(27797, "H Auchenai Crypts - Avatar of the Martyred (Wastewalker Shoulderpads)", "heroic"),
             item(27434, "Old Hillsbrad - Epoch Hunter (Mantle of Perenolde)", "dungeon"),
             item(27801, "H Steamvault - Warlord Kalithresh (Beast Lord Mantle)", "heroic"),
-            item(32868, "Quest: A Job Unfinished (Skybreaker's Mantle)", "quest"),
+            item(32868, "Quest: A Job Unfinished (Skybreaker's Mantle)", "quest", nil, 11041),
             item(25999, "PvP Vendor (Gladiator's Linked Spaulders)", "pvp"),
         },
         back = {
@@ -8465,10 +8465,10 @@ DB["SHAMAN"]["Enhancement"] = {
         feet = {
             item(25686, "Leatherworking (Fel Leather Boots)", "crafted"),
             item(27867, "H Auchenai Crypts - Avatar of the Martyred (Boots of the Unjust)", "heroic"),
-            item(30401, "Quest: A Fate Worse Than Death (Farahlite Studded Boots)", "quest"),
+            item(30401, "Quest: A Fate Worse Than Death (Farahlite Studded Boots)", "quest", nil, 10185),
             item(29262, "H Botanica - Warp Splinter (Boots of the Endless Hunt)", "heroic"),
             item(28384, "Arcatraz - Zereketh (Outland Striders)", "dungeon"),
-            item(25951, "Quest: Helping the Lost Find Their Way (Fleet Refugee's Boots)", "quest"),
+            item(25951, "Quest: Helping the Lost Find Their Way (Fleet Refugee's Boots)", "quest", nil, 10031),
             item(33878, "PvP Vendor (Vindicator's Chain Sabatons)", "pvp"),
         },
         neck = {
@@ -8479,7 +8479,7 @@ DB["SHAMAN"]["Enhancement"] = {
         },
         ring1 = {
             item(30834, "Lower City Exalted (Shapeshifter's Signet)", "reputation"),
-            item(30365, "Quest: Shutting Down Manaforge Ara (Overseer's Signet)", "quest"),
+            item(30365, "Quest: Shutting Down Manaforge Ara (Overseer's Signet)", "quest", nil, 10323),
             item(29379, "Vendor - 25 Badges of Justice (Ring of Arathi Warlords)", "raid"),
             item(30860, "Quest: Deathblow to the Legion (Kaylaan's Signet)", "quest", nil, 10409),
             item(31077, "Quest: Dissension Amongst the Ranks (Slayer's Mark of the Redemption)", "quest", nil, 10769),
@@ -8488,7 +8488,7 @@ DB["SHAMAN"]["Enhancement"] = {
         },
         ring2 = {
             item(31920, "H Mana-Tombs - Yor (Shaffar's Band of Brutality)", "heroic"),
-            item(30365, "Quest: Shutting Down Manaforge Ara (Overseer's Signet)", "quest"),
+            item(30365, "Quest: Shutting Down Manaforge Ara (Overseer's Signet)", "quest", nil, 10323),
             item(29379, "Vendor - 25 Badges of Justice (Ring of Arathi Warlords)", "raid"),
             item(30860, "Quest: Deathblow to the Legion (Kaylaan's Signet)", "quest", nil, 10409),
             item(28323, "Botanica - Thorngrin the Tender (Ring of Umbral Doom)", "dungeon"),
@@ -8504,8 +8504,8 @@ DB["SHAMAN"]["Enhancement"] = {
             item(29383, "Vendor - 41 Badges of Justice (Bloodlust Brooch)", "raid"),
             item(38287, "Coren Direbrew, Brewfest (Empty Mug of Direbrew)", "world"),
             item(28288, "Mechanar - Pathaleon (Abacus of Violent Odds)", "dungeon"),
-            item(25633, "Quest: Corki's Gone Missing Again (Uniting Charm)", "quest"),
-            item(25628, "Quest: Bleeding Hollow Supply Crates (Ogre Mauler's Badge)", "quest"),
+            item(25633, "Quest: Corki's Gone Missing Again (Uniting Charm)", "quest", nil, 9924),
+            item(25628, "Quest: Bleeding Hollow Supply Crates (Ogre Mauler's Badge)", "quest", nil, 9916),
             item(28034, "Black Morass - Temporus (Hourglass of the Unraveller)", "dungeon"),
         },
         mainhand = {
