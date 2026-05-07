@@ -592,6 +592,58 @@ function UI:CreateRowFrame(parent, idx)
     srcLbl:SetPoint("LEFT", row, "LEFT", x, 0)
     srcLbl:SetTextColor(0.65, 0.65, 0.65, 1)
     row.srcLbl = srcLbl
+    -- Invisible mouse-capture overlay for the source column — shows a quest
+    -- tooltip when this row's item has a questId.
+    local srcHover = CreateFrame("Frame", nil, row)
+    srcHover:SetSize(COL_SRC_W, ROW_H)
+    srcHover:SetPoint("LEFT", row, "LEFT", x, 0)
+    srcHover:EnableMouse(true)
+    srcHover:SetFrameLevel(row:GetFrameLevel() + 1)
+    srcHover:SetScript("OnEnter", function(self)
+        local qid = row.questId
+        if not (qid and qid > 0) then return end
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        local qTitle
+        if C_QuestLog and C_QuestLog.GetTitleForQuestID then
+            qTitle = C_QuestLog.GetTitleForQuestID(qid)
+        end
+        if qTitle and qTitle ~= "" then
+            GameTooltip:SetText("|cffffd700Quest:|r |cffffff00[" .. qTitle .. "]|r")
+        else
+            GameTooltip:SetText("|cffffd700Quest reward|r (id " .. qid .. ")")
+        end
+        GameTooltip:AddLine("|cffaaaaaahttps://www.wowhead.com/tbc/quest=" .. qid .. "|r", 1, 1, 1, true)
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine("|cff888888Ctrl+click for URL  •  Shift+click for chat-link|r", 0.7, 0.7, 0.7, true)
+        GameTooltip:Show()
+    end)
+    srcHover:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    -- Click handlers on the source overlay: ctrl=URL popup, shift=chat link
+    srcHover:EnableMouse(true)
+    srcHover:SetScript("OnMouseDown", function(self, button)
+        local qid = row.questId
+        if not (qid and qid > 0) then return end
+        if button == "LeftButton" and IsShiftKeyDown() then
+            local link = GetQuestLink and GetQuestLink(qid)
+            if link and ChatEdit_InsertLink then ChatEdit_InsertLink(link) end
+        elseif button == "LeftButton" and IsControlKeyDown() then
+            local url = "https://www.wowhead.com/tbc/quest=" .. qid
+            StaticPopupDialogs["TBCBIS_WOWHEAD_QUEST_URL"] = {
+                text = "Wowhead Quest URL (Ctrl+C to copy):",
+                button1 = "Close",
+                hasEditBox = true, editBoxWidth = 350,
+                OnShow = function(s)
+                    local eb = (s and s.editBox) or _G["StaticPopup1EditBox"] or _G["StaticPopup2EditBox"]
+                    if not eb then return end
+                    eb:SetText(url); eb:HighlightText(); eb:SetFocus()
+                end,
+                EditBoxOnEscapePressed = function(s) s:GetParent():Hide() end,
+                timeout = 0, whileDead = true, hideOnEscape = true,
+            }
+            StaticPopup_Show("TBCBIS_WOWHEAD_QUEST_URL")
+        end
+    end)
+    row.srcHover = srcHover
     x = x + COL_SRC_W + 4
 
     -- Checkbox
@@ -1271,6 +1323,10 @@ function UI:Refresh()
                             srcText = srcText .. " |cffff6060[no " .. prof .. "]|r"
                         end
                     end
+                end
+                -- Mark quest sources with a clickable indicator if questId is known
+                if entry.questId and entry.questId > 0 then
+                    srcText = srcText .. " |cffffd700ⓘ|r"
                 end
                 row.srcLbl:SetText(srcColor .. srcText .. "|r")
 
