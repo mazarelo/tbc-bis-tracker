@@ -3552,7 +3552,267 @@ DB["PRIEST"]["Holy"] = {
 }
 
 -- Discipline Priest â gear largely identical to Holy in PvE; uses same BIS items
-DB["PRIEST"]["Discipline"] = DB["PRIEST"]["Holy"]
+DB["PRIEST"]["Discipline"] = {
+    prebis = {
+        head = {
+            item(24264, "Tailoring (Whitemend Hood)", "crafted"),
+            item(28413, "H Arcatraz - Harbinger Skyriss (Hallowed Crown)", "heroic"),
+        },
+        shoulder = {
+            item(21874, "Tailoring (Primal Mooncloth Shoulders)", "crafted"),
+            item(27775, "Shadow Labyrinth - Grandmaster Vorpil (Hallowed Pauldrons)", "dungeon"),
+        },
+        back = {
+            item(31329, "World Drop (Lifegiving Cloak)", "world"),
+            item(27946, "Sethekk Halls - Talon King Ikiss (Avian Cloak of Feathers)", "dungeon"),
+            item(29375, "Vendor - 25 Badges of Justice (Bishop's Cloak)", "raid"),
+            item(24254, "Tailoring (White Remedy Cape)", "crafted"),
+        },
+        chest = {
+            item(21875, "Tailoring (Primal Mooncloth Robe)", "crafted"),
+            item(28230, "Shadow Labyrinth - Murmur (Hallowed Garments)", "dungeon"),
+            item(31282, "World Drop (Shroud of Spiritual Purity)", "world"),
+        },
+        wrist = {
+            item(29249, "H Sethekk Halls - Talon King Ikiss (Bands of the Benevolent)", "heroic"),
+            item(29183, "Keepers of Time Exalted (Bindings of the Timewalker)", "reputation"),
+            item(24250, "Tailoring (Bracers of Havok)", "crafted"),
+        },
+        hands = {
+            item(27536, "Shattered Halls - Warchief Kargath (Hallowed Handwraps)", "dungeon"),
+            item(28304, "Botanica - Commander Sarannis (Prismatic Mittens of Mending)", "dungeon"),
+            item(24393, "Blood Furnace - Broggok (Bloody Surgeon's Mitts)", "dungeon"),
+        },
+        waist = {
+            item(21873, "Tailoring (Primal Mooncloth Belt)", "crafted"),
+            item(27542, "H Slave Pens - Mennu (Cord of Belief)", "heroic"),
+            item(29250, "H Old Hillsbrad - Epoch Hunter (Cord of Sanctification)", "heroic"),
+        },
+        legs = {
+            item(30543, "H Steamvault - Warlord Kalithresh (Pontifex Kilt)", "heroic"),
+            item(31343, "World Drop (Kamaei's Cerulean Skirt)", "world"),
+            item(28218, "H Old Hillsbrad - Captain Skarloc (Pontiff's Pantaloons of Prophecy)", "heroic"),
+            item(30256, "Quest: Special Delivery to Shattrath (Pants of the Naaru)", "quest"),
+            item(24261, "Tailoring (Whitemend Pants)", "crafted"),
+        },
+        feet = {
+            item(29251, "H Mechanar - Pathaleon (Boots of the Pious)", "heroic"),
+            item(27411, "Auchenai Crypts - Exarch Maladaar (Slippers of Serenity)", "dungeon"),
+            item(28179, "Quest: Into the Heart of the Labyrinth (Shattrath Jumpers)", "quest"),
+        },
+        neck = {
+            item(29374, "Vendor - 25 Badges of Justice (Necklace of Eternal Hope)", "raid"),
+            item(30377, "Quest: Shutting Down Manaforge Ara (Karja's Medallion)", "quest"),
+            item(31691, "Quest: The Hound-Master (Natasha's Guardian Cord)", "quest"),
+        },
+        ring1 = {
+            item(27780, "H Underbog - The Black Stalker (Ring of Fabled Hope)", "heroic"),
+            item(29373, "Vendor - 25 Badges of Justice (Band of Halos)", "raid"),
+            item(29169, "Honor Hold Revered (Ring of Convalescence)", "reputation"),
+            item(29168, "Thrallmar Revered (Ancestral Band)", "reputation"),
+        },
+        ring2 = {
+            item(29373, "Vendor - 25 Badges of Justice (Band of Halos)", "raid"),
+            item(29169, "Honor Hold Revered (Ring of Convalescence)", "reputation"),
+            item(29168, "Thrallmar Revered (Ancestral Band)", "reputation"),
+            item(31383, "Quest: Battle of the Crimson Watch (Spiritualist's Mark of the Sha'tar)", "quest"),
+            item(29814, "Quest: Hitting the Motherlode (Celestial Jewel Ring)", "quest"),
+        },
+        trinket1 = {
+            item(29376, "Vendor - 41 Badges of Justice (Essence of the Martyr)", "raid"),
+            item(19288, "Darkmoon Beast Deck (Darkmoon Card: Blue Dragon)", "world"),
+            item(28190, "Black Morass - Aeonus (Scarab of the Infinite Cycle)", "dungeon"),
+        },
+        trinket2 = {
+            item(28370, "Botanica - Warp Splinter (Bangle of Endless Blessings)", "dungeon"),
+            item(30841, "Lower City Revered (Lower City Prayerbook)", "reputation"),
+            item(13503, "Alchemy (Alchemist's Stone)", "crafted"),
+        },
+        mainhand = {
+            item(32451, "PvP Arena (Gladiator's Salvation)", "pvp"),
+            item(23556, "Blacksmithing (Hand of Eternity)", "crafted"),
+            item(29353, "H Shadow Labyrinth - Murmur (Shockwave Truncheon)", "heroic"),
+            item(31342, "World Drop (The Ancient Scepter of Sue-Min)", "world"),
+            item(29175, "The Sha'tar Exalted (Gavel of Pure Light)", "reputation"),
+            item(31289, "World Drop (Staff of Divine Infusion)", "world"),
+        },
+        offhand = {
+            item(29170, "Cenarion Expedition Exalted (Windcaller's Orb)", "reputation"),
+            item(29274, "Vendor - 25 Badges of Justice (Tears of Heaven)", "raid"),
+            item(27714, "Slave Pens - Quagmirran (Swamplight Lantern)", "dungeon"),
+        },
+        ranged = {
+            item(27885, "Shadow Labyrinth - Ambassador Hellmaw (Soul-Wand of the Aldor)", "dungeon"),
+            item(25295, "World Drop (Flawless Wand of Shadow Wrath)", "world"),
+        },
+    },
+    phase1 = {
+        head = {
+            item(29049, "Karazhan - Prince Malchezaar Token (Light-Collar of the Incarnate)", "raid"),
+            item(24264, "Tailoring (Whitemend Hood)", "crafted"),
+        },
+        shoulder = {
+            item(21874, "Tailoring (Primal Mooncloth Shoulders)", "crafted"),
+            item(27775, "Shadow Labyrinth - Grandmaster Vorpil (Hallowed Pauldrons)", "dungeon"),
+        },
+        back = {
+            item(28765, "Karazhan - Prince Malchezaar (Stainless Cloak of the Pure Hearted)", "raid"),
+            item(31329, "World Drop (Lifegiving Cloak)", "world"),
+        },
+        chest = {
+            item(21875, "Tailoring (Primal Mooncloth Robe)", "crafted"),
+        },
+        wrist = {
+            item(29183, "Keepers of Time Exalted (Bindings of the Timewalker)", "reputation"),
+            item(29249, "H Sethekk Halls - Talon King Ikiss (Bands of the Benevolent)", "heroic"),
+        },
+        hands = {
+            item(28508, "Karazhan - Attumen the Huntsman (Gloves of Saintly Blessings)", "raid"),
+        },
+        waist = {
+            item(21873, "Tailoring (Primal Mooncloth Belt)", "crafted"),
+        },
+        legs = {
+            item(28742, "Karazhan - Netherspite (Pantaloons of Repentance)", "raid"),
+            item(30543, "H Steamvault - Warlord Kalithresh (Pontifex Kilt)", "heroic"),
+        },
+        feet = {
+            item(28663, "Karazhan - Shade of Aran (Boots of the Incorrupt)", "raid"),
+            item(29251, "H Mechanar - Pathaleon (Boots of the Pious)", "heroic"),
+        },
+        neck = {
+            item(28822, "Gruul - Gruul the Dragonkiller (Teeth of Gruul)", "raid"),
+            item(29374, "Vendor - 25 Badges of Justice (Necklace of Eternal Hope)", "raid"),
+        },
+        ring1 = {
+            item(29290, "Quest - Violet Eye Exalted (Violet Signet of the Grand Restorer)", "reputation"),
+            item(28763, "Karazhan - Prince Malchezaar (Jade Ring of the Everliving)", "raid"),
+        },
+        ring2 = {
+            item(28763, "Karazhan - Prince Malchezaar (Jade Ring of the Everliving)", "raid"),
+            item(29290, "Quest - Violet Eye Exalted (Violet Signet of the Grand Restorer)", "reputation"),
+            item(29373, "Vendor - 25 Badges of Justice (Band of Halos)", "raid"),
+        },
+        trinket1 = {
+            item(19288, "Darkmoon Beast Deck (Darkmoon Card: Blue Dragon)", "world"),
+            item(29376, "Vendor - 41 Badges of Justice (Essence of the Martyr)", "raid"),
+        },
+        trinket2 = {
+            item(28823, "Gruul - Gruul the Dragonkiller (Eye of Gruul)", "raid"),
+            item(28370, "Botanica - Warp Splinter (Bangle of Endless Blessings)", "dungeon"),
+            item(30841, "Lower City Revered (Lower City Prayerbook)", "reputation"),
+        },
+        mainhand = {
+            item(28771, "Karazhan - Prince Malchezaar (Light's Justice)", "raid"),
+            item(23556, "Blacksmithing (Hand of Eternity)", "crafted"),
+        },
+        offhand = {
+            item(29170, "Cenarion Expedition Exalted (Windcaller's Orb)", "reputation"),
+            item(29274, "Vendor - 25 Badges of Justice (Tears of Heaven)", "raid"),
+        },
+        ranged = {
+            item(28588, "Karazhan - Opera Event (Blue Diamond Witchwand)", "raid"),
+            item(27885, "Shadow Labyrinth - Ambassador Hellmaw (Soul-Wand of the Aldor)", "dungeon"),
+        },
+    },
+    phase2 = {
+        head = {
+            item(30152, "Lady Vashj (Serpentshrine Cavern) (Cowl of the Avatar)", "raid"),
+            item(32495, "Engineering - BoP only (Powerheal 4000 Lens)", "crafted"),
+            item(29049, "Prince Malchezaar (Karazhan) (Light-Collar of the Incarnate)", "raid"),
+            item(29990, "Kael'thas Sunstrider (Tempest Keep: The Eye) (Crown of the Sun)", "raid"),
+            item(24264, "Tailoring - can be purchased on the Auction House (Whitemend Hood)", "crafted"),
+        },
+        shoulder = {
+            item(30154, "Void Reaver (Tempest Keep: The Eye) (Mantle of the Avatar)", "raid"),
+            item(21874, "Tailoring (Primal Mooncloth Tailoring) - BoP only (Primal Mooncloth Shoulders)", "crafted"),
+            item(29054, "High King Maulgar (Gruul's Lair) (Light-Mantle of the Incarnate)", "raid"),
+        },
+        back = {
+            item(29989, "Kael'thas Sunstrider (Tempest Keep: The Eye) (Sunshower Light Cloak)", "raid"),
+            item(28765, "Prince Malchezaar (Karazhan) (Stainless Cloak of the Pure Hearted)", "raid"),
+            item(29354, "Exarch Maladaar (H Auchenai Crypts) (Light-Touched Stole of Altruism)", "heroic"),
+            item(31329, "World Drop (Lifegiving Cloak)", "world"),
+        },
+        chest = {
+            item(30150, "Kael'thas Sunstrider (Tempest Keep: The Eye) (Vestments of the Avatar)", "raid"),
+            item(21875, "Tailoring (Primal Mooncloth Tailoring) - BoP only (Primal Mooncloth Robe)", "crafted"),
+            item(29050, "Magtheridon (Magtheridon's Lair) (Robes of the Incarnate)", "raid"),
+        },
+        wrist = {
+            item(32980, "Vendor: Honor Points (Season 2) (Veteran's Mooncloth Cuffs)", "pvp"),
+            item(29183, "Vendor: Alurmi (Keepers of Time Exalted) (Bindings of the Timewalker)", "dungeon"),
+            item(32516, "Hydross the Unstable (Serpentshrine Cavern) (Wraps of Purification)", "raid"),
+            item(28511, "Maiden of Virtue (Karazhan) (Bands of Indwelling)", "raid"),
+            item(30684, "Rokad the Ravager (Karazhan) (Ravager's Cuffs)", "raid"),
+            item(29249, "Talon King Ikiss (H Sethekk Halls) (Bands of the Benevolent)", "heroic"),
+        },
+        hands = {
+            item(30151, "Leotheras the Blind (Serpentshrine Cavern) (Gloves of the Avatar)", "raid"),
+            item(28508, "Attumen the Huntsman (Karazhan) (Gloves of Saintly Blessings)", "raid"),
+            item(29055, "The Curator (Karazhan) (Handwraps of the Incarnate)", "raid"),
+        },
+        waist = {
+            item(30036, "Tailoring - can be purchased on the Auction House (Belt of the Long Road)", "crafted"),
+            item(21873, "Tailoring (Primal Mooncloth Tailoring) - BoP only (Primal Mooncloth Belt)", "crafted"),
+        },
+        legs = {
+            item(30153, "Fathom-Lord Karathress (Serpentshrine Cavern) (Breeches of the Avatar)", "raid"),
+            item(30727, "Doomwalker (World Boss) (Gilded Trousers of Benediction)", "world"),
+            item(28742, "Netherspite (Karazhan) (Pantaloons of Repentance)", "raid"),
+            item(29977, "High Astromancer Solarian (Tempest Keep: The Eye) (Star-Soul Breeches)", "raid"),
+            item(30543, "Warlord Kalithresh (The Steamvault) (Pontifex Kilt)", "dungeon"),
+            item(24261, "Tailoring - can be purchased on the Auction House (Whitemend Pants)", "crafted"),
+        },
+        feet = {
+            item(30100, "Fathom-Lord Karathress (Serpentshrine Cavern) (Soul-Strider Boots)", "raid"),
+            item(30035, "Tailoring - BoP only (Boots of the Long Road)", "crafted"),
+            item(30680, "Hyakiss the Lurker (Karazhan) (Glider's Foot-Wraps)", "raid"),
+            item(28663, "Shade of Aran (Karazhan) (Boots of the Incorrupt)", "raid"),
+            item(29251, "Pathaleon the Calculator (H The Mechanar) (Boots of the Pious)", "heroic"),
+        },
+        neck = {
+            item(30018, "Kael'thas Sunstrider (Tempest Keep: The Eye) (Lord Sanguinar's Claim)", "raid"),
+            item(30726, "Doomwalker (World Boss) (Archaic Charm of Presence)", "world"),
+            item(28609, "Nightbane (Karazhan) (Emberspur Talisman)", "raid"),
+            item(28822, "Gruul the Dragonkiller (Gruul's Lair) (Teeth of Gruul)", "raid"),
+        },
+        ring1 = {
+            item(30110, "Lady Vashj (Serpentshrine Cavern) (Coral Band of the Revived)", "raid"),
+            item(29290, "Quest: Eminence Among the Violet Eye (The Violet Eye Exalted) (Violet Signet of the Grand Restorer)", "quest"),
+            item(30736, "Doom Lord Kazzak (World Boss) (Ring of Flowing Light)", "world"),
+            item(28763, "Prince Malchezaar (Karazhan) (Jade Ring of the Everliving)", "raid"),
+        },
+        ring2 = {
+            item(29307, "Quest: Restorer's Pledge (Band of Eternity)", "quest"),
+            item(29920, "Al'ar (Tempest Keep: The Eye) (Phoenix-Ring of Rebirth)", "raid"),
+        },
+        trinket1 = {
+            item(29376, "Vendor: G'eras (Badges of Justice) (Essence of the Martyr)", "raid"),
+            item(38288, "Coren Direbrew (Brewfest Seasonal Event) (Direbrew Hops)", "dungeon"),
+            item(28823, "Gruul the Dragonkiller (Gruul's Lair) (Eye of Gruul)", "raid"),
+            item(19288, "Quest: Darkmoon Beast Deck (Darkmoon Card: Blue Dragon)", "quest"),
+        },
+        trinket2 = {
+            item(30665, "The Lurker Below (Serpentshrine Cavern) (Earring of Soulful Meditation)", "raid"),
+            item(23047, "Sapphiron (Classic - Naxxramas) (Eye of the Dead)", "raid"),
+            item(28590, "Opera Event (Karazhan) (Ribbon of Sacrifice)", "raid"),
+            item(28190, "Aeonus (The Black Morass) (Scarab of the Infinite Cycle)", "dungeon"),
+        },
+        mainhand = {
+            item(30108, "Lady Vashj (Serpentshrine Cavern) (Lightfathom Scepter)", "raid"),
+            item(32964, "Vendor: Arena Points (Season 2) (Merciless Gladiator's Salvation)", "pvp"),
+            item(29981, "High Astromancer Solarian (Tempest Keep: The Eye) (Ethereum Life-Staff)", "raid"),
+            item(28771, "Prince Malchezaar (Karazhan) (Light's Justice)", "raid"),
+        },
+        offhand = {
+            item(29923, "Al'ar (Tempest Keep: The Eye) (Talisman of the Sun King)", "raid"),
+            item(29170, "Vendor: Fedryen Swiftspear (Cenarion Expedition Exalted) (Windcaller's Orb)", "dungeon"),
+            item(29274, "Vendor: G'eras (Badges of Justice) (Tears of Heaven)", "raid"),
+        },
+        ranged = {},
+    }, phase3 = {}, phase4 = {}, phase5 = {}, pvp = {},
+}
 
 -- Shadow Priest BIS â sourced from Wowhead TBC Classic guides
 DB["PRIEST"]["Shadow"] = {
