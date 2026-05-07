@@ -18,8 +18,8 @@ TBCBisTracker.DB = {}
 
 local DB = TBCBisTracker.DB
 
-local function item(id, source, sourceType, note)
-    return { id = id, source = source, sourceType = sourceType or "raid", note = note }
+local function item(id, source, sourceType, note, questId)
+    return { id = id, source = source, sourceType = sourceType or "raid", note = note, questId = questId }
 end
 
 local function EMPTY_PHASES()

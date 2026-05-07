@@ -606,6 +606,20 @@ function UI:CreateRowFrame(parent, idx)
         if self.itemId and self.itemId > 0 then
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             GameTooltip:SetHyperlink("item:" .. self.itemId .. ":0:0:0:0:0:0:0")
+            -- Quest source: append quest info if this item is a quest reward
+            if self.questId and self.questId > 0 then
+                GameTooltip:AddLine(" ")
+                local qTitle
+                if C_QuestLog and C_QuestLog.GetTitleForQuestID then
+                    qTitle = C_QuestLog.GetTitleForQuestID(self.questId)
+                end
+                if qTitle and qTitle ~= "" then
+                    GameTooltip:AddLine("|cffffd700Quest:|r |cffffff00[" .. qTitle .. "]|r", 1, 1, 1)
+                else
+                    GameTooltip:AddLine("|cffffd700Quest reward|r", 1, 1, 1)
+                end
+                GameTooltip:AddLine("|cffaaaaaahttps://www.wowhead.com/tbc/quest=" .. self.questId .. "|r", 0.8, 0.8, 0.8, true)
+            end
             GameTooltip:AddLine(" ")
             GameTooltip:AddLine("|cffaaaaaa" .. (addon.WOWHEAD_BASE .. self.itemId) .. "|r", 1, 1, 1, true)
             GameTooltip:Show()
@@ -1229,6 +1243,7 @@ function UI:Refresh()
                 -- Populated slot — show item details
                 local itemId   = entry.id
                 row.itemId     = itemId or 0
+                row.questId    = entry.questId
                 local itemName = addon:GetItemName(itemId)
                 local color    = addon:GetItemQualityColor(itemId)
                 local altSuffix = (altCount > 1) and (" |cff888888[" .. selectedIdx .. "/" .. altCount .. "]|r") or ""
@@ -1286,6 +1301,7 @@ function UI:Refresh()
             else
                 -- Empty slot — placeholder, prompt right-click to import
                 row.itemId = 0
+                row.questId = nil
                 row.itemLbl:SetText("|cff666666(empty — right-click to import)|r")
                 row.srcLbl:SetText("")
                 row.chk:SetChecked(false)
