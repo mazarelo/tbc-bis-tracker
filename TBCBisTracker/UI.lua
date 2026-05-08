@@ -1970,24 +1970,26 @@ end
 
 local PREV_SLOT     = 40
 local PREV_GAP      = 6
-local PREV_COLS     = 4
-local PREV_PAD      = 14
--- Slots in character-pane reading order (head → ranged), arranged into a
--- 4-column grid for a compact, predictable layout. 17 slots fill 4 rows
--- of 4 plus a fifth row with one entry (Ranged).
-local PREV_GRID_SLOTS = {
-    "head",     "neck",     "shoulder",  "back",
-    "chest",    "wrist",    "hands",     "waist",
-    "legs",     "feet",     "ring1",     "ring2",
-    "trinket1", "trinket2", "mainhand",  "offhand",
-    "ranged",
-}
-local PREV_ROWS = math.ceil(#PREV_GRID_SLOTS / PREV_COLS)
-local PREV_GRID_W = PREV_COLS * PREV_SLOT + (PREV_COLS - 1) * PREV_GAP + 2 * PREV_PAD
-local PREV_MODEL_W = 200  -- extra width when 3D model is shown to the right
-local PREV_W_COMPACT = PREV_GRID_W
-local PREV_W_WITH_MODEL = PREV_GRID_W + PREV_MODEL_W
-local PREV_H = 52 + PREV_ROWS * (PREV_SLOT + PREV_GAP) + 60  -- title + grid + stats footer
+local PREV_PAD      = 10
+-- Match the WoW character pane distribution: left column of 7 + right column
+-- of 7 + 3 weapons across the bottom. The empty middle is for the optional
+-- 3D model.
+local PREV_LEFT_SLOTS   = { "head", "neck", "shoulder", "chest", "waist", "legs", "feet" }
+local PREV_RIGHT_SLOTS  = { "wrist", "hands", "ring1", "ring2", "trinket1", "trinket2", "back" }
+local PREV_BOTTOM_SLOTS = { "mainhand", "offhand", "ranged" }
+local PREV_COL_ROWS     = math.max(#PREV_LEFT_SLOTS, #PREV_RIGHT_SLOTS)
+
+-- Width math: column width = pad + slot + pad on each side, with a configurable
+-- middle area between them. Compact = 110 px gap, model = 220 px gap.
+local PREV_COL_W      = PREV_PAD + PREV_SLOT + PREV_PAD
+local PREV_MID_COMPACT = 110
+local PREV_MID_WITH_MODEL = 220
+local PREV_W_COMPACT      = 2 * PREV_COL_W + PREV_MID_COMPACT
+local PREV_W_WITH_MODEL   = 2 * PREV_COL_W + PREV_MID_WITH_MODEL
+
+local PREV_HEADER_H = 48
+local PREV_FOOTER_H = 90  -- bottom-row weapons + spacing + stats divider + text
+local PREV_H = PREV_HEADER_H + PREV_COL_ROWS * (PREV_SLOT + PREV_GAP) - PREV_GAP + PREV_FOOTER_H
 
 function UI:BuildBisPreview()
     if self.previewFrame then return self.previewFrame end
@@ -2029,10 +2031,11 @@ function UI:BuildBisPreview()
     toggle:HookScript("OnLeave", function() GameTooltip:Hide() end)
     self.previewModelToggle = toggle
 
-    -- 3D model panel — created up-front, shown only when toggled on.
+    -- 3D model panel — fills the middle area between the two columns,
+    -- below the header and above the footer (bottom row + stats).
     local model = CreateFrame("PlayerModel", nil, f)
-    model:SetPoint("TOPLEFT", f, "TOPLEFT", PREV_GRID_W, -50)
-    model:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -8, 60)
+    model:SetPoint("TOPLEFT", f, "TOPLEFT", PREV_COL_W, -PREV_HEADER_H)
+    model:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -PREV_COL_W, PREV_FOOTER_H)
     if model.SetUnit then model:SetUnit("player") end
     if model.SetFacing then model:SetFacing(0.4) end
     model:SetShown(TBCBisTrackerDB.previewShowModel == true)
@@ -2119,26 +2122,116 @@ function UI:BuildBisPreview()
 
     self.previewSlotBtns = {}
 
-    -- 4-column grid in character-pane reading order.
-    local gridTopY = -52
-    for i, slot in ipairs(PREV_GRID_SLOTS) do
-        local col = (i - 1) % PREV_COLS
-        local row = math.floor((i - 1) / PREV_COLS)
-        local x = PREV_PAD + col * (PREV_SLOT + PREV_GAP)
-        local y = gridTopY - row * (PREV_SLOT + PREV_GAP)
+    -- Left column — anchored to TOPLEFT.
+    local colTopY = -PREV_HEADER_H
+    for i, slot in ipairs(PREV_LEFT_SLOTS) do
+        local x = PREV_PAD
+        local y = colTopY - (i - 1) * (PREV_SLOT + PREV_GAP)
         self.previewSlotBtns[slot] = makeSlotBtn(f, x, y, slot)
     end
 
-    -- Stats summary at the bottom
+    -- Right column — anchored to TOPRIGHT (positions are relative to TOPLEFT
+    -- but use the right edge of the *compact* width; right column moves with
+    -- the frame's right edge through SetPoint when shown with the model).
+    for i, slot in ipairs(PREV_RIGHT_SLOTS) do
+        local btn = CreateFrame("Button", nil, f)
+        btn:SetSize(PREV_SLOT, PREV_SLOT)
+        btn:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PREV_PAD, colTopY - (i - 1) * (PREV_SLOT + PREV_GAP))
+        btn._slot = slot
+        local bg = btn:CreateTexture(nil, "BACKGROUND")
+        bg:SetAllPoints(); bg:SetTexture("Interface\\Buttons\\UI-EmptySlot-Disabled")
+        btn.bg = bg
+        local icon = btn:CreateTexture(nil, "ARTWORK")
+        icon:SetPoint("TOPLEFT", btn, "TOPLEFT", 4, -4)
+        icon:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", -4, 4)
+        icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+        icon:SetTexture(addon.SLOT_ICONS[slot] or "Interface\\Icons\\INV_Misc_QuestionMark")
+        btn.icon = icon
+        local border = btn:CreateTexture(nil, "OVERLAY")
+        border:SetTexture("Interface\\Buttons\\UI-Quickslot2")
+        border:SetSize(PREV_SLOT + 24, PREV_SLOT + 24)
+        border:SetPoint("CENTER")
+        btn.border = border
+        local mark = btn:CreateTexture(nil, "OVERLAY")
+        mark:SetTexture("Interface\\RAIDFRAME\\ReadyCheck-Ready")
+        mark:SetSize(16, 16); mark:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", 2, -2); mark:Hide()
+        btn.mark = mark
+        btn:SetScript("OnEnter", function(self)
+            if self._itemId and self._itemId > 0 then
+                GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+                GameTooltip:SetHyperlink("item:" .. self._itemId .. ":0:0:0:0:0:0:0")
+                GameTooltip:AddLine(" ")
+                GameTooltip:AddLine(UI_PAL.muted .. (addon.SLOT_LABELS[self._slot] or self._slot) .. "|r", 1, 1, 1)
+                GameTooltip:AddLine(self._obtained and "|cff60ff60Obtained|r" or "|cff888888Not obtained|r", 1, 1, 1)
+                GameTooltip:Show()
+            else
+                GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+                GameTooltip:SetText(addon.SLOT_LABELS[self._slot] or self._slot, 1, 1, 1)
+                GameTooltip:AddLine("|cff888888No BiS pick set|r", 1, 1, 1)
+                GameTooltip:Show()
+            end
+        end)
+        btn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        self.previewSlotBtns[slot] = btn
+    end
+
+    -- Bottom row (3 weapons), centered horizontally.
+    local bottomTotal = #PREV_BOTTOM_SLOTS * PREV_SLOT + (#PREV_BOTTOM_SLOTS - 1) * 8
+    local bottomY = -(PREV_HEADER_H + PREV_COL_ROWS * (PREV_SLOT + PREV_GAP) - PREV_GAP + 4)
+    for i, slot in ipairs(PREV_BOTTOM_SLOTS) do
+        local btn = CreateFrame("Button", nil, f)
+        btn:SetSize(PREV_SLOT, PREV_SLOT)
+        -- Anchor relative to TOP center so it stays centered when the frame width changes
+        local xOff = (i - 1) * (PREV_SLOT + 8) - bottomTotal / 2 + PREV_SLOT / 2
+        btn:SetPoint("TOP", f, "TOP", xOff, bottomY)
+        btn._slot = slot
+        local bg = btn:CreateTexture(nil, "BACKGROUND")
+        bg:SetAllPoints(); bg:SetTexture("Interface\\Buttons\\UI-EmptySlot-Disabled")
+        btn.bg = bg
+        local icon = btn:CreateTexture(nil, "ARTWORK")
+        icon:SetPoint("TOPLEFT", btn, "TOPLEFT", 4, -4)
+        icon:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", -4, 4)
+        icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+        icon:SetTexture(addon.SLOT_ICONS[slot] or "Interface\\Icons\\INV_Misc_QuestionMark")
+        btn.icon = icon
+        local border = btn:CreateTexture(nil, "OVERLAY")
+        border:SetTexture("Interface\\Buttons\\UI-Quickslot2")
+        border:SetSize(PREV_SLOT + 24, PREV_SLOT + 24); border:SetPoint("CENTER")
+        btn.border = border
+        local mark = btn:CreateTexture(nil, "OVERLAY")
+        mark:SetTexture("Interface\\RAIDFRAME\\ReadyCheck-Ready")
+        mark:SetSize(16, 16); mark:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", 2, -2); mark:Hide()
+        btn.mark = mark
+        btn:SetScript("OnEnter", function(self)
+            if self._itemId and self._itemId > 0 then
+                GameTooltip:SetOwner(self, "ANCHOR_TOP")
+                GameTooltip:SetHyperlink("item:" .. self._itemId .. ":0:0:0:0:0:0:0")
+                GameTooltip:AddLine(" ")
+                GameTooltip:AddLine(UI_PAL.muted .. (addon.SLOT_LABELS[self._slot] or self._slot) .. "|r", 1, 1, 1)
+                GameTooltip:AddLine(self._obtained and "|cff60ff60Obtained|r" or "|cff888888Not obtained|r", 1, 1, 1)
+                GameTooltip:Show()
+            else
+                GameTooltip:SetOwner(self, "ANCHOR_TOP")
+                GameTooltip:SetText(addon.SLOT_LABELS[self._slot] or self._slot, 1, 1, 1)
+                GameTooltip:AddLine("|cff888888No BiS pick set|r", 1, 1, 1)
+                GameTooltip:Show()
+            end
+        end)
+        btn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        self.previewSlotBtns[slot] = btn
+    end
+
+    -- Stats summary at the bottom — anchored to bottom edges so it follows
+    -- frame width changes when the model toggle resizes the frame.
     local statsLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    statsLbl:SetPoint("BOTTOM", f, "BOTTOM", 0, 14)
+    statsLbl:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", PREV_PAD, 10)
+    statsLbl:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -PREV_PAD, 10)
     statsLbl:SetJustifyH("CENTER")
-    statsLbl:SetWidth(PREV_W - 20)
     self.previewStatsLbl = statsLbl
 
     local statsDiv = CreateDivider(f, UI_PAL.dividerSoft)
-    statsDiv:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", PREV_PAD, 38)
-    statsDiv:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -PREV_PAD, 38)
+    statsDiv:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", PREV_PAD, 28)
+    statsDiv:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -PREV_PAD, 28)
     statsDiv:SetHeight(1)
 
     return f
