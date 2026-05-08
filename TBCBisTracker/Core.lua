@@ -320,22 +320,34 @@ addon.STAT_CAPS = {
     },
 }
 
--- Map our stat keys → GetItemStats() keys (Blizzard's locale-independent constants)
+-- Map our stat keys → GetItemStats() keys.
+-- Each list is checked in order until a matching, non-zero value is found.
+-- Multiple candidates cover differences in WoW versions (Classic / TBC / Wrath / retail)
+-- and the way TBC rolls some stats together (e.g. Hit Rating works for both melee
+-- and spell on most TBC items, so spellhit falls back to plain hit rating).
 addon.STAT_GETITEMSTATS_KEYS = {
     -- Defensive
-    defense   = { "ITEM_MOD_DEFENSE_SKILL_RATING_SHORT" },
-    armor     = { "RESISTANCE0_NAME" },
-    -- Hit/exp/crit/haste (melee + spell rolled into the same field by GetItemStats most of the time)
-    hit       = { "ITEM_MOD_HIT_RATING_SHORT", "ITEM_MOD_HIT_MELEE_RATING_SHORT" },
-    spellhit  = { "ITEM_MOD_HIT_SPELL_RATING_SHORT", "ITEM_MOD_HIT_RATING_SHORT" },
+    defense   = { "ITEM_MOD_DEFENSE_SKILL_RATING_SHORT", "ITEM_MOD_DEFENSE_RATING_SHORT" },
+    armor     = { "RESISTANCE0_NAME", "ITEM_MOD_ARMOR_SHORT" },
+    block     = { "ITEM_MOD_BLOCK_RATING_SHORT", "ITEM_MOD_BLOCK_VALUE_SHORT" },
+    dodge     = { "ITEM_MOD_DODGE_RATING_SHORT" },
+    parry     = { "ITEM_MOD_PARRY_RATING_SHORT" },
+    resilience= { "ITEM_MOD_RESILIENCE_RATING_SHORT" },
+    -- Hit/expertise/crit/haste — TBC items usually use the un-suffixed Hit/Crit Rating
+    -- which applies to both melee and spell. Spell-only items use the SPELL variants.
+    hit       = { "ITEM_MOD_HIT_RATING_SHORT", "ITEM_MOD_MELEE_HIT_RATING_SHORT", "ITEM_MOD_HIT_MELEE_RATING_SHORT", "ITEM_MOD_RANGED_HIT_RATING_SHORT" },
+    spellhit  = { "ITEM_MOD_SPELL_HIT_RATING_SHORT", "ITEM_MOD_HIT_SPELL_RATING_SHORT", "ITEM_MOD_HIT_RATING_SHORT" },
     expertise = { "ITEM_MOD_EXPERTISE_RATING_SHORT" },
-    crit      = { "ITEM_MOD_CRIT_RATING_SHORT", "ITEM_MOD_CRIT_MELEE_RATING_SHORT" },
-    spellcrit = { "ITEM_MOD_CRIT_SPELL_RATING_SHORT", "ITEM_MOD_CRIT_RATING_SHORT" },
-    haste     = { "ITEM_MOD_HASTE_RATING_SHORT", "ITEM_MOD_HASTE_SPELL_RATING_SHORT", "ITEM_MOD_HASTE_MELEE_RATING_SHORT" },
+    crit      = { "ITEM_MOD_CRIT_RATING_SHORT", "ITEM_MOD_MELEE_CRIT_RATING_SHORT", "ITEM_MOD_CRIT_MELEE_RATING_SHORT", "ITEM_MOD_RANGED_CRIT_RATING_SHORT" },
+    spellcrit = { "ITEM_MOD_SPELL_CRIT_RATING_SHORT", "ITEM_MOD_CRIT_SPELL_RATING_SHORT", "ITEM_MOD_CRIT_RATING_SHORT" },
+    haste     = { "ITEM_MOD_HASTE_RATING_SHORT", "ITEM_MOD_HASTE_MELEE_RATING_SHORT", "ITEM_MOD_HASTE_SPELL_RATING_SHORT", "ITEM_MOD_MELEE_HASTE_RATING_SHORT" },
     -- Caster
-    spelldmg  = { "ITEM_MOD_SPELL_DAMAGE_DONE_SHORT", "ITEM_MOD_SPELL_POWER_SHORT" },
+    spelldmg  = { "ITEM_MOD_SPELL_DAMAGE_DONE_SHORT", "ITEM_MOD_SPELL_POWER_SHORT", "ITEM_MOD_SPELL_DMG_SHORT" },
     healing   = { "ITEM_MOD_SPELL_HEALING_DONE_SHORT", "ITEM_MOD_SPELL_DAMAGE_DONE_SHORT", "ITEM_MOD_SPELL_POWER_SHORT" },
-    mp5       = { "ITEM_MOD_POWER_REGEN0_SHORT", "ITEM_MOD_MANA_REGENERATION_SHORT" },
+    mp5       = { "ITEM_MOD_POWER_REGEN0_SHORT", "ITEM_MOD_MANA_REGENERATION_SHORT", "ITEM_MOD_MANA_REGEN_SHORT" },
+    -- Attack power
+    attack    = { "ITEM_MOD_ATTACK_POWER_SHORT", "ITEM_MOD_MELEE_ATTACK_POWER_SHORT" },
+    rangedap  = { "ITEM_MOD_RANGED_ATTACK_POWER_SHORT" },
     -- Primary
     strength  = { "ITEM_MOD_STRENGTH_SHORT" },
     agility   = { "ITEM_MOD_AGILITY_SHORT" },
@@ -1014,22 +1026,32 @@ local function readStat(statTable, keys)
     return 0
 end
 
--- Returns a stats dict for an item id, e.g. {hit=12, crit=18, ...}.
--- If the item isn't in the local cache yet, returns nil so caller can retry later.
-function addon:GetItemStatsForId(itemId)
-    if not itemId or itemId <= 0 then return {} end
-    local link = select(2, GetItemInfo(itemId))
-    if not link then
-        -- Trigger client cache; caller should retry on GET_ITEM_INFO_RECEIVED
-        GetItemInfo(itemId)
-        return nil
+-- Returns a stats dict for any item link or item id, e.g. {hit=12, crit=18, ...}.
+-- If only an itemId is provided and the item isn't in the local cache yet,
+-- returns nil so caller can retry later (after GET_ITEM_INFO_RECEIVED).
+function addon:GetItemStatsForLink(link)
+    if not link then return {} end
+    if type(link) == "number" then
+        local id = link
+        link = select(2, GetItemInfo(id))
+        if not link then
+            GetItemInfo(id)  -- prime the cache
+            return nil
+        end
     end
     local raw = GetItemStats(link)
+    if not raw then return {} end
     local out = {}
     for ourKey, candidates in pairs(self.STAT_GETITEMSTATS_KEYS) do
         out[ourKey] = readStat(raw, candidates)
     end
     return out
+end
+
+-- Backward-compat alias; takes an itemId (int).
+function addon:GetItemStatsForId(itemId)
+    if not itemId or itemId <= 0 then return {} end
+    return self:GetItemStatsForLink(itemId)
 end
 
 -- Aggregate stats across all 17 slots, picking the item per `mode`:
@@ -1048,15 +1070,15 @@ function addon:GetTrackedStats(class, spec, phase, mode)
     end
 
     for _, slot in ipairs(self.SLOTS) do
-        local itemId
+        local itemId, itemLink
         if mode == "equipped" then
             local invIds = self.SLOT_INVENTORY_IDS[slot]
             if invIds then
                 -- Convention: ring1/ring2/trinket1/trinket2 each have two inv slots; map slot1=lower, slot2=upper
                 local pickIdx = (slot == "ring2" or slot == "trinket2") and 2 or 1
                 local invId = invIds[pickIdx] or invIds[1]
-                local link = GetInventoryItemLink("player", invId)
-                if link then itemId = tonumber(link:match("item:(%d+)")) end
+                itemLink = GetInventoryItemLink("player", invId)
+                if itemLink then itemId = tonumber(itemLink:match("item:(%d+)")) end
             end
         else
             local entry = self:GetSlotItem(class, spec, phase, slot)
@@ -1070,7 +1092,9 @@ function addon:GetTrackedStats(class, spec, phase, mode)
         end
 
         if itemId and itemId > 0 then
-            local stats = self:GetItemStatsForId(itemId)
+            -- Equipped uses the live inventory link (carries gems/enchants/random suffixes);
+            -- obtained/selected use the bare item id (base stats only).
+            local stats = self:GetItemStatsForLink(itemLink or itemId)
             if stats == nil then
                 pending = pending + 1
             else
@@ -1085,6 +1109,42 @@ function addon:GetTrackedStats(class, spec, phase, mode)
     end
 
     return agg, pending, contributors
+end
+
+-- Diagnostic: dump raw GetItemStats for the current spec's selected/equipped/obtained gear
+-- and list which keys we consumed for each of our stat names. Helps verify the addon's
+-- stat-key mapping against what the client actually returns.
+function addon:DumpStatDebug(class, spec, phase, mode)
+    mode = mode or "obtained"
+    self:Print("Stat-debug — mode: " .. mode .. "  (slot → itemId → keys present in raw GetItemStats)")
+    for _, slot in ipairs(self.SLOTS) do
+        local itemId, itemLink
+        if mode == "equipped" then
+            local invIds = self.SLOT_INVENTORY_IDS[slot]
+            if invIds then
+                local pickIdx = (slot == "ring2" or slot == "trinket2") and 2 or 1
+                local invId = invIds[pickIdx] or invIds[1]
+                itemLink = GetInventoryItemLink("player", invId)
+                if itemLink then itemId = tonumber(itemLink:match("item:(%d+)")) end
+            end
+        else
+            local entry = self:GetSlotItem(class, spec, phase, slot)
+            if entry and entry.id and entry.id > 0 then
+                if mode == "obtained" then
+                    if self:IsObtained(class, spec, phase, slot) then itemId = entry.id end
+                else
+                    itemId = entry.id
+                end
+            end
+        end
+        if itemId then
+            local link = itemLink or select(2, GetItemInfo(itemId))
+            local raw = link and GetItemStats(link) or nil
+            local keys = {}
+            if raw then for k, v in pairs(raw) do if v ~= 0 then keys[#keys+1] = k .. "=" .. tostring(v) end end end
+            self:Print("  " .. (self.SLOT_LABELS[slot] or slot) .. " (id " .. itemId .. "): " .. (raw and (#keys > 0 and table.concat(keys, ", ") or "<empty stats>") or "<not cached>"))
+        end
+    end
 end
 
 -- Returns a render-ready list aligned with STAT_CAPS[class][spec]:
@@ -1343,6 +1403,9 @@ SlashCmdList["TBCBISTRACKER"] = function(msg)
         if addon.UI and addon.UI.ShowImportPopup then addon.UI:ShowImportPopup() end
     elseif cmd == "bis" or cmd == "reset bis" then
         addon:ResetSelectionsToBiS(TBCBisTrackerDB.lastClass, TBCBisTrackerDB.lastSpec, TBCBisTrackerDB.lastPhase)
+    elseif cmd == "statsdebug" or cmd:match("^statsdebug ") then
+        local mode = cmd:match("^statsdebug%s+(%S+)$") or TBCBisTrackerDB.statTrackerMode or "equipped"
+        addon:DumpStatDebug(TBCBisTrackerDB.lastClass, TBCBisTrackerDB.lastSpec, TBCBisTrackerDB.lastPhase, mode)
     elseif cmd == "stats" or cmd:match("^stats ") then
         local mode = cmd:match("^stats%s+(%S+)$") or TBCBisTrackerDB.statTrackerMode or "obtained"
         if mode ~= "obtained" and mode ~= "selected" and mode ~= "equipped" then
