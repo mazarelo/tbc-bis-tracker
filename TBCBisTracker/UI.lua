@@ -267,7 +267,8 @@ function UI:BuildSpecSelector()
     self.specBtns = {}
     self.specBtnRow = CreateFrame("Frame", nil, f)
     self.specBtnRow:SetSize(LIST_W - 40, 22)
-    self.specBtnRow:SetPoint("TOPLEFT", f, "TOPLEFT", 20, -38)
+    -- Below the filter row so the row above is clear for filter + missing-only.
+    self.specBtnRow:SetPoint("TOPLEFT", f, "TOPLEFT", 20, -66)
 end
 
 local SPEC_POOL_SIZE = 4
@@ -371,7 +372,7 @@ function UI:BuildPhaseTabs()
     local f = self.frame
     self.phaseTabs = {}
     local tabW    = (LIST_W - 40) / #addon.PHASES
-    local yOffset = -64
+    local yOffset = -94  -- below spec tabs (y=-66, h=22) with 6 px gap
 
     for i, phase in ipairs(addon.PHASES) do
         local btn = CreateFrame("Button", nil, f)
@@ -507,13 +508,6 @@ local SOURCE_FILTER_LABELS = {
 
 function UI:BuildSourceFilter()
     local f = self.frame
-    -- Small label so the dropdown's purpose is immediately readable
-    local srcLbl = f:CreateFontString(nil, "OVERLAY")
-    SetFontSmall(srcLbl)
-    srcLbl:SetText(UI_PAL.muted .. "Filter:|r")
-    srcLbl:SetPoint("TOPRIGHT", f, "TOPRIGHT", -270 - STAT_AREA_W, -38)
-    self.sourceFilterLabel = srcLbl
-
     local dd = CreateFrame("Frame", "TBCBisTrackerSourceFilterDropdown", f, "UIDropDownMenuTemplate")
     dd:SetPoint("TOPRIGHT", f, "TOPRIGHT", -150 - STAT_AREA_W, -32)
     UIDropDownMenu_SetWidth(dd, 110)
@@ -575,7 +569,9 @@ function UI:BuildMissingFilter()
     local f = self.frame
     local chk = CreateFrame("CheckButton", "TBCBisTrackerMissingChk", f, "UICheckButtonTemplate")
     chk:SetSize(20, 20)
-    chk:SetPoint("TOPRIGHT", f, "TOPRIGHT", -30 - STAT_AREA_W, -98)
+    -- Same row as the filter dropdown, positioned to its LEFT so both filters
+    -- live together and don't compete with spec tabs / column headers.
+    chk:SetPoint("TOPRIGHT", f, "TOPRIGHT", -290 - STAT_AREA_W, -32)
     chk:SetChecked(TBCBisTrackerDB.showMissingOnly or false)
 
     local lbl = f:CreateFontString(nil, "OVERLAY")
@@ -603,7 +599,7 @@ end
 
 function UI:BuildColumnHeaders()
     local f      = self.frame
-    local yOff   = -100
+    local yOff   = -130  -- below phase tabs (y=-94, h=30) with 6 px gap
     local xStart = 20
 
     local headers = {
@@ -641,8 +637,8 @@ end
 
 function UI:BuildScrollFrame()
     local f       = self.frame
-    local scrollY = -118
-    local scrollH = FRAME_H - 118 - 80  -- leave room for progress bar + badge/tier status
+    local scrollY = -148
+    local scrollH = FRAME_H - 148 - 80  -- leave room for progress bar + badge/tier status
 
     -- Scroll frame
     local sf = CreateFrame("ScrollFrame", "TBCBisTrackerScroll", f, "UIPanelScrollFrameTemplate")
@@ -1537,11 +1533,12 @@ function UI:RefreshStatCaps()
     end
 
     if pending and pending > 0 then
-        self.statPanelNote:SetText("|cffaaaaaa" .. pending .. " items still loading from server…|r")
+        self.statPanelNote:SetText("|cffaaaaaa" .. pending .. " items loading…|r")
     elseif #rows > STAT_PANEL_MAX_ROWS then
         self.statPanelNote:SetText("|cff888888…and " .. (#rows - STAT_PANEL_MAX_ROWS) .. " more|r")
     else
-        self.statPanelNote:SetText("|cff666666Item base stats only — gems & enchants not yet included.|r")
+        -- Multi-line note that fits the panel width
+        self.statPanelNote:SetText("|cff666666Item base stats only.|r\n|cff666666Gems & enchants not included.|r")
     end
 end
 

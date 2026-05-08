@@ -147,17 +147,19 @@ addon.STAT_CAPS = {
     -- Spell hit cap (16%): 202 hit rating; talented (~13%) ≈ 164; talented (~10%) ≈ 126
     -- Defense rating: 415 = uncrittable for druid bear; 490 = uncrittable for plate tank
     -- Expertise rating: 6.5% dodge cap on bosses ≈ 26 (5 expertise) — "expertise rating" displays as the rating
+    -- Labels are kept short so they fit on one line in the side panel.
+    -- The detailed talent/cap explanation lives in the row hover tooltip.
     WARRIOR = {
         Fury = {
-            { stat="hit",       cap=142, label="Hit (9%)" },
-            { stat="expertise", cap=26,  label="Expertise (dodge cap)" },
+            { stat="hit",       cap=142, label="Hit" },
+            { stat="expertise", cap=26,  label="Expertise" },
             { stat="crit",      cap=0,   label="Crit", info=true },
             { stat="haste",     cap=0,   label="Haste", info=true },
         },
         Protection = {
-            { stat="defense",   cap=490, label="Defense (uncrittable)" },
-            { stat="hit",       cap=142, label="Hit (9%)" },
-            { stat="expertise", cap=26,  label="Expertise (dodge cap)" },
+            { stat="defense",   cap=490, label="Defense" },
+            { stat="hit",       cap=142, label="Hit" },
+            { stat="expertise", cap=26,  label="Expertise" },
             { stat="armor",     cap=0,   label="Armor", info=true },
         },
     },
@@ -169,45 +171,45 @@ addon.STAT_CAPS = {
             { stat="intellect", cap=0,   label="Intellect", info=true },
         },
         Protection = {
-            { stat="defense",   cap=490, label="Defense (uncrittable)" },
-            { stat="hit",       cap=142, label="Hit (9%)" },
-            { stat="expertise", cap=26,  label="Expertise (dodge cap)" },
+            { stat="defense",   cap=490, label="Defense" },
+            { stat="hit",       cap=142, label="Hit" },
+            { stat="expertise", cap=26,  label="Expertise" },
             { stat="spelldmg",  cap=0,   label="Spell Power", info=true },
         },
         Retribution = {
-            { stat="hit",       cap=142, label="Hit (9%)" },
-            { stat="expertise", cap=26,  label="Expertise (dodge cap)" },
+            { stat="hit",       cap=142, label="Hit" },
+            { stat="expertise", cap=26,  label="Expertise" },
             { stat="crit",      cap=0,   label="Crit", info=true },
             { stat="strength",  cap=0,   label="Strength", info=true },
         },
     },
     HUNTER = {
         ["Marksmanship"] = {
-            { stat="hit",   cap=142, label="Hit (9%)" },
+            { stat="hit",   cap=142, label="Hit" },
             { stat="crit",  cap=0,   label="Crit", info=true },
             { stat="agility", cap=0, label="Agility", info=true },
         },
         ["Survival"] = {
-            { stat="hit",   cap=142, label="Hit (9%)" },
+            { stat="hit",   cap=142, label="Hit" },
             { stat="crit",  cap=0,   label="Crit", info=true },
             { stat="agility", cap=0, label="Agility", info=true },
         },
         ["Beast Mastery"] = {
-            { stat="hit",   cap=142, label="Hit (9%)" },
+            { stat="hit",   cap=142, label="Hit" },
             { stat="crit",  cap=0,   label="Crit", info=true },
             { stat="agility", cap=0, label="Agility", info=true },
         },
     },
     ROGUE = {
         Combat = {
-            { stat="hit",       cap=142, label="Hit (9%; 5% w/ Precision = 79)" },
-            { stat="expertise", cap=26,  label="Expertise (dodge cap)" },
+            { stat="hit",       cap=142, label="Hit" },
+            { stat="expertise", cap=26,  label="Expertise" },
             { stat="crit",      cap=0,   label="Crit", info=true },
             { stat="agility",   cap=0,   label="Agility", info=true },
         },
         Assassination = {
-            { stat="hit",       cap=142, label="Hit (9%; 5% w/ Precision = 79)" },
-            { stat="expertise", cap=26,  label="Expertise (dodge cap)" },
+            { stat="hit",       cap=142, label="Hit" },
+            { stat="expertise", cap=26,  label="Expertise" },
             { stat="crit",      cap=0,   label="Crit", info=true },
             { stat="agility",   cap=0,   label="Agility", info=true },
         },
@@ -226,7 +228,7 @@ addon.STAT_CAPS = {
             { stat="intellect", cap=0, label="Intellect", info=true },
         },
         Shadow = {
-            { stat="spellhit",  cap=202, label="Spell Hit (16%; 6% w/ Shadow Focus = 76)" },
+            { stat="spellhit",  cap=202, label="Spell Hit" },
             { stat="spellcrit", cap=0,   label="Spell Crit", info=true },
             { stat="spelldmg",  cap=0,   label="Shadow Damage", info=true },
             { stat="haste",     cap=0,   label="Haste", info=true },
@@ -234,19 +236,19 @@ addon.STAT_CAPS = {
     },
     MAGE = {
         Fire = {
-            { stat="spellhit",  cap=164, label="Spell Hit (13% w/ Elemental Precision)" },
+            { stat="spellhit",  cap=164, label="Spell Hit" },
             { stat="spellcrit", cap=0,   label="Spell Crit", info=true },
             { stat="spelldmg",  cap=0,   label="Spell Damage", info=true },
             { stat="haste",     cap=0,   label="Haste", info=true },
         },
         Arcane = {
-            { stat="spellhit",  cap=202, label="Spell Hit (16%)" },
+            { stat="spellhit",  cap=202, label="Spell Hit" },
             { stat="spellcrit", cap=0,   label="Spell Crit", info=true },
             { stat="spelldmg",  cap=0,   label="Spell Damage", info=true },
             { stat="haste",     cap=0,   label="Haste", info=true },
         },
         Frost = {
-            { stat="spellhit",  cap=164, label="Spell Hit (13% w/ Elemental Precision)" },
+            { stat="spellhit",  cap=164, label="Spell Hit" },
             { stat="spellcrit", cap=0,   label="Spell Crit", info=true },
             { stat="spelldmg",  cap=0,   label="Spell Damage", info=true },
             { stat="haste",     cap=0,   label="Haste", info=true },
@@ -254,27 +256,27 @@ addon.STAT_CAPS = {
     },
     WARLOCK = {
         Affliction = {
-            { stat="spellhit",  cap=164, label="Spell Hit (13% w/ Suppression = 164)" },
+            { stat="spellhit",  cap=164, label="Spell Hit" },
             { stat="spellcrit", cap=0,   label="Spell Crit", info=true },
-            { stat="spelldmg",  cap=0,   label="Shadow/Fire Damage", info=true },
+            { stat="spelldmg",  cap=0,   label="Shadow Damage", info=true },
             { stat="haste",     cap=0,   label="Haste", info=true },
         },
         Destruction = {
-            { stat="spellhit",  cap=202, label="Spell Hit (16%)" },
+            { stat="spellhit",  cap=202, label="Spell Hit" },
             { stat="spellcrit", cap=0,   label="Spell Crit", info=true },
-            { stat="spelldmg",  cap=0,   label="Shadow/Fire Damage", info=true },
+            { stat="spelldmg",  cap=0,   label="Shadow Damage", info=true },
             { stat="haste",     cap=0,   label="Haste", info=true },
         },
         Demonology = {
-            { stat="spellhit",  cap=202, label="Spell Hit (16%)" },
+            { stat="spellhit",  cap=202, label="Spell Hit" },
             { stat="spellcrit", cap=0,   label="Spell Crit", info=true },
-            { stat="spelldmg",  cap=0,   label="Shadow/Fire Damage", info=true },
+            { stat="spelldmg",  cap=0,   label="Shadow Damage", info=true },
             { stat="haste",     cap=0,   label="Haste", info=true },
         },
     },
     DRUID = {
         Balance = {
-            { stat="spellhit",  cap=164, label="Spell Hit (13% w/ Balance of Power)" },
+            { stat="spellhit",  cap=164, label="Spell Hit" },
             { stat="spellcrit", cap=0,   label="Spell Crit", info=true },
             { stat="spelldmg",  cap=0,   label="Spell Damage", info=true },
             { stat="haste",     cap=0,   label="Haste", info=true },
@@ -286,14 +288,14 @@ addon.STAT_CAPS = {
             { stat="intellect", cap=0, label="Intellect", info=true },
         },
         ["Feral - Tank"] = {
-            { stat="defense",   cap=415, label="Defense (uncrittable in Bear, w/ Survival of the Fittest)" },
-            { stat="hit",       cap=142, label="Hit (9%)" },
-            { stat="expertise", cap=26,  label="Expertise (dodge cap)" },
+            { stat="defense",   cap=415, label="Defense" },
+            { stat="hit",       cap=142, label="Hit" },
+            { stat="expertise", cap=26,  label="Expertise" },
             { stat="armor",     cap=0,   label="Armor", info=true },
         },
         ["Feral - DPS"] = {
-            { stat="hit",       cap=142, label="Hit (9% — cat melee, can crit immune-mob with poor hit)" },
-            { stat="expertise", cap=26,  label="Expertise (dodge cap)" },
+            { stat="hit",       cap=142, label="Hit" },
+            { stat="expertise", cap=26,  label="Expertise" },
             { stat="crit",      cap=0,   label="Crit", info=true },
             { stat="agility",   cap=0,   label="Agility", info=true },
         },
@@ -306,14 +308,14 @@ addon.STAT_CAPS = {
             { stat="intellect", cap=0, label="Intellect", info=true },
         },
         Elemental = {
-            { stat="spellhit",  cap=164, label="Spell Hit (13% w/ Elemental Precision)" },
+            { stat="spellhit",  cap=164, label="Spell Hit" },
             { stat="spellcrit", cap=0,   label="Spell Crit", info=true },
             { stat="spelldmg",  cap=0,   label="Spell Damage", info=true },
             { stat="haste",     cap=0,   label="Haste", info=true },
         },
         Enhancement = {
-            { stat="hit",       cap=142, label="Hit (9%)" },
-            { stat="expertise", cap=26,  label="Expertise (dodge cap)" },
+            { stat="hit",       cap=142, label="Hit" },
+            { stat="expertise", cap=26,  label="Expertise" },
             { stat="crit",      cap=0,   label="Crit", info=true },
             { stat="agility",   cap=0,   label="Agility", info=true },
         },
