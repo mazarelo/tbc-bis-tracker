@@ -149,6 +149,9 @@ function UI:Build()
     -- ── Farm plan (bottom-right hover) ──
     self:BuildFarmPlan()
 
+    -- ── Stat-cap side panel ──
+    self:BuildStatCapPanel()
+
     -- Initial population
     self:RefreshClassButtons()
     self:RefreshSpecSelector()
@@ -1144,6 +1147,229 @@ function UI:BuildFarmPlan()
     self.farmHover = hover
 end
 
+-- ─────────────────────────────────────────────
+-- Stat-cap side panel
+-- ─────────────────────────────────────────────
+
+local STAT_PANEL_W = 220
+local STAT_PANEL_BAR_H = 14
+local STAT_PANEL_ROW_H = 38   -- label + bar + spacing
+local STAT_PANEL_MAX_ROWS = 8
+
+local STAT_MODE_LABELS = {
+    obtained = "Obtained",
+    selected = "Selected BiS",
+    equipped = "Equipped",
+}
+local STAT_MODE_ORDER = { "obtained", "selected", "equipped" }
+
+function UI:BuildStatCapPanel()
+    local f = self.frame
+
+    -- Side panel: anchored to the right edge of the main frame, extending outside it.
+    local panel = CreateFrame("Frame", "TBCBisTrackerStatCapPanel", f, "BackdropTemplate")
+    panel:SetSize(STAT_PANEL_W, FRAME_H)
+    panel:SetPoint("TOPLEFT", f, "TOPRIGHT", 6, 0)
+    if panel.SetBackdrop then
+        panel:SetBackdrop({
+            bgFile   = "Interface\\DialogFrame\\UI-DialogBox-Background",
+            edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+            tile     = true, tileSize = 32, edgeSize = 16,
+            insets   = { left = 4, right = 4, top = 4, bottom = 4 },
+        })
+    end
+    self.statPanel = panel
+
+    -- Title
+    local title = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    title:SetPoint("TOP", panel, "TOP", 0, -10)
+    title:SetText("|cffffd700Stat Caps|r")
+    self.statPanelTitle = title
+
+    -- Mode dropdown
+    local dd = CreateFrame("Frame", "TBCBisTrackerStatModeDropdown", panel, "UIDropDownMenuTemplate")
+    dd:SetPoint("TOP", panel, "TOP", 0, -28)
+    UIDropDownMenu_SetWidth(dd, 130)
+    UIDropDownMenu_Initialize(dd, function(_, level)
+        for _, m in ipairs(STAT_MODE_ORDER) do
+            local info = UIDropDownMenu_CreateInfo()
+            info.text = STAT_MODE_LABELS[m]
+            info.value = m
+            info.func = function()
+                TBCBisTrackerDB.statTrackerMode = m
+                UIDropDownMenu_SetSelectedValue(dd, m)
+                UIDropDownMenu_SetText(dd, STAT_MODE_LABELS[m])
+                CloseDropDownMenus()
+                UI:RefreshStatCaps()
+            end
+            UIDropDownMenu_AddButton(info, level)
+        end
+    end, "MENU")
+    UIDropDownMenu_SetSelectedValue(dd, TBCBisTrackerDB.statTrackerMode or "obtained")
+    UIDropDownMenu_SetText(dd, STAT_MODE_LABELS[TBCBisTrackerDB.statTrackerMode or "obtained"])
+    self.statModeDropdown = dd
+
+    -- Body container
+    local body = CreateFrame("Frame", nil, panel)
+    body:SetPoint("TOPLEFT", panel, "TOPLEFT", 12, -68)
+    body:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -12, 30)
+    self.statPanelBody = body
+
+    -- Pool of stat rows
+    self.statRowPool = {}
+    for i = 1, STAT_PANEL_MAX_ROWS do
+        local row = CreateFrame("Frame", nil, body)
+        row:SetSize(STAT_PANEL_W - 24, STAT_PANEL_ROW_H)
+        row:SetPoint("TOPLEFT", body, "TOPLEFT", 0, -(i-1) * STAT_PANEL_ROW_H)
+        row:EnableMouse(true)
+
+        local lbl = row:CreateFontString(nil, "OVERLAY")
+        SetFontSmall(lbl)
+        lbl:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
+        lbl:SetJustifyH("LEFT")
+        lbl:SetWidth(STAT_PANEL_W - 24)
+        row.lbl = lbl
+
+        local bg = row:CreateTexture(nil, "BACKGROUND")
+        bg:SetTexture("Interface\\TargetingFrame\\UI-StatusBar")
+        bg:SetVertexColor(0.10, 0.10, 0.10, 1)
+        bg:SetPoint("TOPLEFT", row, "TOPLEFT", 0, -16)
+        bg:SetSize(STAT_PANEL_W - 24, STAT_PANEL_BAR_H)
+        row.bg = bg
+
+        local fill = row:CreateTexture(nil, "ARTWORK")
+        fill:SetTexture("Interface\\TargetingFrame\\UI-StatusBar")
+        fill:SetPoint("TOPLEFT", row, "TOPLEFT", 0, -16)
+        fill:SetSize(0, STAT_PANEL_BAR_H)
+        row.fill = fill
+
+        local val = row:CreateFontString(nil, "OVERLAY")
+        SetFontSmall(val)
+        val:SetPoint("TOP", row, "TOP", 0, -17)
+        val:SetJustifyH("CENTER")
+        row.val = val
+
+        row:SetScript("OnEnter", function(self)
+            local data = self._data
+            if not data then return end
+            GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+            GameTooltip:SetText(data.label, 1, 1, 1)
+            if data.cap and data.cap > 0 then
+                if data.missing > 0 then
+                    GameTooltip:AddLine(string.format("Current: %d / %d  (need %d more)", data.current, data.cap, data.missing), 1, 0.6, 0.2)
+                else
+                    GameTooltip:AddLine(string.format("Capped: %d / %d  (+%d over)", data.current, data.cap, data.current - data.cap), 0.2, 1, 0.2)
+                end
+            else
+                GameTooltip:AddLine(string.format("Total: %d", data.current), 1, 1, 1)
+            end
+            if data.contributors and #data.contributors > 0 then
+                GameTooltip:AddLine(" ")
+                GameTooltip:AddLine("|cffaaaaaaTop contributors:|r", 1, 1, 1)
+                table.sort(data.contributors, function(a, b) return a.value > b.value end)
+                for i = 1, math.min(6, #data.contributors) do
+                    local c = data.contributors[i]
+                    local slotLabel = addon.SLOT_LABELS[c.slot] or c.slot
+                    local name = addon:GetItemName(c.itemId)
+                    GameTooltip:AddDoubleLine(slotLabel .. " — " .. name, "+" .. c.value, 0.8, 0.85, 0.95, 1, 1, 1)
+                end
+            end
+            GameTooltip:Show()
+        end)
+        row:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
+        row:Hide()
+        self.statRowPool[i] = row
+    end
+
+    -- Footer note
+    local note = panel:CreateFontString(nil, "OVERLAY")
+    SetFontSmall(note)
+    note:SetPoint("BOTTOMLEFT", panel, "BOTTOMLEFT", 12, 8)
+    note:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -12, 8)
+    note:SetJustifyH("LEFT")
+    note:SetTextColor(0.6, 0.6, 0.6, 1)
+    self.statPanelNote = note
+end
+
+function UI:RefreshStatCaps()
+    if not self.statPanel then return end
+    local class = TBCBisTrackerDB.lastClass
+    local spec  = TBCBisTrackerDB.lastSpec
+    local phase = TBCBisTrackerDB.lastPhase
+    local mode  = TBCBisTrackerDB.statTrackerMode or "obtained"
+
+    -- Hide all rows
+    for _, row in ipairs(self.statRowPool) do row:Hide() end
+
+    if not (class and spec) then
+        self.statPanelNote:SetText("No spec selected.")
+        return
+    end
+
+    local rows, pending = addon:GetCapStatus(class, spec, phase, mode)
+    if not rows then
+        self.statPanelNote:SetText("|cff888888No stat caps configured for " .. spec .. ".|r")
+        return
+    end
+
+    local showCount = math.min(#rows, STAT_PANEL_MAX_ROWS)
+    for i = 1, showCount do
+        local data = rows[i]
+        local row = self.statRowPool[i]
+        row._data = data
+        local pct = (data.cap > 0) and math.min(1, data.current / data.cap) or 0
+        local labelText
+        if data.info then
+            labelText = "|cffaaaaaa" .. data.label .. "|r"
+        elseif data.missing == 0 and data.cap > 0 then
+            labelText = "|cff60ff60" .. data.label .. " ✓|r"
+        else
+            labelText = data.label
+        end
+        row.lbl:SetText(labelText)
+
+        if data.info then
+            -- Info rows: no bar, just show value
+            row.bg:Hide()
+            row.fill:Hide()
+            row.val:SetText("|cffffffff" .. data.current .. "|r")
+            row.val:ClearAllPoints()
+            row.val:SetPoint("TOPLEFT", row, "TOPLEFT", 0, -16)
+        else
+            row.bg:Show()
+            row.fill:Show()
+            row.val:ClearAllPoints()
+            row.val:SetPoint("TOP", row, "TOP", 0, -17)
+            local barW = (STAT_PANEL_W - 24) * pct
+            row.fill:SetWidth(math.max(0.01, barW))
+            if data.missing == 0 then
+                row.fill:SetVertexColor(0.20, 0.80, 0.20, 0.85)
+            elseif pct > 0.6 then
+                row.fill:SetVertexColor(0.85, 0.70, 0.20, 0.85)
+            else
+                row.fill:SetVertexColor(0.85, 0.30, 0.20, 0.85)
+            end
+            local txt
+            if data.missing == 0 then
+                txt = string.format("|cff00ff00%d / %d|r", data.current, data.cap)
+            else
+                txt = string.format("%d / %d  |cffff8800(-%d)|r", data.current, data.cap, data.missing)
+            end
+            row.val:SetText(txt)
+        end
+        row:Show()
+    end
+
+    if pending and pending > 0 then
+        self.statPanelNote:SetText("|cffaaaaaa" .. pending .. " items still loading from server…|r")
+    elseif #rows > STAT_PANEL_MAX_ROWS then
+        self.statPanelNote:SetText("|cff888888…and " .. (#rows - STAT_PANEL_MAX_ROWS) .. " more|r")
+    else
+        self.statPanelNote:SetText("|cff666666Item base stats only — gems & enchants not yet included.|r")
+    end
+end
+
 function UI:BuildTierStatus()
     local f = self.frame
     local fs = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
@@ -1374,6 +1600,7 @@ function UI:Refresh()
     self:RefreshPhaseTabs()
     self:RefreshBadgeStatus()
     self:RefreshTierStatus()
+    self:RefreshStatCaps()
 end
 
 function UI:UpdateProgress(obtained, total)

@@ -135,6 +135,216 @@ addon.SLOT_INVENTORY_IDS = {
 }
 
 -- ─────────────────────────────────────────────
+-- Stat caps per class/spec
+-- ─────────────────────────────────────────────
+-- 1 hit rating  = 1.578% / 15.77 melee hit (so 9% melee hit cap = 142 rating)
+-- 1 hit rating  = 0.792% spell hit (16% boss spell hit cap = 202 rating)
+-- 1 expertise   = 1 expertise (26 = 6.5% dodge → dodge cap)
+-- 1 defense rating = 0.4 defense skill (140 def rating ≈ 56 def → 350 def per side; 490 from rating alone is excessive — we display the rating threshold to reach 490 *defense skill* assuming +10 from the gear's base.)
+-- For v1 we display the *rating* cap that's commonly cited in TBC.
+addon.STAT_CAPS = {
+    -- Melee hit cap (9%): 142 hit rating
+    -- Spell hit cap (16%): 202 hit rating; talented (~13%) ≈ 164; talented (~10%) ≈ 126
+    -- Defense rating: 415 = uncrittable for druid bear; 490 = uncrittable for plate tank
+    -- Expertise rating: 6.5% dodge cap on bosses ≈ 26 (5 expertise) — "expertise rating" displays as the rating
+    WARRIOR = {
+        Fury = {
+            { stat="hit",       cap=142, label="Hit (9%)" },
+            { stat="expertise", cap=26,  label="Expertise (dodge cap)" },
+            { stat="crit",      cap=0,   label="Crit", info=true },
+            { stat="haste",     cap=0,   label="Haste", info=true },
+        },
+        Protection = {
+            { stat="defense",   cap=490, label="Defense (uncrittable)" },
+            { stat="hit",       cap=142, label="Hit (9%)" },
+            { stat="expertise", cap=26,  label="Expertise (dodge cap)" },
+            { stat="armor",     cap=0,   label="Armor", info=true },
+        },
+    },
+    PALADIN = {
+        Holy = {
+            { stat="healing",   cap=0,   label="+Healing", info=true },
+            { stat="mp5",       cap=0,   label="MP5", info=true },
+            { stat="spellcrit", cap=0,   label="Spell Crit", info=true },
+            { stat="intellect", cap=0,   label="Intellect", info=true },
+        },
+        Protection = {
+            { stat="defense",   cap=490, label="Defense (uncrittable)" },
+            { stat="hit",       cap=142, label="Hit (9%)" },
+            { stat="expertise", cap=26,  label="Expertise (dodge cap)" },
+            { stat="spelldmg",  cap=0,   label="Spell Power", info=true },
+        },
+        Retribution = {
+            { stat="hit",       cap=142, label="Hit (9%)" },
+            { stat="expertise", cap=26,  label="Expertise (dodge cap)" },
+            { stat="crit",      cap=0,   label="Crit", info=true },
+            { stat="strength",  cap=0,   label="Strength", info=true },
+        },
+    },
+    HUNTER = {
+        ["Marksmanship"] = {
+            { stat="hit",   cap=142, label="Hit (9%)" },
+            { stat="crit",  cap=0,   label="Crit", info=true },
+            { stat="agility", cap=0, label="Agility", info=true },
+        },
+        ["Survival"] = {
+            { stat="hit",   cap=142, label="Hit (9%)" },
+            { stat="crit",  cap=0,   label="Crit", info=true },
+            { stat="agility", cap=0, label="Agility", info=true },
+        },
+        ["Beast Mastery"] = {
+            { stat="hit",   cap=142, label="Hit (9%)" },
+            { stat="crit",  cap=0,   label="Crit", info=true },
+            { stat="agility", cap=0, label="Agility", info=true },
+        },
+    },
+    ROGUE = {
+        Combat = {
+            { stat="hit",       cap=142, label="Hit (9%; 5% w/ Precision = 79)" },
+            { stat="expertise", cap=26,  label="Expertise (dodge cap)" },
+            { stat="crit",      cap=0,   label="Crit", info=true },
+            { stat="agility",   cap=0,   label="Agility", info=true },
+        },
+        Assassination = {
+            { stat="hit",       cap=142, label="Hit (9%; 5% w/ Precision = 79)" },
+            { stat="expertise", cap=26,  label="Expertise (dodge cap)" },
+            { stat="crit",      cap=0,   label="Crit", info=true },
+            { stat="agility",   cap=0,   label="Agility", info=true },
+        },
+    },
+    PRIEST = {
+        Holy = {
+            { stat="healing",   cap=0, label="+Healing", info=true },
+            { stat="mp5",       cap=0, label="MP5", info=true },
+            { stat="spellcrit", cap=0, label="Spell Crit", info=true },
+            { stat="intellect", cap=0, label="Intellect", info=true },
+        },
+        Discipline = {
+            { stat="healing",   cap=0, label="+Healing", info=true },
+            { stat="mp5",       cap=0, label="MP5", info=true },
+            { stat="spellcrit", cap=0, label="Spell Crit", info=true },
+            { stat="intellect", cap=0, label="Intellect", info=true },
+        },
+        Shadow = {
+            { stat="spellhit",  cap=202, label="Spell Hit (16%; 6% w/ Shadow Focus = 76)" },
+            { stat="spellcrit", cap=0,   label="Spell Crit", info=true },
+            { stat="spelldmg",  cap=0,   label="Shadow Damage", info=true },
+            { stat="haste",     cap=0,   label="Haste", info=true },
+        },
+    },
+    MAGE = {
+        Fire = {
+            { stat="spellhit",  cap=164, label="Spell Hit (13% w/ Elemental Precision)" },
+            { stat="spellcrit", cap=0,   label="Spell Crit", info=true },
+            { stat="spelldmg",  cap=0,   label="Spell Damage", info=true },
+            { stat="haste",     cap=0,   label="Haste", info=true },
+        },
+        Arcane = {
+            { stat="spellhit",  cap=202, label="Spell Hit (16%)" },
+            { stat="spellcrit", cap=0,   label="Spell Crit", info=true },
+            { stat="spelldmg",  cap=0,   label="Spell Damage", info=true },
+            { stat="haste",     cap=0,   label="Haste", info=true },
+        },
+        Frost = {
+            { stat="spellhit",  cap=164, label="Spell Hit (13% w/ Elemental Precision)" },
+            { stat="spellcrit", cap=0,   label="Spell Crit", info=true },
+            { stat="spelldmg",  cap=0,   label="Spell Damage", info=true },
+            { stat="haste",     cap=0,   label="Haste", info=true },
+        },
+    },
+    WARLOCK = {
+        Affliction = {
+            { stat="spellhit",  cap=164, label="Spell Hit (13% w/ Suppression = 164)" },
+            { stat="spellcrit", cap=0,   label="Spell Crit", info=true },
+            { stat="spelldmg",  cap=0,   label="Shadow/Fire Damage", info=true },
+            { stat="haste",     cap=0,   label="Haste", info=true },
+        },
+        Destruction = {
+            { stat="spellhit",  cap=202, label="Spell Hit (16%)" },
+            { stat="spellcrit", cap=0,   label="Spell Crit", info=true },
+            { stat="spelldmg",  cap=0,   label="Shadow/Fire Damage", info=true },
+            { stat="haste",     cap=0,   label="Haste", info=true },
+        },
+        Demonology = {
+            { stat="spellhit",  cap=202, label="Spell Hit (16%)" },
+            { stat="spellcrit", cap=0,   label="Spell Crit", info=true },
+            { stat="spelldmg",  cap=0,   label="Shadow/Fire Damage", info=true },
+            { stat="haste",     cap=0,   label="Haste", info=true },
+        },
+    },
+    DRUID = {
+        Balance = {
+            { stat="spellhit",  cap=164, label="Spell Hit (13% w/ Balance of Power)" },
+            { stat="spellcrit", cap=0,   label="Spell Crit", info=true },
+            { stat="spelldmg",  cap=0,   label="Spell Damage", info=true },
+            { stat="haste",     cap=0,   label="Haste", info=true },
+        },
+        Restoration = {
+            { stat="healing",   cap=0, label="+Healing", info=true },
+            { stat="mp5",       cap=0, label="MP5", info=true },
+            { stat="spellcrit", cap=0, label="Spell Crit", info=true },
+            { stat="intellect", cap=0, label="Intellect", info=true },
+        },
+        ["Feral - Tank"] = {
+            { stat="defense",   cap=415, label="Defense (uncrittable in Bear, w/ Survival of the Fittest)" },
+            { stat="hit",       cap=142, label="Hit (9%)" },
+            { stat="expertise", cap=26,  label="Expertise (dodge cap)" },
+            { stat="armor",     cap=0,   label="Armor", info=true },
+        },
+        ["Feral - DPS"] = {
+            { stat="hit",       cap=142, label="Hit (9% — cat melee, can crit immune-mob with poor hit)" },
+            { stat="expertise", cap=26,  label="Expertise (dodge cap)" },
+            { stat="crit",      cap=0,   label="Crit", info=true },
+            { stat="agility",   cap=0,   label="Agility", info=true },
+        },
+    },
+    SHAMAN = {
+        Restoration = {
+            { stat="healing",   cap=0, label="+Healing", info=true },
+            { stat="mp5",       cap=0, label="MP5", info=true },
+            { stat="spellcrit", cap=0, label="Spell Crit", info=true },
+            { stat="intellect", cap=0, label="Intellect", info=true },
+        },
+        Elemental = {
+            { stat="spellhit",  cap=164, label="Spell Hit (13% w/ Elemental Precision)" },
+            { stat="spellcrit", cap=0,   label="Spell Crit", info=true },
+            { stat="spelldmg",  cap=0,   label="Spell Damage", info=true },
+            { stat="haste",     cap=0,   label="Haste", info=true },
+        },
+        Enhancement = {
+            { stat="hit",       cap=142, label="Hit (9%)" },
+            { stat="expertise", cap=26,  label="Expertise (dodge cap)" },
+            { stat="crit",      cap=0,   label="Crit", info=true },
+            { stat="agility",   cap=0,   label="Agility", info=true },
+        },
+    },
+}
+
+-- Map our stat keys → GetItemStats() keys (Blizzard's locale-independent constants)
+addon.STAT_GETITEMSTATS_KEYS = {
+    -- Defensive
+    defense   = { "ITEM_MOD_DEFENSE_SKILL_RATING_SHORT" },
+    armor     = { "RESISTANCE0_NAME" },
+    -- Hit/exp/crit/haste (melee + spell rolled into the same field by GetItemStats most of the time)
+    hit       = { "ITEM_MOD_HIT_RATING_SHORT", "ITEM_MOD_HIT_MELEE_RATING_SHORT" },
+    spellhit  = { "ITEM_MOD_HIT_SPELL_RATING_SHORT", "ITEM_MOD_HIT_RATING_SHORT" },
+    expertise = { "ITEM_MOD_EXPERTISE_RATING_SHORT" },
+    crit      = { "ITEM_MOD_CRIT_RATING_SHORT", "ITEM_MOD_CRIT_MELEE_RATING_SHORT" },
+    spellcrit = { "ITEM_MOD_CRIT_SPELL_RATING_SHORT", "ITEM_MOD_CRIT_RATING_SHORT" },
+    haste     = { "ITEM_MOD_HASTE_RATING_SHORT", "ITEM_MOD_HASTE_SPELL_RATING_SHORT", "ITEM_MOD_HASTE_MELEE_RATING_SHORT" },
+    -- Caster
+    spelldmg  = { "ITEM_MOD_SPELL_DAMAGE_DONE_SHORT", "ITEM_MOD_SPELL_POWER_SHORT" },
+    healing   = { "ITEM_MOD_SPELL_HEALING_DONE_SHORT", "ITEM_MOD_SPELL_DAMAGE_DONE_SHORT", "ITEM_MOD_SPELL_POWER_SHORT" },
+    mp5       = { "ITEM_MOD_POWER_REGEN0_SHORT", "ITEM_MOD_MANA_REGENERATION_SHORT" },
+    -- Primary
+    strength  = { "ITEM_MOD_STRENGTH_SHORT" },
+    agility   = { "ITEM_MOD_AGILITY_SHORT" },
+    intellect = { "ITEM_MOD_INTELLECT_SHORT" },
+    stamina   = { "ITEM_MOD_STAMINA_SHORT" },
+    spirit    = { "ITEM_MOD_SPIRIT_SHORT" },
+}
+
+-- ─────────────────────────────────────────────
 -- Saved-variable defaults
 -- ─────────────────────────────────────────────
 
@@ -147,6 +357,8 @@ local DEFAULT_DB = {
     showMissingOnly = false,
     sourceFilter = "all",
     windowPos    = { point = "CENTER", x = 0, y = 0 },
+    statTrackerMode = "obtained",   -- "obtained" | "selected" | "equipped"
+    statTrackerOpen = true,
 }
 
 -- Per-character tracking data
@@ -788,6 +1000,118 @@ function addon:GetSlotItem(class, spec, phase, slot)
     return alts[idx], idx, #alts
 end
 
+-- ─────────────────────────────────────────────
+-- Stat aggregation (cap tracker)
+-- ─────────────────────────────────────────────
+
+-- Pull a single stat value from a GetItemStats() result, trying each candidate key.
+local function readStat(statTable, keys)
+    if not statTable then return 0 end
+    for _, k in ipairs(keys) do
+        local v = statTable[k]
+        if v and v ~= 0 then return v end
+    end
+    return 0
+end
+
+-- Returns a stats dict for an item id, e.g. {hit=12, crit=18, ...}.
+-- If the item isn't in the local cache yet, returns nil so caller can retry later.
+function addon:GetItemStatsForId(itemId)
+    if not itemId or itemId <= 0 then return {} end
+    local link = select(2, GetItemInfo(itemId))
+    if not link then
+        -- Trigger client cache; caller should retry on GET_ITEM_INFO_RECEIVED
+        GetItemInfo(itemId)
+        return nil
+    end
+    local raw = GetItemStats(link)
+    local out = {}
+    for ourKey, candidates in pairs(self.STAT_GETITEMSTATS_KEYS) do
+        out[ourKey] = readStat(raw, candidates)
+    end
+    return out
+end
+
+-- Aggregate stats across all 17 slots, picking the item per `mode`:
+--   "obtained" — selected alt for slots the user has checked obtained
+--   "selected" — selected alt for every slot, regardless of obtained
+--   "equipped" — actually-equipped item via GetInventoryItemLink
+-- Returns: stats={...}, missingItems=N (cold-cache count for caller to schedule a retry)
+function addon:GetTrackedStats(class, spec, phase, mode)
+    mode = mode or "obtained"
+    local agg = {}
+    local pending = 0
+    local contributors = {}  -- stat -> { {slot=..., itemId=..., value=...}, ... }
+    for ourKey in pairs(self.STAT_GETITEMSTATS_KEYS) do
+        agg[ourKey] = 0
+        contributors[ourKey] = {}
+    end
+
+    for _, slot in ipairs(self.SLOTS) do
+        local itemId
+        if mode == "equipped" then
+            local invIds = self.SLOT_INVENTORY_IDS[slot]
+            if invIds then
+                -- Convention: ring1/ring2/trinket1/trinket2 each have two inv slots; map slot1=lower, slot2=upper
+                local pickIdx = (slot == "ring2" or slot == "trinket2") and 2 or 1
+                local invId = invIds[pickIdx] or invIds[1]
+                local link = GetInventoryItemLink("player", invId)
+                if link then itemId = tonumber(link:match("item:(%d+)")) end
+            end
+        else
+            local entry = self:GetSlotItem(class, spec, phase, slot)
+            if entry and entry.id and entry.id > 0 then
+                if mode == "obtained" then
+                    if self:IsObtained(class, spec, phase, slot) then itemId = entry.id end
+                else  -- "selected"
+                    itemId = entry.id
+                end
+            end
+        end
+
+        if itemId and itemId > 0 then
+            local stats = self:GetItemStatsForId(itemId)
+            if stats == nil then
+                pending = pending + 1
+            else
+                for k, v in pairs(stats) do
+                    if v ~= 0 then
+                        agg[k] = (agg[k] or 0) + v
+                        table.insert(contributors[k], { slot = slot, itemId = itemId, value = v })
+                    end
+                end
+            end
+        end
+    end
+
+    return agg, pending, contributors
+end
+
+-- Returns a render-ready list aligned with STAT_CAPS[class][spec]:
+--   { {label="Defense", stat="defense", cap=490, current=410, missing=80, info=false}, ... }
+-- Returns nil if the spec has no defined caps.
+function addon:GetCapStatus(class, spec, phase, mode)
+    if not (class and spec) then return nil end
+    local capList = self.STAT_CAPS[class] and self.STAT_CAPS[class][spec]
+    if not capList then return nil end
+
+    local stats, pending, contribs = self:GetTrackedStats(class, spec, phase, mode)
+    local out = {}
+    for _, def in ipairs(capList) do
+        local cur = stats[def.stat] or 0
+        out[#out + 1] = {
+            stat    = def.stat,
+            label   = def.label,
+            cap     = def.cap or 0,
+            current = cur,
+            missing = (def.cap and def.cap > 0) and math.max(0, def.cap - cur) or 0,
+            info    = def.info or false,
+            contributors = contribs[def.stat],
+        }
+    end
+    return out, pending
+end
+
 function addon:GetItemLink(itemId)
     if not itemId then return "|cffffffff[Unknown]|r" end
     local name, _, quality = GetItemInfo(itemId)
@@ -1019,6 +1343,32 @@ SlashCmdList["TBCBISTRACKER"] = function(msg)
         if addon.UI and addon.UI.ShowImportPopup then addon.UI:ShowImportPopup() end
     elseif cmd == "bis" or cmd == "reset bis" then
         addon:ResetSelectionsToBiS(TBCBisTrackerDB.lastClass, TBCBisTrackerDB.lastSpec, TBCBisTrackerDB.lastPhase)
+    elseif cmd == "stats" or cmd:match("^stats ") then
+        local mode = cmd:match("^stats%s+(%S+)$") or TBCBisTrackerDB.statTrackerMode or "obtained"
+        if mode ~= "obtained" and mode ~= "selected" and mode ~= "equipped" then
+            addon:Print("Unknown mode '" .. mode .. "'. Use: obtained / selected / equipped.")
+            return
+        end
+        local class = TBCBisTrackerDB.lastClass
+        local spec  = TBCBisTrackerDB.lastSpec
+        local phase = TBCBisTrackerDB.lastPhase
+        local rows, pending = addon:GetCapStatus(class, spec, phase, mode)
+        if not rows then
+            addon:Print("No stat caps configured for " .. tostring(class) .. " / " .. tostring(spec) .. ".")
+            return
+        end
+        addon:Print("Stat caps — " .. class .. " " .. spec .. " " .. (addon.PHASE_LABELS[phase] or phase) .. " — mode: " .. mode .. (pending > 0 and (" (" .. pending .. " items still loading)") or ""))
+        for _, r in ipairs(rows) do
+            local line
+            if r.info then
+                line = string.format("  %s: %d", r.label, r.current)
+            elseif r.missing == 0 then
+                line = string.format("  |cff00ff00✓ %s: %d / %d|r", r.label, r.current, r.cap)
+            else
+                line = string.format("  |cffff8800✗ %s: %d / %d (-%d)|r", r.label, r.current, r.cap, r.missing)
+            end
+            addon:Print(line)
+        end
     elseif cmd == "help" or cmd == "" then
         if cmd == "" then
             addon.UI:Toggle()
@@ -1029,6 +1379,7 @@ SlashCmdList["TBCBISTRACKER"] = function(msg)
             addon:Print("/tbcbis bis       — reset selected alts back to BiS for current phase")
             addon:Print("/tbcbis reset     — reset checkmarks for current phase")
             addon:Print("/tbcbis reset all — reset ALL tracking data")
+            addon:Print("/tbcbis stats [mode]  — print stat-cap progress (modes: obtained/selected/equipped)")
             addon:Print("/tbcbis hide      — hide minimap button")
             addon:Print("/tbcbis show      — show minimap button")
             addon:Print("/tbcbis help      — show this message")
@@ -1049,6 +1400,7 @@ eventFrame:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
 eventFrame:RegisterEvent("BAG_UPDATE_DELAYED")
 eventFrame:RegisterEvent("LOOT_OPENED")
 eventFrame:RegisterEvent("START_LOOT_ROLL")
+eventFrame:RegisterEvent("GET_ITEM_INFO_RECEIVED")
 
 -- ─────────────────────────────────────────────
 -- Loot announcement: alert when a BIS-tracked item appears in loot
@@ -1168,6 +1520,15 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1)
         addon:ScanEquipped()
         if addon.UI and addon.UI.RefreshBadgeStatus then
             addon.UI:RefreshBadgeStatus()
+        end
+        if addon.UI and addon.UI.RefreshStatCaps then
+            addon.UI:RefreshStatCaps()
+        end
+
+    elseif event == "GET_ITEM_INFO_RECEIVED" then
+        -- A previously-uncached item now has stats. Re-render the cap panel.
+        if addon.UI and addon.UI.RefreshStatCaps then
+            addon.UI:RefreshStatCaps()
         end
 
     elseif event == "LOOT_OPENED" then
