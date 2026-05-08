@@ -1372,6 +1372,17 @@ local STAT_MODE_LABELS = {
 }
 local STAT_MODE_ORDER = { "obtained", "selected", "equipped" }
 
+-- 4-column compact slot ordering used by the integrated BiS preview grid in
+-- the right-side panel. Reading order roughly matches the WoW character pane:
+-- head/neck/shoulders/back, then armour, jewelry, trinkets, weapons, ranged.
+local PREV_GRID_SLOTS = {
+    "head", "neck", "shoulder", "back",
+    "chest", "wrist", "hands", "waist",
+    "legs", "feet", "ring1", "ring2",
+    "trinket1", "trinket2", "mainhand", "offhand",
+    "ranged",
+}
+
 function UI:BuildStatCapPanel()
     local f = self.frame
 
@@ -1389,28 +1400,103 @@ function UI:BuildStatCapPanel()
     panel:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -8, 10)
     self.statPanel = panel
 
-    -- ── Header ──
-    local header = CreateFrame("Frame", nil, panel)
-    header:SetPoint("TOPLEFT", panel, "TOPLEFT", UI_PAL.pad, -UI_PAL.pad)
-    header:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -UI_PAL.pad, -UI_PAL.pad)
-    header:SetHeight(20)
+    -- ── Section 1: BiS slot preview ──
+    local slotsTitle = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    slotsTitle:SetPoint("TOPLEFT", panel, "TOPLEFT", UI_PAL.pad, -UI_PAL.pad)
+    slotsTitle:SetText(UI_PAL.accent .. "BiS Preview|r")
+    self.statPanelSlotsTitle = slotsTitle
 
-    local title = header:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    title:SetPoint("LEFT", header, "LEFT", 0, 0)
-    title:SetText(UI_PAL.accent .. "Stat Caps|r")
-    self.statPanelTitle = title
+    -- Hint text on the right of the title pointing at minimap right-click for
+    -- the standalone preview window with the 3D model.
+    local hint = panel:CreateFontString(nil, "OVERLAY")
+    SetFontSmall(hint)
+    hint:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -UI_PAL.pad, -UI_PAL.pad - 2)
+    hint:SetText(UI_PAL.muted .. "right-click minimap →|r")
+    hint:SetJustifyH("RIGHT")
+    self.statPanelSlotsHint = hint
 
-    -- Header divider line just below header
     local hdiv = CreateDivider(panel)
     hdiv:SetPoint("TOPLEFT", panel, "TOPLEFT", UI_PAL.pad, -32)
     hdiv:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -UI_PAL.pad, -32)
     hdiv:SetHeight(1)
-    self.statPanelHeaderDiv = hdiv
+
+    -- Build the 4-column compact slot grid centred in the panel.
+    local panelInnerW = STAT_PANEL_W - 2 * UI_PAL.pad
+    local SLOT_SZ = 30
+    local SLOT_GAP_X = 6
+    local SLOT_GAP_Y = 4
+    local cols = 4
+    local rows = math.ceil(#PREV_GRID_SLOTS / cols)
+    local gridW = cols * SLOT_SZ + (cols - 1) * SLOT_GAP_X
+    local gridStartX = UI_PAL.pad + (panelInnerW - gridW) / 2
+    local gridStartY = -42
+
+    self.integratedSlotBtns = {}
+    for i, slot in ipairs(PREV_GRID_SLOTS) do
+        local col = (i - 1) % cols
+        local rowI = math.floor((i - 1) / cols)
+        local x = gridStartX + col * (SLOT_SZ + SLOT_GAP_X)
+        local y = gridStartY - rowI * (SLOT_SZ + SLOT_GAP_Y)
+
+        local btn = CreateFrame("Button", nil, panel)
+        btn:SetSize(SLOT_SZ, SLOT_SZ)
+        btn:SetPoint("TOPLEFT", panel, "TOPLEFT", x, y)
+        btn._slot = slot
+
+        local bg = btn:CreateTexture(nil, "BACKGROUND")
+        bg:SetAllPoints(); bg:SetTexture("Interface\\Buttons\\UI-EmptySlot-Disabled")
+        btn.bg = bg
+
+        local icon = btn:CreateTexture(nil, "ARTWORK")
+        icon:SetPoint("TOPLEFT", btn, "TOPLEFT", 3, -3)
+        icon:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", -3, 3)
+        icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+        icon:SetTexture(addon.SLOT_ICONS[slot] or "Interface\\Icons\\INV_Misc_QuestionMark")
+        btn.icon = icon
+
+        local mark = btn:CreateTexture(nil, "OVERLAY")
+        mark:SetTexture("Interface\\RAIDFRAME\\ReadyCheck-Ready")
+        mark:SetSize(12, 12); mark:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", 1, -1); mark:Hide()
+        btn.mark = mark
+
+        btn:SetScript("OnEnter", function(self)
+            if self._itemId and self._itemId > 0 then
+                GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+                GameTooltip:SetHyperlink("item:" .. self._itemId .. ":0:0:0:0:0:0:0")
+                GameTooltip:AddLine(" ")
+                GameTooltip:AddLine(UI_PAL.muted .. (addon.SLOT_LABELS[self._slot] or self._slot) .. "|r", 1, 1, 1)
+                GameTooltip:AddLine(self._obtained and "|cff60ff60Obtained|r" or "|cff888888Not obtained|r", 1, 1, 1)
+                GameTooltip:Show()
+            else
+                GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+                GameTooltip:SetText(addon.SLOT_LABELS[self._slot] or self._slot, 1, 1, 1)
+                GameTooltip:AddLine("|cff888888No BiS pick set|r", 1, 1, 1)
+                GameTooltip:Show()
+            end
+        end)
+        btn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        self.integratedSlotBtns[slot] = btn
+    end
+
+    -- Section divider between slots and stat caps.
+    local slotsBottom = gridStartY - rows * (SLOT_SZ + SLOT_GAP_Y) + SLOT_GAP_Y - 6
+    local sectDiv = CreateDivider(panel, UI_PAL.divider)
+    sectDiv:SetPoint("TOPLEFT", panel, "TOPLEFT", UI_PAL.pad, slotsBottom)
+    sectDiv:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -UI_PAL.pad, slotsBottom)
+    sectDiv:SetHeight(1)
+
+    -- ── Section 2: Stat Caps ──
+    local statTitle = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    statTitle:SetPoint("TOPLEFT", panel, "TOPLEFT", UI_PAL.pad, slotsBottom - 8)
+    statTitle:SetText(UI_PAL.accent .. "Stat Caps|r")
+    self.statPanelTitle = statTitle
+
+    local ddY = slotsBottom - 28
 
     -- ── Mode dropdown — single inline dropdown styled like the source filter,
     --     no separate label (the selected value makes the meaning obvious). ──
     local dd = CreateFrame("Frame", "TBCBisTrackerStatModeDropdown", panel, "UIDropDownMenuTemplate")
-    dd:SetPoint("TOPLEFT", panel, "TOPLEFT", UI_PAL.pad - 16, -42)
+    dd:SetPoint("TOPLEFT", panel, "TOPLEFT", UI_PAL.pad - 16, ddY)
     UIDropDownMenu_SetWidth(dd, STAT_PANEL_W - 2 * UI_PAL.pad)
     UIDropDownMenu_Initialize(dd, function(_, level)
         for _, m in ipairs(STAT_MODE_ORDER) do
@@ -1437,16 +1523,19 @@ function UI:BuildStatCapPanel()
     UIDropDownMenu_SetText(dd, STAT_MODE_LABELS[TBCBisTrackerDB.statTrackerMode or "obtained"])
     self.statModeDropdown = dd
 
-    -- Subtle divider between header section and the bars
+    -- Subtle divider between header section and the bars — anchored to the
+    -- dropdown so the layout stays correct when the slot grid above changes.
+    local sdivY = ddY - 30
+    local bodyY = ddY - 38
     local sdiv = CreateDivider(panel, UI_PAL.dividerSoft)
-    sdiv:SetPoint("TOPLEFT", panel, "TOPLEFT", UI_PAL.pad, -72)
-    sdiv:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -UI_PAL.pad, -72)
+    sdiv:SetPoint("TOPLEFT", panel, "TOPLEFT", UI_PAL.pad, sdivY)
+    sdiv:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -UI_PAL.pad, sdivY)
     sdiv:SetHeight(1)
     self.statPanelBodyDiv = sdiv
 
     -- Body container
     local body = CreateFrame("Frame", nil, panel)
-    body:SetPoint("TOPLEFT", panel, "TOPLEFT", UI_PAL.pad + 4, -80)
+    body:SetPoint("TOPLEFT", panel, "TOPLEFT", UI_PAL.pad + 4, bodyY)
     body:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -UI_PAL.pad - 4, 32)
     self.statPanelBody = body
 
@@ -1545,6 +1634,29 @@ function UI:RefreshStatCaps()
 
     -- Hide all rows
     for _, row in ipairs(self.statRowPool) do row:Hide() end
+
+    -- Refresh the integrated BiS slot grid above the stat caps. We mirror
+    -- the standalone preview window: faded slot icon when no pick is set,
+    -- item icon (with green checkmark when obtained) when a BiS pick exists.
+    if self.integratedSlotBtns then
+        for slot, btn in pairs(self.integratedSlotBtns) do
+            local entry = (class and spec and phase) and addon:GetSlotItem(class, spec, phase, slot) or nil
+            if entry and entry.id and entry.id > 0 then
+                local texture = select(10, GetItemInfo(entry.id))
+                btn._itemId   = entry.id
+                btn._obtained = addon:IsObtained(class, spec, phase, slot)
+                btn.icon:SetTexture(texture or addon.SLOT_ICONS[slot] or "Interface\\Icons\\INV_Misc_QuestionMark")
+                btn.icon:SetAlpha(1)
+                btn.mark:SetShown(btn._obtained == true)
+            else
+                btn._itemId   = nil
+                btn._obtained = false
+                btn.icon:SetTexture(addon.SLOT_ICONS[slot] or "Interface\\Icons\\INV_Misc_QuestionMark")
+                btn.icon:SetAlpha(0.35)
+                btn.mark:Hide()
+            end
+        end
+    end
 
     if not (class and spec) then
         self.statPanelNote:SetText("No spec selected.")
