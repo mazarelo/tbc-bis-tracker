@@ -1016,12 +1016,23 @@ end
 -- Stat aggregation (cap tracker)
 -- ─────────────────────────────────────────────
 
--- Pull a single stat value from a GetItemStats() result, trying each candidate key.
+-- Pull a single stat value from a GetItemStats() result.
+-- For each candidate name we try TWO lookups:
+--   1) the literal candidate string as a key (works when GetItemStats keys are
+--      the constant identifiers like "ITEM_MOD_HIT_RATING_SHORT")
+--   2) _G[name] dereferenced to its global value (works when GetItemStats keys
+--      are the localized name strings like "Hit Rating")
+-- TBC Classic flips between these depending on patch — handling both is robust.
 local function readStat(statTable, keys)
     if not statTable then return 0 end
     for _, k in ipairs(keys) do
         local v = statTable[k]
         if v and v ~= 0 then return v end
+        local g = _G[k]
+        if type(g) == "string" then
+            v = statTable[g]
+            if v and v ~= 0 then return v end
+        end
     end
     return 0
 end
