@@ -373,6 +373,7 @@ local DEFAULT_DB = {
     windowPos    = { point = "CENTER", x = 0, y = 0 },
     statTrackerMode = "obtained",   -- "obtained" | "selected" | "equipped"
     statTrackerOpen = true,
+    previewShowModel = false,
 }
 
 -- Per-character tracking data

@@ -1983,14 +1983,18 @@ local PREV_GRID_SLOTS = {
     "ranged",
 }
 local PREV_ROWS = math.ceil(#PREV_GRID_SLOTS / PREV_COLS)
-local PREV_W = PREV_COLS * PREV_SLOT + (PREV_COLS - 1) * PREV_GAP + 2 * PREV_PAD
+local PREV_GRID_W = PREV_COLS * PREV_SLOT + (PREV_COLS - 1) * PREV_GAP + 2 * PREV_PAD
+local PREV_MODEL_W = 200  -- extra width when 3D model is shown to the right
+local PREV_W_COMPACT = PREV_GRID_W
+local PREV_W_WITH_MODEL = PREV_GRID_W + PREV_MODEL_W
 local PREV_H = 52 + PREV_ROWS * (PREV_SLOT + PREV_GAP) + 60  -- title + grid + stats footer
 
 function UI:BuildBisPreview()
     if self.previewFrame then return self.previewFrame end
 
     local f = CreateFrame("Frame", "TBCBisTrackerPreview", UIParent, "BasicFrameTemplateWithInset")
-    f:SetSize(PREV_W, PREV_H)
+    local startW = (TBCBisTrackerDB.previewShowModel and PREV_W_WITH_MODEL) or PREV_W_COMPACT
+    f:SetSize(startW, PREV_H)
     f:SetPoint("CENTER", UIParent, "CENTER", 200, 0)
     f:SetMovable(true); f:EnableMouse(true)
     f:RegisterForDrag("LeftButton")
@@ -2010,6 +2014,53 @@ function UI:BuildBisPreview()
     local subtitle = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     subtitle:SetPoint("TOP", f, "TOP", 0, -28)
     self.previewSubtitle = subtitle
+
+    -- "3D model" toggle button — small text button just under the close X.
+    local toggle = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+    toggle:SetSize(76, 18)
+    toggle:SetPoint("TOPRIGHT", f, "TOPRIGHT", -28, -8)
+    toggle:SetText(TBCBisTrackerDB.previewShowModel and "Hide model" or "Show model")
+    toggle:HookScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+        GameTooltip:SetText("3D model preview", 1, 1, 1)
+        GameTooltip:AddLine("Toggle the player model on the right of the slot grid.", 0.8, 0.8, 0.8, true)
+        GameTooltip:Show()
+    end)
+    toggle:HookScript("OnLeave", function() GameTooltip:Hide() end)
+    self.previewModelToggle = toggle
+
+    -- 3D model panel — created up-front, shown only when toggled on.
+    local model = CreateFrame("PlayerModel", nil, f)
+    model:SetPoint("TOPLEFT", f, "TOPLEFT", PREV_GRID_W, -50)
+    model:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -8, 60)
+    if model.SetUnit then model:SetUnit("player") end
+    if model.SetFacing then model:SetFacing(0.4) end
+    model:SetShown(TBCBisTrackerDB.previewShowModel == true)
+    self.previewModel = model
+    -- Drag-to-rotate
+    model:EnableMouse(true)
+    model:SetScript("OnMouseDown", function(self) self._rot_start = GetCursorPosition() end)
+    model:SetScript("OnMouseUp",   function(self) self._rot_start = nil end)
+    model:SetScript("OnUpdate", function(self)
+        if self._rot_start then
+            local x = GetCursorPosition()
+            self:SetFacing((self:GetFacing() or 0) + (x - self._rot_start) * 0.005)
+            self._rot_start = x
+        end
+    end)
+
+    toggle:SetScript("OnClick", function(btn)
+        local newVal = not TBCBisTrackerDB.previewShowModel
+        TBCBisTrackerDB.previewShowModel = newVal
+        btn:SetText(newVal and "Hide model" or "Show model")
+        f:SetWidth(newVal and PREV_W_WITH_MODEL or PREV_W_COMPACT)
+        if newVal then
+            model:Show()
+            UI:RefreshBisPreview()
+        else
+            model:Hide()
+        end
+    end)
 
     -- Slot button factory
     local function makeSlotBtn(parent, x, y, slot)
@@ -2108,16 +2159,27 @@ function UI:RefreshBisPreview(class, spec, phase)
     end
     self.previewSubtitle:SetText(subtitle)
 
+    -- Reset the 3D model if visible — undress the player and we'll re-try-on each pick.
+    local showModel = self.previewModel and self.previewModel:IsShown()
+    if showModel then
+        if self.previewModel.SetUnit then self.previewModel:SetUnit("player") end
+        if self.previewModel.Undress then self.previewModel:Undress() end
+    end
+
     -- Update each slot button — show item icon if BiS pick exists, faded slot icon otherwise.
     for slot, btn in pairs(self.previewSlotBtns) do
         local entry = addon:GetSlotItem(class, spec, phase, slot)
         if entry and entry.id and entry.id > 0 then
+            local _, link = GetItemInfo(entry.id)
             local texture = select(10, GetItemInfo(entry.id))
             btn._itemId = entry.id
             btn._obtained = addon:IsObtained(class, spec, phase, slot)
             btn.icon:SetTexture(texture or addon.SLOT_ICONS[slot] or "Interface\\Icons\\INV_Misc_QuestionMark")
             btn.icon:SetAlpha(1)
             btn.mark:SetShown(btn._obtained == true)
+            if showModel and link and self.previewModel.TryOn then
+                self.previewModel:TryOn(link)
+            end
         else
             btn._itemId = nil
             btn._obtained = false
