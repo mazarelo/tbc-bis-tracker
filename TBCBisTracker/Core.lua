@@ -1019,13 +1019,13 @@ end
 -- ─────────────────────────────────────────────
 
 -- Pull a single stat value from a GetItemStats() result.
--- For each candidate name we try TWO lookups:
---   1) the literal candidate string as a key (works when GetItemStats keys are
---      the constant identifiers like "ITEM_MOD_HIT_RATING_SHORT")
---   2) _G[name] dereferenced to its global value (works when GetItemStats keys
---      are the localized name strings like "Hit Rating")
--- TBC Classic flips between these depending on patch — handling both is robust.
-local function readStat(statTable, keys)
+-- We try three matching strategies in order:
+--   1) literal candidate string as a key  (e.g. "ITEM_MOD_HIT_RATING_SHORT")
+--   2) _G[candidate] dereferenced         (e.g. "Hit Rating" via global value)
+--   3) substring pattern match on every key in the raw table — catches
+--      whatever weird key TBC Classic actually uses (the third arg is a
+--      table of patterns; the matched key's value is summed).
+local function readStat(statTable, keys, patterns)
     if not statTable then return 0 end
     for _, k in ipairs(keys) do
         local v = statTable[k]
@@ -1036,8 +1036,50 @@ local function readStat(statTable, keys)
             if v and v ~= 0 then return v end
         end
     end
+    if patterns then
+        local total = 0
+        for key, value in pairs(statTable) do
+            if value and value ~= 0 then
+                local upper = key:upper()
+                for _, p in ipairs(patterns) do
+                    if upper:find(p.match) and not (p.exclude and upper:find(p.exclude)) then
+                        total = total + value
+                        break
+                    end
+                end
+            end
+        end
+        if total ~= 0 then return total end
+    end
     return 0
 end
+
+-- Per-stat heuristic patterns. UPPERCASE substring matches against the raw key.
+-- `exclude` rules out keys that would also match a more specific stat.
+addon.STAT_PATTERNS = {
+    defense   = { { match = "DEFENSE" } },
+    hit       = { { match = "HIT.*RATING", exclude = "SPELL" } },
+    spellhit  = { { match = "SPELL.*HIT" } },
+    crit      = { { match = "CRIT.*RATING", exclude = "SPELL" } },
+    spellcrit = { { match = "SPELL.*CRIT" }, { match = "CRIT.*SPELL" } },
+    haste     = { { match = "HASTE" } },
+    expertise = { { match = "EXPERTISE" } },
+    spelldmg  = { { match = "SPELL.*DAMAGE" }, { match = "SPELL.*POWER" } },
+    healing   = { { match = "HEALING" }, { match = "SPELL.*HEAL" } },
+    mp5       = { { match = "MANA.*REGEN" }, { match = "POWER.*REGEN" } },
+    block     = { { match = "BLOCK" } },
+    dodge     = { { match = "DODGE" } },
+    parry     = { { match = "PARRY" } },
+    resilience= { { match = "RESILIENCE" } },
+    attack    = { { match = "ATTACK.*POWER", exclude = "RANGED" } },
+    rangedap  = { { match = "RANGED.*ATTACK.*POWER" } },
+    armor     = { { match = "RESISTANCE0", }, { match = "^ARMOR$" } },
+    strength  = { { match = "STRENGTH" } },
+    agility   = { { match = "AGILITY" } },
+    intellect = { { match = "INTELLECT" } },
+    stamina   = { { match = "STAMINA" } },
+    spirit    = { { match = "SPIRIT" } },
+}
 
 -- Returns a stats dict for any item link or item id, e.g. {hit=12, crit=18, ...}.
 -- If only an itemId is provided and the item isn't in the local cache yet,
@@ -1056,7 +1098,7 @@ function addon:GetItemStatsForLink(link)
     if not raw then return {} end
     local out = {}
     for ourKey, candidates in pairs(self.STAT_GETITEMSTATS_KEYS) do
-        out[ourKey] = readStat(raw, candidates)
+        out[ourKey] = readStat(raw, candidates, self.STAT_PATTERNS[ourKey])
     end
     return out
 end
