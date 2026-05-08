@@ -26,14 +26,19 @@ end)
 -- ─────────────────────────────────────────────
 -- Layout constants
 -- ─────────────────────────────────────────────
-local FRAME_W      = 760
+-- LIST_W is the width of the gear-list / filters / footer area on the left.
+-- STAT_AREA_W is the width of the stat-cap column on the right inside the
+-- same window. FRAME_W is the total window width.
+local LIST_W       = 760
+local STAT_AREA_W  = 230
+local FRAME_W      = LIST_W + STAT_AREA_W
 local FRAME_H      = 580
 local HEADER_H     = 90   -- class buttons + title
 local PHASE_TAB_H  = 30
 local PROGRESS_H   = 28
 local ROW_H        = 28
 local ROW_PAD      = 2
-local SCROLL_W     = FRAME_W - 40
+local SCROLL_W     = LIST_W - 40
 local COL_ICON_W   = 26
 local COL_SLOT_W   = 80
 local COL_ITEM_W   = 420
@@ -261,7 +266,7 @@ function UI:BuildSpecSelector()
     local f = self.frame
     self.specBtns = {}
     self.specBtnRow = CreateFrame("Frame", nil, f)
-    self.specBtnRow:SetSize(FRAME_W - 40, 22)
+    self.specBtnRow:SetSize(LIST_W - 40, 22)
     self.specBtnRow:SetPoint("TOPLEFT", f, "TOPLEFT", 20, -38)
 end
 
@@ -365,7 +370,7 @@ end
 function UI:BuildPhaseTabs()
     local f = self.frame
     self.phaseTabs = {}
-    local tabW    = (FRAME_W - 40) / #addon.PHASES
+    local tabW    = (LIST_W - 40) / #addon.PHASES
     local yOffset = -64
 
     for i, phase in ipairs(addon.PHASES) do
@@ -403,7 +408,7 @@ function UI:BuildPhaseTabs()
 
     -- separator line below tabs
     local sep = f:CreateTexture(nil, "OVERLAY")
-    sep:SetSize(FRAME_W - 40, 1)
+    sep:SetSize(LIST_W - 40, 1)
     sep:SetPoint("TOPLEFT", f, "TOPLEFT", 20, yOffset - PHASE_TAB_H)
     sep:SetTexture(1, 0.82, 0, 0.4)
 end
@@ -506,11 +511,11 @@ function UI:BuildSourceFilter()
     local srcLbl = f:CreateFontString(nil, "OVERLAY")
     SetFontSmall(srcLbl)
     srcLbl:SetText(UI_PAL.muted .. "Filter:|r")
-    srcLbl:SetPoint("TOPRIGHT", f, "TOPRIGHT", -270, -38)
+    srcLbl:SetPoint("TOPRIGHT", f, "TOPRIGHT", -270 - STAT_AREA_W, -38)
     self.sourceFilterLabel = srcLbl
 
     local dd = CreateFrame("Frame", "TBCBisTrackerSourceFilterDropdown", f, "UIDropDownMenuTemplate")
-    dd:SetPoint("TOPRIGHT", f, "TOPRIGHT", -150, -32)
+    dd:SetPoint("TOPRIGHT", f, "TOPRIGHT", -150 - STAT_AREA_W, -32)
     UIDropDownMenu_SetWidth(dd, 110)
     self.sourceFilterDropdown = dd
     -- Hover tooltip on the dropdown caret
@@ -540,7 +545,7 @@ function UI:BuildExportImportButtons()
     local f = self.frame
     local importBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
     importBtn:SetSize(60, 18)
-    importBtn:SetPoint("TOPRIGHT", f, "TOPRIGHT", -30, -8)
+    importBtn:SetPoint("TOPRIGHT", f, "TOPRIGHT", -30 - STAT_AREA_W, -8)
     importBtn:SetText("Import")
     importBtn:SetScript("OnClick", function() UI:ShowImportPopup() end)
     -- Preserve the OnClick by adding tooltip via separate scripts (hooking, not overwriting)
@@ -570,7 +575,7 @@ function UI:BuildMissingFilter()
     local f = self.frame
     local chk = CreateFrame("CheckButton", "TBCBisTrackerMissingChk", f, "UICheckButtonTemplate")
     chk:SetSize(20, 20)
-    chk:SetPoint("TOPRIGHT", f, "TOPRIGHT", -30, -98)
+    chk:SetPoint("TOPRIGHT", f, "TOPRIGHT", -30 - STAT_AREA_W, -98)
     chk:SetChecked(TBCBisTrackerDB.showMissingOnly or false)
 
     local lbl = f:CreateFontString(nil, "OVERLAY")
@@ -625,7 +630,7 @@ function UI:BuildColumnHeaders()
 
     -- divider
     local div = f:CreateTexture(nil, "OVERLAY")
-    div:SetSize(FRAME_W - 40, 1)
+    div:SetSize(LIST_W - 40, 1)
     div:SetPoint("TOPLEFT", f, "TOPLEFT", xStart, yOff - 14)
     div:SetTexture(0.4, 0.4, 0.4, 0.8)
 end
@@ -641,13 +646,13 @@ function UI:BuildScrollFrame()
 
     -- Scroll frame
     local sf = CreateFrame("ScrollFrame", "TBCBisTrackerScroll", f, "UIPanelScrollFrameTemplate")
-    sf:SetSize(FRAME_W - 44, scrollH)
+    sf:SetSize(LIST_W - 44, scrollH)
     sf:SetPoint("TOPLEFT", f, "TOPLEFT", 20, scrollY)
     self.scrollFrame = sf
 
     -- Content frame inside scroll frame
     local content = CreateFrame("Frame", nil, sf)
-    content:SetSize(FRAME_W - 44, 17 * (ROW_H + ROW_PAD))
+    content:SetSize(LIST_W - 44, 17 * (ROW_H + ROW_PAD))
     sf:SetScrollChild(content)
     self.scrollContent = content
 
@@ -1223,14 +1228,14 @@ end
 function UI:BuildFarmPlan()
     local f = self.frame
     local fs = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    fs:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -22, 42)
+    fs:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -22 - STAT_AREA_W, 42)
     fs:SetJustifyH("RIGHT")
     fs:SetText("|cff00d0ff[Hover for farm plan]|r")
     self.farmHint = fs
 
     local hover = CreateFrame("Frame", nil, f)
     hover:SetSize(160, 16)
-    hover:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -18, 38)
+    hover:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -18 - STAT_AREA_W, 38)
     hover:EnableMouse(true)
     hover:SetScript("OnEnter", function(self)
         local class = TBCBisTrackerDB.lastClass
@@ -1281,7 +1286,7 @@ end
 -- Stat-cap side panel
 -- ─────────────────────────────────────────────
 
-local STAT_PANEL_W = 220
+local STAT_PANEL_W = STAT_AREA_W - 12
 local STAT_PANEL_BAR_H = 14
 local STAT_PANEL_ROW_H = 38   -- label + bar + spacing
 local STAT_PANEL_MAX_ROWS = 8
@@ -1296,21 +1301,21 @@ local STAT_MODE_ORDER = { "obtained", "selected", "equipped" }
 function UI:BuildStatCapPanel()
     local f = self.frame
 
-    -- Side panel: anchored to the right edge of the main frame, extending outside it.
-    local panel = CreateFrame("Frame", "TBCBisTrackerStatCapPanel", f, "BackdropTemplate")
-    panel:SetSize(STAT_PANEL_W, FRAME_H)
-    panel:SetPoint("TOPLEFT", f, "TOPRIGHT", 6, 0)
-    if panel.SetBackdrop then
-        panel:SetBackdrop({
-            bgFile   = "Interface\\DialogFrame\\UI-DialogBox-Background",
-            edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-            tile     = true, tileSize = 32, edgeSize = 16,
-            insets   = { left = 4, right = 4, top = 4, bottom = 4 },
-        })
-    end
+    -- Vertical divider between gear list area and stat column inside the same frame
+    local vdiv = CreateDivider(f, UI_PAL.dividerSoft)
+    vdiv:SetPoint("TOPLEFT",    f, "TOPLEFT", LIST_W - 4, -32)
+    vdiv:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", LIST_W - 4, 32)
+    vdiv:SetWidth(1)
+    self.statColDivider = vdiv
+
+    -- Stat column lives INSIDE the main frame on the right side.
+    local panel = CreateFrame("Frame", "TBCBisTrackerStatCapPanel", f)
+    panel:SetSize(STAT_PANEL_W, FRAME_H - 40)
+    panel:SetPoint("TOPLEFT", f, "TOPLEFT", LIST_W + 6, -30)
+    panel:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -8, 10)
     self.statPanel = panel
 
-    -- ── Header bar with title + collapse toggle ──
+    -- ── Header ──
     local header = CreateFrame("Frame", nil, panel)
     header:SetPoint("TOPLEFT", panel, "TOPLEFT", UI_PAL.pad, -UI_PAL.pad)
     header:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -UI_PAL.pad, -UI_PAL.pad)
@@ -1320,17 +1325,6 @@ function UI:BuildStatCapPanel()
     title:SetPoint("LEFT", header, "LEFT", 0, 0)
     title:SetText(UI_PAL.accent .. "Stat Caps|r")
     self.statPanelTitle = title
-
-    -- Collapse toggle (small "—" / "+")
-    local toggle = CreateFrame("Button", nil, header)
-    toggle:SetSize(18, 18)
-    toggle:SetPoint("RIGHT", header, "RIGHT", 0, 0)
-    local tlbl = toggle:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    tlbl:SetPoint("CENTER")
-    tlbl:SetText("−")
-    toggle.lbl = tlbl
-    AddSimpleTooltip(toggle, "Collapse / Expand", "Hide or show the stat-cap panel.")
-    self.statPanelToggle = toggle
 
     -- Header divider line just below header
     local hdiv = CreateDivider(panel)
@@ -1471,28 +1465,6 @@ function UI:BuildStatCapPanel()
     note:SetTextColor(0.6, 0.6, 0.6, 1)
     self.statPanelNote = note
 
-    -- Collapse logic
-    local function setCollapsed(collapsed)
-        TBCBisTrackerDB.statTrackerOpen = not collapsed
-        if collapsed then
-            panel:SetSize(STAT_PANEL_W, 38)
-            modeLbl:Hide(); dd:Hide(); body:Hide(); note:Hide()
-            sdiv:Hide(); fdiv:Hide()
-            tlbl:SetText("+")
-        else
-            panel:SetSize(STAT_PANEL_W, FRAME_H)
-            modeLbl:Show(); dd:Show(); body:Show(); note:Show()
-            sdiv:Show(); fdiv:Show()
-            tlbl:SetText("−")
-            UI:RefreshStatCaps()
-        end
-    end
-    toggle:SetScript("OnClick", function()
-        setCollapsed(TBCBisTrackerDB.statTrackerOpen)  -- if open → collapse, else expand
-    end)
-    -- Apply initial state
-    if TBCBisTrackerDB.statTrackerOpen == false then setCollapsed(true) end
-    self.statPanelSetCollapsed = setCollapsed
 end
 
 function UI:RefreshStatCaps()
@@ -1669,11 +1641,11 @@ function UI:BuildProgressBar()
     -- Divider line above the footer block to visually separate it from the gear list
     local fdiv = CreateDivider(f, UI_PAL.dividerSoft)
     fdiv:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 20, 78)
-    fdiv:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -20, 78)
+    fdiv:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -20 - STAT_AREA_W, 78)
     fdiv:SetHeight(1)
 
     local container = CreateFrame("Frame", nil, f)
-    container:SetSize(FRAME_W - 40, PROGRESS_H)
+    container:SetSize(LIST_W - 40, PROGRESS_H)
     container:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 20, 8)
     container:EnableMouse(true)
     self.progressContainer = container
@@ -1879,7 +1851,7 @@ function UI:UpdateProgress(obtained, total)
     end
 
     local pct  = obtained / total
-    local barW = (FRAME_W - 44) * pct
+    local barW = (LIST_W - 44) * pct
     self.progressFill:SetWidth(math.max(2, barW))
 
     if obtained == total then
