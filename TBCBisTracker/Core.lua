@@ -373,7 +373,7 @@ local DEFAULT_DB = {
     windowPos    = { point = "CENTER", x = 0, y = 0 },
     statTrackerMode = "obtained",   -- "obtained" | "selected" | "equipped"
     statTrackerOpen = true,
-    previewShowModel = false,
+    previewShowModel = true,
 }
 
 -- Per-character tracking data
@@ -1628,6 +1628,13 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1)
         -- Initialise saved variables
         TBCBisTrackerDB = TBCBisTrackerDB or {}
         applyDefaults(TBCBisTrackerDB, DEFAULT_DB)
+
+        -- One-time migration: previewShowModel flipped default from false → true.
+        -- Promote existing saved-false values once so users get the new default.
+        if not TBCBisTrackerDB.__previewModelMigrated then
+            TBCBisTrackerDB.previewShowModel = true
+            TBCBisTrackerDB.__previewModelMigrated = true
+        end
         TBCBisTrackerCharDB = TBCBisTrackerCharDB or {}
         applyDefaults(TBCBisTrackerCharDB, DEFAULT_CHAR_DB)
 
