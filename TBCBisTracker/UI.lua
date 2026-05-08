@@ -57,6 +57,60 @@ local SOURCE_TYPE_COLORS = {
 }
 
 -- ─────────────────────────────────────────────
+-- Central UI palette  — keep all visual constants here so the addon
+-- has a predictable, consistent look. If you need a new color or
+-- spacing value, add it here rather than inline.
+-- ─────────────────────────────────────────────
+local UI_PAL = {
+    -- Text colors (escaped color codes for inline use)
+    accent      = "|cffffd700", -- gold — headers, BiS markers, quest indicator
+    accentSoft  = "|cffd6b85a", -- muted gold
+    success     = "|cff60ff60", -- capped/obtained
+    warning     = "|cffff8800", -- below cap, alt deltas
+    danger      = "|cffff5050", -- way below cap, errors
+    info        = "|cff00d0ff", -- hover hint, links
+    muted       = "|cff888888", -- dim secondary text
+    mutedSoft   = "|cffaaaaaa", -- subdued labels
+    text        = "|cffffffff",
+    -- Bar colors (r,g,b,a tuples for SetVertexColor)
+    barFull     = { 0.20, 0.80, 0.20, 0.85 },
+    barMid      = { 0.85, 0.70, 0.20, 0.85 },
+    barLow      = { 0.85, 0.30, 0.20, 0.85 },
+    barTrack    = { 0.10, 0.10, 0.10, 1.0 },
+    -- Section divider line
+    divider     = { 0.4, 0.4, 0.4, 0.6 },
+    dividerSoft = { 0.3, 0.3, 0.3, 0.4 },
+    -- Selection / hover backgrounds
+    selectBg    = { 0.25, 0.20, 0.05, 0.9 },  -- gold-ish
+    hoverBg     = { 0.25, 0.25, 0.30, 1.0 },
+    inactiveBg  = { 0.12, 0.12, 0.12, 0.8 },
+    -- Spacing tokens
+    pad         = 8,
+    padSm       = 4,
+    padLg       = 14,
+    sectionGap  = 12,
+}
+
+-- Helper: create a 1px horizontal divider line on a parent frame.
+local function CreateDivider(parent, color)
+    color = color or UI_PAL.divider
+    local d = parent:CreateTexture(nil, "OVERLAY")
+    d:SetColorTexture(color[1], color[2], color[3], color[4])
+    return d
+end
+
+-- Helper: attach a GameTooltip to a frame that shows a simple title + optional description on hover.
+local function AddSimpleTooltip(frame, title, desc, anchor)
+    frame:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, anchor or "ANCHOR_TOP")
+        GameTooltip:SetText(title, 1, 1, 1)
+        if desc then GameTooltip:AddLine(desc, 0.8, 0.8, 0.8, true) end
+        GameTooltip:Show()
+    end)
+    frame:SetScript("OnLeave", function() GameTooltip:Hide() end)
+end
+
+-- ─────────────────────────────────────────────
 -- Helpers
 -- ─────────────────────────────────────────────
 
@@ -212,6 +266,15 @@ local function GetOrCreateSpecBtn(self, idx)
     bg:SetTexture("Interface\\ChatFrame\\ChatFrameBackground")
     btn.bg = bg
 
+    -- 1px bottom-border accent for the selected tab
+    local accent = btn:CreateTexture(nil, "OVERLAY")
+    accent:SetColorTexture(1, 0.82, 0, 1)
+    accent:SetPoint("BOTTOMLEFT", btn, "BOTTOMLEFT", 2, 0)
+    accent:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", -2, 0)
+    accent:SetHeight(2)
+    accent:Hide()
+    btn.accent = accent
+
     local fs = btn:CreateFontString(nil, "OVERLAY")
     SetFontSmall(fs)
     fs:SetAllPoints()
@@ -219,15 +282,22 @@ local function GetOrCreateSpecBtn(self, idx)
 
     btn:SetScript("OnEnter", function(s)
         if s.spec ~= TBCBisTrackerDB.lastSpec then
-            s.bg:SetVertexColor(0.25, 0.25, 0.25, 1)
+            s.bg:SetVertexColor(unpack(UI_PAL.hoverBg))
+        end
+        if s.spec then
+            GameTooltip:SetOwner(s, "ANCHOR_TOP")
+            GameTooltip:SetText(s.spec, 1, 1, 1)
+            GameTooltip:AddLine("Click to view BiS for this spec.", 0.8, 0.8, 0.8, true)
+            GameTooltip:Show()
         end
     end)
     btn:SetScript("OnLeave", function(s)
         if s.spec == TBCBisTrackerDB.lastSpec then
-            s.bg:SetVertexColor(0.25, 0.20, 0.05, 0.9)
+            s.bg:SetVertexColor(unpack(UI_PAL.selectBg))
         else
-            s.bg:SetVertexColor(0.12, 0.12, 0.12, 0.8)
+            s.bg:SetVertexColor(unpack(UI_PAL.inactiveBg))
         end
+        GameTooltip:Hide()
     end)
     btn:SetScript("OnClick", function(s)
         if not s.spec then return end
@@ -259,10 +329,12 @@ function UI:RefreshSpecSelector()
             btn:SetPoint("LEFT", self.specBtnRow, "LEFT", x, 0)
             if spec == TBCBisTrackerDB.lastSpec then
                 btn.fs:SetTextColor(1, 0.82, 0, 1)
-                btn.bg:SetVertexColor(0.25, 0.20, 0.05, 0.9)
+                btn.bg:SetVertexColor(unpack(UI_PAL.selectBg))
+                if btn.accent then btn.accent:Show() end
             else
                 btn.fs:SetTextColor(0.8, 0.8, 0.8, 1)
-                btn.bg:SetVertexColor(0.12, 0.12, 0.12, 0.8)
+                btn.bg:SetVertexColor(unpack(UI_PAL.inactiveBg))
+                if btn.accent then btn.accent:Hide() end
             end
             btn:Show()
             x = x + w + 4
@@ -417,10 +489,19 @@ local SOURCE_FILTER_LABELS = {
 
 function UI:BuildSourceFilter()
     local f = self.frame
+    -- Small label so the dropdown's purpose is immediately readable
+    local srcLbl = f:CreateFontString(nil, "OVERLAY")
+    SetFontSmall(srcLbl)
+    srcLbl:SetText(UI_PAL.muted .. "Filter:|r")
+    srcLbl:SetPoint("TOPRIGHT", f, "TOPRIGHT", -270, -38)
+    self.sourceFilterLabel = srcLbl
+
     local dd = CreateFrame("Frame", "TBCBisTrackerSourceFilterDropdown", f, "UIDropDownMenuTemplate")
     dd:SetPoint("TOPRIGHT", f, "TOPRIGHT", -150, -32)
     UIDropDownMenu_SetWidth(dd, 110)
     self.sourceFilterDropdown = dd
+    -- Hover tooltip on the dropdown caret
+    AddSimpleTooltip(dd, "Source filter", "Show only items from this source type. Useful for planning farms (e.g. show only Heroic dungeon items).")
 
     UIDropDownMenu_Initialize(dd, function(_, level)
         for _, opt in ipairs(SOURCE_FILTER_OPTIONS) do
@@ -449,12 +530,27 @@ function UI:BuildExportImportButtons()
     importBtn:SetPoint("TOPRIGHT", f, "TOPRIGHT", -30, -8)
     importBtn:SetText("Import")
     importBtn:SetScript("OnClick", function() UI:ShowImportPopup() end)
+    -- Preserve the OnClick by adding tooltip via separate scripts (hooking, not overwriting)
+    importBtn:HookScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText("Import setup", 1, 1, 1)
+        GameTooltip:AddLine("Paste a setup string to load someone else's BiS picks for this spec/phase.", 0.8, 0.8, 0.8, true)
+        GameTooltip:Show()
+    end)
+    importBtn:HookScript("OnLeave", function() GameTooltip:Hide() end)
 
     local exportBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
     exportBtn:SetSize(60, 18)
     exportBtn:SetPoint("RIGHT", importBtn, "LEFT", -4, 0)
     exportBtn:SetText("Export")
     exportBtn:SetScript("OnClick", function() UI:ShowExportPopup() end)
+    exportBtn:HookScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText("Export setup", 1, 1, 1)
+        GameTooltip:AddLine("Copy your current spec/phase BiS picks as a sharable string.", 0.8, 0.8, 0.8, true)
+        GameTooltip:Show()
+    end)
+    exportBtn:HookScript("OnLeave", function() GameTooltip:Hide() end)
 end
 
 function UI:BuildMissingFilter()
@@ -473,6 +569,13 @@ function UI:BuildMissingFilter()
         TBCBisTrackerDB.showMissingOnly = self:GetChecked()
         UI:Refresh()
     end)
+    chk:HookScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+        GameTooltip:SetText("Show missing only", 1, 1, 1)
+        GameTooltip:AddLine("Hide rows for items you've already obtained, so the list only shows what you still need to chase.", 0.8, 0.8, 0.8, true)
+        GameTooltip:Show()
+    end)
+    chk:HookScript("OnLeave", function() GameTooltip:Hide() end)
     self.missingChk = chk
 end
 
@@ -1070,10 +1173,14 @@ function UI:BuildBadgeStatus()
         local spec  = TBCBisTrackerDB.lastSpec
         local phase = TBCBisTrackerDB.lastPhase
         local owned, total, items = addon:GetBadgeProgress(class, spec, phase)
-        if #items == 0 then return end
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        GameTooltip:SetText("Badge purchases (" .. addon.PHASE_LABELS[phase] .. ")")
-        GameTooltip:AddLine(string.format("Owned: %d   Total cost: %d", owned, total), 1, 1, 1)
+        GameTooltip:SetText("Badges of Justice (" .. (addon.PHASE_LABELS[phase] or phase) .. ")", 1, 1, 1)
+        if #items == 0 then
+            GameTooltip:AddLine("No BoJ-purchasable BiS items in this phase.", 0.8, 0.8, 0.8, true)
+            GameTooltip:Show()
+            return
+        end
+        GameTooltip:AddLine(string.format("You have: %d badges   |cff888888Total cost of unobtained items: %d|r", owned, total), 1, 1, 1)
         GameTooltip:AddLine(" ")
         for _, it in ipairs(items) do
             local name = GetItemInfo(it.entry.id) or ("item:" .. it.entry.id)
@@ -1180,21 +1287,56 @@ function UI:BuildStatCapPanel()
     end
     self.statPanel = panel
 
-    -- Title
-    local title = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    title:SetPoint("TOP", panel, "TOP", 0, -10)
-    title:SetText("|cffffd700Stat Caps|r")
+    -- ── Header bar with title + collapse toggle ──
+    local header = CreateFrame("Frame", nil, panel)
+    header:SetPoint("TOPLEFT", panel, "TOPLEFT", UI_PAL.pad, -UI_PAL.pad)
+    header:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -UI_PAL.pad, -UI_PAL.pad)
+    header:SetHeight(20)
+
+    local title = header:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    title:SetPoint("LEFT", header, "LEFT", 0, 0)
+    title:SetText(UI_PAL.accent .. "Stat Caps|r")
     self.statPanelTitle = title
 
-    -- Mode dropdown
+    -- Collapse toggle (small "—" / "+")
+    local toggle = CreateFrame("Button", nil, header)
+    toggle:SetSize(18, 18)
+    toggle:SetPoint("RIGHT", header, "RIGHT", 0, 0)
+    local tlbl = toggle:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    tlbl:SetPoint("CENTER")
+    tlbl:SetText("−")
+    toggle.lbl = tlbl
+    AddSimpleTooltip(toggle, "Collapse / Expand", "Hide or show the stat-cap panel.")
+    self.statPanelToggle = toggle
+
+    -- Header divider line just below header
+    local hdiv = CreateDivider(panel)
+    hdiv:SetPoint("TOPLEFT", panel, "TOPLEFT", UI_PAL.pad, -32)
+    hdiv:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -UI_PAL.pad, -32)
+    hdiv:SetHeight(1)
+    self.statPanelHeaderDiv = hdiv
+
+    -- ── Mode label + dropdown ──
+    local modeLbl = panel:CreateFontString(nil, "OVERLAY")
+    SetFontSmall(modeLbl)
+    modeLbl:SetPoint("TOPLEFT", panel, "TOPLEFT", UI_PAL.pad + 4, -42)
+    modeLbl:SetText(UI_PAL.muted .. "Source:|r")
+    self.statPanelModeLbl = modeLbl
+
     local dd = CreateFrame("Frame", "TBCBisTrackerStatModeDropdown", panel, "UIDropDownMenuTemplate")
-    dd:SetPoint("TOP", panel, "TOP", 0, -28)
-    UIDropDownMenu_SetWidth(dd, 130)
+    dd:SetPoint("TOPLEFT", panel, "TOPLEFT", UI_PAL.pad - 12, -52)
+    UIDropDownMenu_SetWidth(dd, STAT_PANEL_W - 2 * UI_PAL.pad - 6)
     UIDropDownMenu_Initialize(dd, function(_, level)
         for _, m in ipairs(STAT_MODE_ORDER) do
             local info = UIDropDownMenu_CreateInfo()
             info.text = STAT_MODE_LABELS[m]
             info.value = m
+            info.tooltipTitle = STAT_MODE_LABELS[m]
+            info.tooltipText  =
+                m == "obtained" and "Sum stats from items you've ticked off as obtained for this spec/phase." or
+                m == "selected" and "Project stats assuming you complete the selected BiS for this phase." or
+                "Sum stats from your currently equipped gear."
+            info.tooltipOnButton = true
             info.func = function()
                 TBCBisTrackerDB.statTrackerMode = m
                 UIDropDownMenu_SetSelectedValue(dd, m)
@@ -1209,17 +1351,25 @@ function UI:BuildStatCapPanel()
     UIDropDownMenu_SetText(dd, STAT_MODE_LABELS[TBCBisTrackerDB.statTrackerMode or "obtained"])
     self.statModeDropdown = dd
 
+    -- Subtle divider between header section and the bars
+    local sdiv = CreateDivider(panel, UI_PAL.dividerSoft)
+    sdiv:SetPoint("TOPLEFT", panel, "TOPLEFT", UI_PAL.pad, -82)
+    sdiv:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -UI_PAL.pad, -82)
+    sdiv:SetHeight(1)
+    self.statPanelBodyDiv = sdiv
+
     -- Body container
     local body = CreateFrame("Frame", nil, panel)
-    body:SetPoint("TOPLEFT", panel, "TOPLEFT", 12, -68)
-    body:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -12, 30)
+    body:SetPoint("TOPLEFT", panel, "TOPLEFT", UI_PAL.pad + 4, -90)
+    body:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -UI_PAL.pad - 4, 32)
     self.statPanelBody = body
 
     -- Pool of stat rows
     self.statRowPool = {}
+    local rowW = STAT_PANEL_W - 2 * (UI_PAL.pad + 4)
     for i = 1, STAT_PANEL_MAX_ROWS do
         local row = CreateFrame("Frame", nil, body)
-        row:SetSize(STAT_PANEL_W - 24, STAT_PANEL_ROW_H)
+        row:SetSize(rowW, STAT_PANEL_ROW_H)
         row:SetPoint("TOPLEFT", body, "TOPLEFT", 0, -(i-1) * STAT_PANEL_ROW_H)
         row:EnableMouse(true)
 
@@ -1227,25 +1377,25 @@ function UI:BuildStatCapPanel()
         SetFontSmall(lbl)
         lbl:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
         lbl:SetJustifyH("LEFT")
-        lbl:SetWidth(STAT_PANEL_W - 24)
+        lbl:SetWidth(rowW)
         row.lbl = lbl
 
         local bg = row:CreateTexture(nil, "BACKGROUND")
         bg:SetTexture("Interface\\TargetingFrame\\UI-StatusBar")
-        bg:SetVertexColor(0.10, 0.10, 0.10, 1)
-        bg:SetPoint("TOPLEFT", row, "TOPLEFT", 0, -16)
-        bg:SetSize(STAT_PANEL_W - 24, STAT_PANEL_BAR_H)
+        bg:SetVertexColor(unpack(UI_PAL.barTrack))
+        bg:SetPoint("TOPLEFT", row, "TOPLEFT", 0, -15)
+        bg:SetSize(rowW, STAT_PANEL_BAR_H)
         row.bg = bg
 
         local fill = row:CreateTexture(nil, "ARTWORK")
         fill:SetTexture("Interface\\TargetingFrame\\UI-StatusBar")
-        fill:SetPoint("TOPLEFT", row, "TOPLEFT", 0, -16)
+        fill:SetPoint("TOPLEFT", row, "TOPLEFT", 0, -15)
         fill:SetSize(0, STAT_PANEL_BAR_H)
         row.fill = fill
 
         local val = row:CreateFontString(nil, "OVERLAY")
         SetFontSmall(val)
-        val:SetPoint("TOP", row, "TOP", 0, -17)
+        val:SetPoint("TOP", row, "TOP", 0, -16)
         val:SetJustifyH("CENTER")
         row.val = val
 
@@ -1265,7 +1415,7 @@ function UI:BuildStatCapPanel()
             end
             if data.contributors and #data.contributors > 0 then
                 GameTooltip:AddLine(" ")
-                GameTooltip:AddLine("|cffaaaaaaTop contributors:|r", 1, 1, 1)
+                GameTooltip:AddLine(UI_PAL.muted .. "Top contributors:|r", 1, 1, 1)
                 table.sort(data.contributors, function(a, b) return a.value > b.value end)
                 for i = 1, math.min(6, #data.contributors) do
                     local c = data.contributors[i]
@@ -1282,14 +1432,44 @@ function UI:BuildStatCapPanel()
         self.statRowPool[i] = row
     end
 
+    -- Footer divider above note
+    local fdiv = CreateDivider(panel, UI_PAL.dividerSoft)
+    fdiv:SetPoint("BOTTOMLEFT", panel, "BOTTOMLEFT", UI_PAL.pad, 26)
+    fdiv:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -UI_PAL.pad, 26)
+    fdiv:SetHeight(1)
+    self.statPanelFooterDiv = fdiv
+
     -- Footer note
     local note = panel:CreateFontString(nil, "OVERLAY")
     SetFontSmall(note)
-    note:SetPoint("BOTTOMLEFT", panel, "BOTTOMLEFT", 12, 8)
-    note:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -12, 8)
+    note:SetPoint("BOTTOMLEFT", panel, "BOTTOMLEFT", UI_PAL.pad + 4, 8)
+    note:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -UI_PAL.pad - 4, 8)
     note:SetJustifyH("LEFT")
     note:SetTextColor(0.6, 0.6, 0.6, 1)
     self.statPanelNote = note
+
+    -- Collapse logic
+    local function setCollapsed(collapsed)
+        TBCBisTrackerDB.statTrackerOpen = not collapsed
+        if collapsed then
+            panel:SetSize(STAT_PANEL_W, 38)
+            modeLbl:Hide(); dd:Hide(); body:Hide(); note:Hide()
+            sdiv:Hide(); fdiv:Hide()
+            tlbl:SetText("+")
+        else
+            panel:SetSize(STAT_PANEL_W, FRAME_H)
+            modeLbl:Show(); dd:Show(); body:Show(); note:Show()
+            sdiv:Show(); fdiv:Show()
+            tlbl:SetText("−")
+            UI:RefreshStatCaps()
+        end
+    end
+    toggle:SetScript("OnClick", function()
+        setCollapsed(TBCBisTrackerDB.statTrackerOpen)  -- if open → collapse, else expand
+    end)
+    -- Apply initial state
+    if TBCBisTrackerDB.statTrackerOpen == false then setCollapsed(true) end
+    self.statPanelSetCollapsed = setCollapsed
 end
 
 function UI:RefreshStatCaps()
@@ -1376,6 +1556,43 @@ function UI:BuildTierStatus()
     fs:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 22, 58)
     fs:SetJustifyH("LEFT")
     self.tierStatus = fs
+
+    -- Hover area covering the tier-set text — explains 2pc/4pc bonuses
+    local hover = CreateFrame("Frame", nil, f)
+    hover:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 18, 56)
+    hover:SetSize(380, 16)
+    hover:EnableMouse(true)
+    hover:SetScript("OnEnter", function(self)
+        local class = TBCBisTrackerDB.lastClass
+        local spec  = TBCBisTrackerDB.lastSpec
+        local phase = TBCBisTrackerDB.lastPhase
+        local progress = addon:GetTierProgress(class, spec, phase)
+        if not progress or not next(progress) then
+            GameTooltip:SetOwner(self, "ANCHOR_TOP")
+            GameTooltip:SetText("Tier set tracker", 1, 1, 1)
+            GameTooltip:AddLine("No tier-set BiS items in this phase for your spec.", 0.8, 0.8, 0.8, true)
+            GameTooltip:Show()
+            return
+        end
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText("Tier set progress (" .. (addon.PHASE_LABELS[phase] or phase) .. ")", 1, 1, 1)
+        GameTooltip:AddLine("Counts BiS-listed tier pieces you've obtained. 2/4 piece bonuses noted.", 0.8, 0.8, 0.8, true)
+        GameTooltip:AddLine(" ")
+        local order = { "T4", "T5", "T6", "T6.5" }
+        for _, t in ipairs(order) do
+            local p = progress[t]
+            if p and p.total > 0 then
+                local bonusText = ""
+                if p.obtained >= 4 then bonusText = " — 4-piece bonus active!"
+                elseif p.obtained >= 2 then bonusText = " — 2-piece bonus active"
+                end
+                GameTooltip:AddDoubleLine(t, p.obtained .. " / " .. p.total .. bonusText, 0.9, 0.9, 0.9, 1, 1, 1)
+            end
+        end
+        GameTooltip:Show()
+    end)
+    hover:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    self.tierHover = hover
 end
 
 function UI:RefreshTierStatus()
@@ -1426,9 +1643,16 @@ end
 function UI:BuildProgressBar()
     local f = self.frame
 
+    -- Divider line above the footer block to visually separate it from the gear list
+    local fdiv = CreateDivider(f, UI_PAL.dividerSoft)
+    fdiv:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 20, 78)
+    fdiv:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -20, 78)
+    fdiv:SetHeight(1)
+
     local container = CreateFrame("Frame", nil, f)
     container:SetSize(FRAME_W - 40, PROGRESS_H)
     container:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 20, 8)
+    container:EnableMouse(true)
     self.progressContainer = container
 
     -- Background track
@@ -1451,6 +1675,15 @@ function UI:BuildProgressBar()
     txt:SetAllPoints()
     txt:SetJustifyH("CENTER")
     self.progressTxt = txt
+
+    -- Tooltip on hover — explains what the bar represents
+    container:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText("BiS progress for this phase", 1, 1, 1)
+        GameTooltip:AddLine("Counts how many BiS slots you've ticked off. Click items in the list above to mark them obtained.", 0.8, 0.8, 0.8, true)
+        GameTooltip:Show()
+    end)
+    container:SetScript("OnLeave", function() GameTooltip:Hide() end)
 end
 
 -- ─────────────────────────────────────────────
