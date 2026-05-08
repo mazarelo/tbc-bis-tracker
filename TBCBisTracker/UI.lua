@@ -1968,16 +1968,23 @@ end
 -- minimap button or "/tbcbis preview".
 -- ─────────────────────────────────────────────
 
-local PREV_W = 260
-local PREV_H = 520
-local PREV_SLOT = 40
-local PREV_PAD = 12
-
--- Slot layout: 8 slots on the left, 6 on the right (rings/trinkets),
--- 3 weapons across the bottom — total 17. Mirrors the character-pane shape.
-local PREV_LEFT_SLOTS   = { "head", "neck", "shoulder", "back", "chest", "wrist", "hands", "waist" }
-local PREV_RIGHT_SLOTS  = { "legs", "feet", "ring1", "ring2", "trinket1", "trinket2" }
-local PREV_BOTTOM_SLOTS = { "mainhand", "offhand", "ranged" }
+local PREV_SLOT     = 40
+local PREV_GAP      = 6
+local PREV_COLS     = 4
+local PREV_PAD      = 14
+-- Slots in character-pane reading order (head → ranged), arranged into a
+-- 4-column grid for a compact, predictable layout. 17 slots fill 4 rows
+-- of 4 plus a fifth row with one entry (Ranged).
+local PREV_GRID_SLOTS = {
+    "head",     "neck",     "shoulder",  "back",
+    "chest",    "wrist",    "hands",     "waist",
+    "legs",     "feet",     "ring1",     "ring2",
+    "trinket1", "trinket2", "mainhand",  "offhand",
+    "ranged",
+}
+local PREV_ROWS = math.ceil(#PREV_GRID_SLOTS / PREV_COLS)
+local PREV_W = PREV_COLS * PREV_SLOT + (PREV_COLS - 1) * PREV_GAP + 2 * PREV_PAD
+local PREV_H = 52 + PREV_ROWS * (PREV_SLOT + PREV_GAP) + 60  -- title + grid + stats footer
 
 function UI:BuildBisPreview()
     if self.previewFrame then return self.previewFrame end
@@ -2061,27 +2068,14 @@ function UI:BuildBisPreview()
 
     self.previewSlotBtns = {}
 
-    -- Left column
-    local leftX = PREV_PAD
-    for i, slot in ipairs(PREV_LEFT_SLOTS) do
-        local y = -50 - (i - 1) * (PREV_SLOT + 6)
-        self.previewSlotBtns[slot] = makeSlotBtn(f, leftX, y, slot)
-    end
-
-    -- Right column
-    local rightX = PREV_W - PREV_PAD - PREV_SLOT
-    for i, slot in ipairs(PREV_RIGHT_SLOTS) do
-        local y = -50 - (i - 1) * (PREV_SLOT + 6)
-        self.previewSlotBtns[slot] = makeSlotBtn(f, rightX, y, slot)
-    end
-
-    -- Bottom row (weapons)
-    local bottomY = -(50 + 8 * (PREV_SLOT + 6) - 4)
-    local bottomTotal = #PREV_BOTTOM_SLOTS * PREV_SLOT + (#PREV_BOTTOM_SLOTS - 1) * 8
-    local bottomStartX = (PREV_W - bottomTotal) / 2
-    for i, slot in ipairs(PREV_BOTTOM_SLOTS) do
-        local x = bottomStartX + (i - 1) * (PREV_SLOT + 8)
-        self.previewSlotBtns[slot] = makeSlotBtn(f, x, bottomY, slot)
+    -- 4-column grid in character-pane reading order.
+    local gridTopY = -52
+    for i, slot in ipairs(PREV_GRID_SLOTS) do
+        local col = (i - 1) % PREV_COLS
+        local row = math.floor((i - 1) / PREV_COLS)
+        local x = PREV_PAD + col * (PREV_SLOT + PREV_GAP)
+        local y = gridTopY - row * (PREV_SLOT + PREV_GAP)
+        self.previewSlotBtns[slot] = makeSlotBtn(f, x, y, slot)
     end
 
     -- Stats summary at the bottom
