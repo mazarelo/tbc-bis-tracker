@@ -1968,13 +1968,13 @@ end
 -- minimap button or "/tbcbis preview".
 -- ─────────────────────────────────────────────
 
-local PREV_W = 400
-local PREV_H = 600
-local PREV_SLOT = 38
-local PREV_PAD = 10
+local PREV_W = 260
+local PREV_H = 520
+local PREV_SLOT = 40
+local PREV_PAD = 12
 
 -- Slot layout: 8 slots on the left, 6 on the right (rings/trinkets),
--- 3 weapons across the bottom — total 17.
+-- 3 weapons across the bottom — total 17. Mirrors the character-pane shape.
 local PREV_LEFT_SLOTS   = { "head", "neck", "shoulder", "back", "chest", "wrist", "hands", "waist" }
 local PREV_RIGHT_SLOTS  = { "legs", "feet", "ring1", "ring2", "trinket1", "trinket2" }
 local PREV_BOTTOM_SLOTS = { "mainhand", "offhand", "ranged" }
@@ -2003,27 +2003,6 @@ function UI:BuildBisPreview()
     local subtitle = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     subtitle:SetPoint("TOP", f, "TOP", 0, -28)
     self.previewSubtitle = subtitle
-
-    -- 3D player model in the center
-    local model = CreateFrame("PlayerModel", nil, f)
-    model:SetSize(PREV_W - 2*(PREV_SLOT + 2*PREV_PAD), PREV_H - 220)
-    model:SetPoint("TOP", f, "TOP", 0, -50)
-    if model.SetUnit then model:SetUnit("player") end
-    model:SetFacing(0.4)
-    self.previewModel = model
-
-    -- Mouse drag to rotate the model
-    model:EnableMouse(true)
-    model:SetScript("OnMouseDown", function(self) self._rot_start = GetCursorPosition() end)
-    model:SetScript("OnMouseUp",   function(self) self._rot_start = nil end)
-    model:SetScript("OnUpdate", function(self)
-        if self._rot_start then
-            local x = GetCursorPosition()
-            local dx = (x - self._rot_start)
-            self:SetFacing((self:GetFacing() or 0) + dx * 0.005)
-            self._rot_start = x
-        end
-    end)
 
     -- Slot button factory
     local function makeSlotBtn(parent, x, y, slot)
@@ -2135,29 +2114,16 @@ function UI:RefreshBisPreview(class, spec, phase)
     end
     self.previewSubtitle:SetText(subtitle)
 
-    -- Reset the model to the player + try on each BiS pick.
-    if self.previewModel and self.previewModel.SetUnit then
-        self.previewModel:SetUnit("player")
-    end
-    -- Use Undress if available so we don't see player gear behind unset slots.
-    if self.previewModel and self.previewModel.Undress then
-        self.previewModel:Undress()
-    end
-
-    -- Update each slot button + try-on the item on the model
+    -- Update each slot button — show item icon if BiS pick exists, faded slot icon otherwise.
     for slot, btn in pairs(self.previewSlotBtns) do
         local entry = addon:GetSlotItem(class, spec, phase, slot)
         if entry and entry.id and entry.id > 0 then
-            local _, link = GetItemInfo(entry.id)
             local texture = select(10, GetItemInfo(entry.id))
             btn._itemId = entry.id
             btn._obtained = addon:IsObtained(class, spec, phase, slot)
             btn.icon:SetTexture(texture or addon.SLOT_ICONS[slot] or "Interface\\Icons\\INV_Misc_QuestionMark")
             btn.icon:SetAlpha(1)
             btn.mark:SetShown(btn._obtained == true)
-            if link and self.previewModel and self.previewModel.TryOn then
-                self.previewModel:TryOn(link)
-            end
         else
             btn._itemId = nil
             btn._obtained = false
