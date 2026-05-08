@@ -1331,16 +1331,11 @@ function UI:BuildStatCapPanel()
     hdiv:SetHeight(1)
     self.statPanelHeaderDiv = hdiv
 
-    -- ── Mode label + dropdown ──
-    local modeLbl = panel:CreateFontString(nil, "OVERLAY")
-    SetFontSmall(modeLbl)
-    modeLbl:SetPoint("TOPLEFT", panel, "TOPLEFT", UI_PAL.pad + 4, -42)
-    modeLbl:SetText(UI_PAL.muted .. "Source:|r")
-    self.statPanelModeLbl = modeLbl
-
+    -- ── Mode dropdown — single inline dropdown styled like the source filter,
+    --     no separate label (the selected value makes the meaning obvious). ──
     local dd = CreateFrame("Frame", "TBCBisTrackerStatModeDropdown", panel, "UIDropDownMenuTemplate")
-    dd:SetPoint("TOPLEFT", panel, "TOPLEFT", UI_PAL.pad - 12, -52)
-    UIDropDownMenu_SetWidth(dd, STAT_PANEL_W - 2 * UI_PAL.pad - 6)
+    dd:SetPoint("TOPLEFT", panel, "TOPLEFT", UI_PAL.pad - 16, -42)
+    UIDropDownMenu_SetWidth(dd, STAT_PANEL_W - 2 * UI_PAL.pad)
     UIDropDownMenu_Initialize(dd, function(_, level)
         for _, m in ipairs(STAT_MODE_ORDER) do
             local info = UIDropDownMenu_CreateInfo()
@@ -1368,14 +1363,14 @@ function UI:BuildStatCapPanel()
 
     -- Subtle divider between header section and the bars
     local sdiv = CreateDivider(panel, UI_PAL.dividerSoft)
-    sdiv:SetPoint("TOPLEFT", panel, "TOPLEFT", UI_PAL.pad, -82)
-    sdiv:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -UI_PAL.pad, -82)
+    sdiv:SetPoint("TOPLEFT", panel, "TOPLEFT", UI_PAL.pad, -72)
+    sdiv:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -UI_PAL.pad, -72)
     sdiv:SetHeight(1)
     self.statPanelBodyDiv = sdiv
 
     -- Body container
     local body = CreateFrame("Frame", nil, panel)
-    body:SetPoint("TOPLEFT", panel, "TOPLEFT", UI_PAL.pad + 4, -90)
+    body:SetPoint("TOPLEFT", panel, "TOPLEFT", UI_PAL.pad + 4, -80)
     body:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -UI_PAL.pad - 4, 32)
     self.statPanelBody = body
 
