@@ -509,7 +509,9 @@ local SOURCE_FILTER_LABELS = {
 function UI:BuildSourceFilter()
     local f = self.frame
     local dd = CreateFrame("Frame", "TBCBisTrackerSourceFilterDropdown", f, "UIDropDownMenuTemplate")
-    dd:SetPoint("TOPRIGHT", f, "TOPRIGHT", -150 - STAT_AREA_W, -32)
+    -- Right-aligned to the edge of the list area (10 px inside the vertical
+    -- divider that separates the list column from the stat-cap column).
+    dd:SetPoint("TOPRIGHT", f, "TOPRIGHT", -10 - STAT_AREA_W, -32)
     UIDropDownMenu_SetWidth(dd, 110)
     self.sourceFilterDropdown = dd
     -- Hover tooltip on the dropdown caret
@@ -570,8 +572,8 @@ function UI:BuildMissingFilter()
     local chk = CreateFrame("CheckButton", "TBCBisTrackerMissingChk", f, "UICheckButtonTemplate")
     chk:SetSize(20, 20)
     -- Same row as the filter dropdown, positioned to its LEFT so both filters
-    -- live together and don't compete with spec tabs / column headers.
-    chk:SetPoint("TOPRIGHT", f, "TOPRIGHT", -290 - STAT_AREA_W, -32)
+    -- live together. The dropdown frame is ~155 px wide; we leave 10 px gap.
+    chk:SetPoint("TOPRIGHT", f, "TOPRIGHT", -175 - STAT_AREA_W, -32)
     chk:SetChecked(TBCBisTrackerDB.showMissingOnly or false)
 
     local lbl = f:CreateFontString(nil, "OVERLAY")
@@ -1255,7 +1257,7 @@ function UI:BuildFarmPlan()
                             if currentId then
                                 local current = addon.STANDING_NAMES[currentId] or "?"
                                 if currentId >= requiredId then
-                                    statusText = "|cff00ff00✓ " .. current .. "|r"
+                                    statusText = "|TInterface\\RAIDFRAME\\ReadyCheck-Ready:10:10|t |cff00ff00" .. current .. "|r"
                                 else
                                     statusText = "|cffff8800" .. current .. " → " .. requiredStanding .. "|r"
                                 end
@@ -1494,7 +1496,7 @@ function UI:RefreshStatCaps()
         if data.info then
             labelText = "|cffaaaaaa" .. data.label .. "|r"
         elseif data.missing == 0 and data.cap > 0 then
-            labelText = "|cff60ff60" .. data.label .. " ✓|r"
+            labelText = "|cff60ff60" .. data.label .. "|r |TInterface\\RAIDFRAME\\ReadyCheck-Ready:10:10|t"
         else
             labelText = data.label
         end
@@ -1770,29 +1772,31 @@ function UI:Refresh()
                 row.sourceType = entry.sourceType
                 row.profStatus = nil
 
-                -- Inline indicators that need to be visible at a glance
+                -- Inline indicators (texture-based — WoW renders Blizzard textures
+                -- reliably, unlike unicode glyphs that depend on the font).
                 local indicators = ""
                 if entry.sourceType == "crafted" then
                     local prof = addon:ParseCraftingProfession(entry)
                     if prof then
                         local level = addon:GetPlayerProfessionLevel(prof)
                         if level then
-                            indicators = indicators .. " |cff00ff00✓|r"
+                            indicators = indicators .. " |TInterface\\RAIDFRAME\\ReadyCheck-Ready:12:12|t"
                             row.profStatus = "|cff00ff00You have " .. prof .. " (" .. level .. ").|r"
                         else
-                            indicators = indicators .. " |cffff6060✗|r"
+                            indicators = indicators .. " |TInterface\\RAIDFRAME\\ReadyCheck-NotReady:12:12|t"
                             row.profStatus = "|cffff6060You don't have " .. prof .. ".|r"
                         end
                     end
                 end
                 if entry.questId and entry.questId > 0 then
-                    indicators = indicators .. " |cffffd700ⓘ|r"
+                    -- Quest ! icon — the gold "available quest" exclamation mark
+                    indicators = indicators .. " |TInterface\\GossipFrame\\AvailableQuestIcon:12:12|t"
                 end
                 row.srcLbl:SetText(srcColor .. srcShort .. "|r" .. indicators)
 
                 local slotName = addon.SLOT_LABELS[slot] or slot
                 if tierInfo then
-                    row.slotLbl:SetText("|cffffd700★|r " .. slotName)
+                    row.slotLbl:SetText("|TInterface\\AchievementFrame\\UI-Achievement-TinyShield:12:12|t " .. slotName)
                 else
                     row.slotLbl:SetText(slotName)
                 end
