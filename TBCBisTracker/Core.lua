@@ -380,6 +380,7 @@ local DEFAULT_CHAR_DB = {
     obtained   = {},   -- ["CLASS-Spec"]["phase"]["slot"] = true
     selected   = {},   -- ["CLASS-Spec"]["phase"]["slot"] = alternativeIndex (1 = BiS)
     customAlts = {},   -- ["CLASS-Spec"]["phase"]["slot"] = { {id=, source=, sourceType=}, ... }
+    notes      = {},   -- ["CLASS-Spec"]["phase"]["slot"] = "user note text"
 }
 
 -- ─────────────────────────────────────────────
@@ -402,6 +403,28 @@ function addon:SetObtained(class, spec, phase, slot, obtained)
     TBCBisTrackerCharDB.obtained[key] = TBCBisTrackerCharDB.obtained[key] or {}
     TBCBisTrackerCharDB.obtained[key][phase] = TBCBisTrackerCharDB.obtained[key][phase] or {}
     TBCBisTrackerCharDB.obtained[key][phase][slot] = obtained or nil
+end
+
+-- ─────────────────────────────────────────────
+-- Per-slot user notes (free-text annotations)
+-- ─────────────────────────────────────────────
+
+function addon:GetNote(class, spec, phase, slot)
+    local key = self:GetSpecKey(class, spec)
+    local n = TBCBisTrackerCharDB.notes
+    return n and n[key] and n[key][phase] and n[key][phase][slot] or nil
+end
+
+function addon:SetNote(class, spec, phase, slot, text)
+    local key = self:GetSpecKey(class, spec)
+    TBCBisTrackerCharDB.notes = TBCBisTrackerCharDB.notes or {}
+    TBCBisTrackerCharDB.notes[key] = TBCBisTrackerCharDB.notes[key] or {}
+    TBCBisTrackerCharDB.notes[key][phase] = TBCBisTrackerCharDB.notes[key][phase] or {}
+    if text and text ~= "" then
+        TBCBisTrackerCharDB.notes[key][phase][slot] = text
+    else
+        TBCBisTrackerCharDB.notes[key][phase][slot] = nil
+    end
 end
 
 -- Returns obtained count, total count for a given class/spec/phase

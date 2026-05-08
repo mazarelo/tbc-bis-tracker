@@ -482,6 +482,43 @@ function UI:ShowExportPopup()
     StaticPopup_Show("TBCBIS_EXPORT")
 end
 
+-- Per-slot note editor popup. Saves on Accept; clearing the field deletes the note.
+function UI:ShowNoteEditor(class, spec, phase, slot)
+    local slotLabel = addon.SLOT_LABELS[slot] or slot
+    local entry = addon:GetSlotItem(class, spec, phase, slot)
+    local itemName = entry and entry.id and addon:GetItemName(entry.id) or "(empty)"
+    local existing = addon:GetNote(class, spec, phase, slot) or ""
+
+    StaticPopupDialogs["TBCBIS_NOTE"] = {
+        text = "Note for |cffffffff" .. slotLabel .. "|r — " .. itemName .. "\n(empty to clear)",
+        button1 = "Save",
+        button2 = "Cancel",
+        hasEditBox = true,
+        editBoxWidth = 380,
+        maxLetters = 200,
+        OnShow = function(s)
+            local eb = (s and s.editBox) or _G["StaticPopup1EditBox"] or _G["StaticPopup2EditBox"]
+            if eb then eb:SetText(existing); eb:HighlightText(); eb:SetFocus() end
+        end,
+        OnAccept = function(s)
+            local eb = (s and s.editBox) or _G["StaticPopup1EditBox"] or _G["StaticPopup2EditBox"]
+            local txt = (eb and eb:GetText() or ""):gsub("^%s+", ""):gsub("%s+$", "")
+            addon:SetNote(class, spec, phase, slot, txt ~= "" and txt or nil)
+            UI:Refresh()
+        end,
+        EditBoxOnEnterPressed = function(s)
+            local eb = (s and s.editBox) or _G["StaticPopup1EditBox"] or _G["StaticPopup2EditBox"]
+            local txt = (eb and eb:GetText() or ""):gsub("^%s+", ""):gsub("%s+$", "")
+            addon:SetNote(class, spec, phase, slot, txt ~= "" and txt or nil)
+            s:GetParent():Hide()
+            UI:Refresh()
+        end,
+        EditBoxOnEscapePressed = function(s) s:GetParent():Hide() end,
+        timeout = 0, whileDead = true, hideOnEscape = true,
+    }
+    StaticPopup_Show("TBCBIS_NOTE")
+end
+
 function UI:ShowImportPopup()
     StaticPopupDialogs["TBCBIS_IMPORT"] = {
         text = "Paste an exported setup string:",
@@ -745,6 +782,11 @@ function UI:CreateRowFrame(parent, idx)
             GameTooltip:AddLine(" ")
             GameTooltip:AddLine(row.profStatus, 1, 1, 1, true)
         end
+        if row.userNote and row.userNote ~= "" then
+            GameTooltip:AddLine(" ")
+            GameTooltip:AddLine("|TInterface\\GossipFrame\\TrainerGossipIcon:12:12|t |cffd6b85aYour note|r", 1, 1, 1)
+            GameTooltip:AddLine("|cffffffff" .. row.userNote .. "|r", 1, 1, 1, true)
+        end
         local qid = row.questId
         if qid and qid > 0 then
             GameTooltip:AddLine(" ")
@@ -816,6 +858,12 @@ function UI:CreateRowFrame(parent, idx)
                     GameTooltip:AddLine("|cffffd700Quest reward|r", 1, 1, 1)
                 end
                 GameTooltip:AddLine("|cffaaaaaahttps://www.wowhead.com/tbc/quest=" .. self.questId .. "|r", 0.8, 0.8, 0.8, true)
+            end
+            -- User note
+            if self.userNote and self.userNote ~= "" then
+                GameTooltip:AddLine(" ")
+                GameTooltip:AddLine("|TInterface\\GossipFrame\\TrainerGossipIcon:12:12|t |cffd6b85aYour note|r", 1, 1, 1)
+                GameTooltip:AddLine("|cffffffff" .. self.userNote .. "|r", 1, 1, 1, true)
             end
             GameTooltip:AddLine(" ")
             GameTooltip:AddLine("|cffaaaaaa" .. (addon.WOWHEAD_BASE .. self.itemId) .. "|r", 1, 1, 1, true)
@@ -1144,6 +1192,21 @@ function UI:ShowAlternativesMenu(anchorFrame, slot)
                 UIDropDownMenu_AddButton(removeInfo, level)
             end
         end
+
+        -- Per-slot note editor
+        local noteSep = UIDropDownMenu_CreateInfo()
+        noteSep.text = ""; noteSep.disabled = true; noteSep.notCheckable = true
+        UIDropDownMenu_AddButton(noteSep, level)
+
+        local noteInfo = UIDropDownMenu_CreateInfo()
+        local existingNote = addon:GetNote(class, spec, phase, slot)
+        noteInfo.text = (existingNote and "Edit note...") or "Add note..."
+        noteInfo.notCheckable = true
+        noteInfo.func = function()
+            UI:ShowNoteEditor(class, spec, phase, slot)
+            CloseDropDownMenus()
+        end
+        UIDropDownMenu_AddButton(noteInfo, level)
 
         local cancel = UIDropDownMenu_CreateInfo()
         cancel.text = "Cancel"
@@ -1775,7 +1838,18 @@ function UI:Refresh()
                 if tierInfo then
                     tierPrefix = "|cffffd700[" .. tierInfo.tier .. "]|r "
                 end
-                row.itemLbl:SetText(tierPrefix .. color .. itemName .. "|r" .. altSuffix)
+
+                -- Stash the user note for the hover tooltip; show a small
+                -- pencil icon + a short preview when one is set.
+                local userNote = addon:GetNote(class, spec, phase, slot)
+                row.userNote = userNote
+                local noteSuffix = ""
+                if userNote and userNote ~= "" then
+                    local preview = userNote:sub(1, 36)
+                    if #userNote > 36 then preview = preview .. "…" end
+                    noteSuffix = "  |TInterface\\GossipFrame\\TrainerGossipIcon:12:12|t |cffd6b85a" .. preview .. "|r"
+                end
+                row.itemLbl:SetText(tierPrefix .. color .. itemName .. "|r" .. altSuffix .. noteSuffix)
 
                 -- Source column — short category label inline; full text shown
                 -- in the source-column hover tooltip.
@@ -1842,6 +1916,7 @@ function UI:Refresh()
                 row.sourceFull = nil
                 row.sourceType = nil
                 row.profStatus = nil
+                row.userNote = nil
                 row.itemLbl:SetText("|cff666666No BiS pick set|r  |cff444444· right-click to import|r")
                 row.srcLbl:SetText("|cff444444—|r")
                 row.chk:SetChecked(false)
