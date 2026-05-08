@@ -406,6 +406,62 @@ function addon:SetObtained(class, spec, phase, slot, obtained)
 end
 
 -- ─────────────────────────────────────────────
+-- Gear preview — try the selected BiS gear on the player model
+-- (mirrors AtlasLoot's right-click preview / native dressing room).
+-- ─────────────────────────────────────────────
+
+function addon:ShowGearPreview(class, spec, phase)
+    class = class or TBCBisTrackerDB.lastClass
+    spec  = spec  or TBCBisTrackerDB.lastSpec
+    phase = phase or TBCBisTrackerDB.lastPhase
+    if not (class and spec and phase) then
+        self:Print("Set a class/spec/phase first.")
+        return
+    end
+
+    local frame = _G.DressUpFrame
+    local model = _G.DressUpModel
+    if not (frame and model) then
+        self:Print("DressUpFrame is not available.")
+        return
+    end
+
+    -- Open the dressing room and reset the model to the player's race/gender
+    -- with current gear, so any items we don't have a BiS pick for stay equipped.
+    if not frame:IsShown() then
+        if ShowUIPanel then ShowUIPanel(frame) else frame:Show() end
+    end
+    if model.SetUnit then model:SetUnit("player") end
+
+    -- Try on every BiS pick we have. Items not yet cached get GetItemInfo
+    -- nudged so they show up next time.
+    local applied, pending = 0, 0
+    for _, slot in ipairs(self.SLOTS) do
+        local entry = self:GetSlotItem(class, spec, phase, slot)
+        if entry and entry.id and entry.id > 0 then
+            local _, link = GetItemInfo(entry.id)
+            if link then
+                if model.TryOn then
+                    model:TryOn(link)
+                    applied = applied + 1
+                end
+            else
+                pending = pending + 1
+            end
+        end
+    end
+
+    -- Keep a reference so GET_ITEM_INFO_RECEIVED can re-apply pending items
+    self._pendingPreview = (pending > 0) and { class = class, spec = spec, phase = phase } or nil
+
+    if applied == 0 and pending == 0 then
+        self:Print("No BiS items selected for " .. (self.PHASE_LABELS[phase] or phase) .. ".")
+    elseif pending > 0 then
+        self:Print("Previewing " .. applied .. " items (" .. pending .. " still loading)…")
+    end
+end
+
+-- ─────────────────────────────────────────────
 -- Per-slot user notes (free-text annotations)
 -- ─────────────────────────────────────────────
 
@@ -1436,13 +1492,16 @@ local function CreateMinimapButton()
     btn:SetScript("OnClick", function(self, button)
         if button == "LeftButton" then
             addon.UI:Toggle()
+        elseif button == "RightButton" then
+            addon:ShowGearPreview()
         end
     end)
 
     btn:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
         GameTooltip:SetText("|cffffd700TBC BIS Tracker|r", 1, 1, 1)
-        GameTooltip:AddLine("Left-click to toggle", 1, 1, 1)
+        GameTooltip:AddLine("Left-click to toggle window", 1, 1, 1)
+        GameTooltip:AddLine("Right-click to preview BiS gear", 1, 1, 1)
         GameTooltip:AddLine("Drag to reposition", 0.7, 0.7, 0.7)
         GameTooltip:Show()
     end)
@@ -1481,6 +1540,8 @@ SlashCmdList["TBCBISTRACKER"] = function(msg)
         if addon.UI and addon.UI.ShowImportPopup then addon.UI:ShowImportPopup() end
     elseif cmd == "bis" or cmd == "reset bis" then
         addon:ResetSelectionsToBiS(TBCBisTrackerDB.lastClass, TBCBisTrackerDB.lastSpec, TBCBisTrackerDB.lastPhase)
+    elseif cmd == "preview" then
+        addon:ShowGearPreview()
     elseif cmd == "statsdebug" or cmd:match("^statsdebug ") then
         local mode = cmd:match("^statsdebug%s+(%S+)$") or TBCBisTrackerDB.statTrackerMode or "equipped"
         addon:DumpStatDebug(TBCBisTrackerDB.lastClass, TBCBisTrackerDB.lastSpec, TBCBisTrackerDB.lastPhase, mode)
@@ -1518,6 +1579,7 @@ SlashCmdList["TBCBISTRACKER"] = function(msg)
             addon:Print("/tbcbis export    — export current spec/phase setup")
             addon:Print("/tbcbis import    — import a setup string")
             addon:Print("/tbcbis bis       — reset selected alts back to BiS for current phase")
+            addon:Print("/tbcbis preview   — open WoW dressing room with current BiS gear")
             addon:Print("/tbcbis reset     — reset checkmarks for current phase")
             addon:Print("/tbcbis reset all — reset ALL tracking data")
             addon:Print("/tbcbis stats [mode]  — print stat-cap progress (modes: obtained/selected/equipped)")
@@ -1670,6 +1732,12 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1)
         -- A previously-uncached item now has stats. Re-render the cap panel.
         if addon.UI and addon.UI.RefreshStatCaps then
             addon.UI:RefreshStatCaps()
+        end
+        -- And re-apply the dress-up preview if items were still loading.
+        if addon._pendingPreview and DressUpFrame and DressUpFrame:IsShown() then
+            local p = addon._pendingPreview
+            addon._pendingPreview = nil
+            addon:ShowGearPreview(p.class, p.spec, p.phase)
         end
 
     elseif event == "LOOT_OPENED" then
