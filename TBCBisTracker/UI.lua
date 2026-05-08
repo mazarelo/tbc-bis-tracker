@@ -36,8 +36,8 @@ local ROW_PAD      = 2
 local SCROLL_W     = FRAME_W - 40
 local COL_ICON_W   = 26
 local COL_SLOT_W   = 80
-local COL_ITEM_W   = 260
-local COL_SRC_W    = 280
+local COL_ITEM_W   = 420
+local COL_SRC_W    = 110
 local COL_CHK_W    = 40
 
 local CLASS_ORDER = {
@@ -54,6 +54,19 @@ local SOURCE_TYPE_COLORS = {
     world      = "|cffaaaaaa",
     quest      = "|cffff9900",
     dungeon    = "|cff7fb2ff",
+}
+
+-- Short labels shown in the Source column. Full source description is
+-- still preserved on `entry.source` and shown via tooltip on hover.
+local SOURCE_TYPE_LABELS = {
+    crafted    = "Profession",
+    heroic     = "Dungeon HC",
+    raid       = "Raid",
+    reputation = "Reputation",
+    pvp        = "PvP",
+    world      = "World",
+    quest      = "Quest",
+    dungeon    = "Dungeon",
 }
 
 -- ─────────────────────────────────────────────
@@ -706,21 +719,31 @@ function UI:CreateRowFrame(parent, idx)
     srcHover:EnableMouse(true)
     srcHover:SetFrameLevel(row:GetFrameLevel() + 1)
     srcHover:SetScript("OnEnter", function(self)
-        local qid = row.questId
-        if not (qid and qid > 0) then return end
+        if not row.sourceFull then return end  -- empty/placeholder slot
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        local qTitle
-        if C_QuestLog and C_QuestLog.GetTitleForQuestID then
-            qTitle = C_QuestLog.GetTitleForQuestID(qid)
+        local typeLabel  = SOURCE_TYPE_LABELS[row.sourceType] or "Source"
+        local typeColor  = SOURCE_TYPE_COLORS[row.sourceType] or "|cffcccccc"
+        GameTooltip:SetText(typeColor .. typeLabel .. "|r")
+        GameTooltip:AddLine(row.sourceFull, 1, 1, 1, true)
+        if row.profStatus then
+            GameTooltip:AddLine(" ")
+            GameTooltip:AddLine(row.profStatus, 1, 1, 1, true)
         end
-        if qTitle and qTitle ~= "" then
-            GameTooltip:SetText("|cffffd700Quest:|r |cffffff00[" .. qTitle .. "]|r")
-        else
-            GameTooltip:SetText("|cffffd700Quest reward|r (id " .. qid .. ")")
+        local qid = row.questId
+        if qid and qid > 0 then
+            GameTooltip:AddLine(" ")
+            local qTitle
+            if C_QuestLog and C_QuestLog.GetTitleForQuestID then
+                qTitle = C_QuestLog.GetTitleForQuestID(qid)
+            end
+            if qTitle and qTitle ~= "" then
+                GameTooltip:AddLine("|cffffd700Quest:|r |cffffff00[" .. qTitle .. "]|r", 1, 1, 1, true)
+            else
+                GameTooltip:AddLine("|cffffd700Quest reward|r (id " .. qid .. ")", 1, 1, 1, true)
+            end
+            GameTooltip:AddLine("|cffaaaaaahttps://www.wowhead.com/tbc/quest=" .. qid .. "|r", 1, 1, 1, true)
+            GameTooltip:AddLine("|cff888888Ctrl+click for URL  •  Shift+click for chat-link|r", 0.7, 0.7, 0.7, true)
         end
-        GameTooltip:AddLine("|cffaaaaaahttps://www.wowhead.com/tbc/quest=" .. qid .. "|r", 1, 1, 1, true)
-        GameTooltip:AddLine(" ")
-        GameTooltip:AddLine("|cff888888Ctrl+click for URL  •  Shift+click for chat-link|r", 0.7, 0.7, 0.7, true)
         GameTooltip:Show()
     end)
     srcHover:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -1766,28 +1789,37 @@ function UI:Refresh()
                 end
                 row.itemLbl:SetText(tierPrefix .. color .. itemName .. "|r" .. altSuffix)
 
+                -- Source column — short category label inline; full text shown
+                -- in the source-column hover tooltip.
                 local srcColor = SOURCE_TYPE_COLORS[entry.sourceType] or "|cffcccccc"
-                local srcText  = entry.source or "Unknown"
-                if entry.note then
-                    srcText = entry.note .. " (" .. srcText .. ")"
-                end
-                -- For crafted items, append the player's profession status inline
+                local srcShort = SOURCE_TYPE_LABELS[entry.sourceType] or (entry.sourceType or "Unknown")
+
+                -- Stash the full text for the hover handler
+                local fullSource = entry.source or "Unknown"
+                if entry.note then fullSource = entry.note .. " (" .. fullSource .. ")" end
+                row.sourceFull = fullSource
+                row.sourceType = entry.sourceType
+                row.profStatus = nil
+
+                -- Inline indicators that need to be visible at a glance
+                local indicators = ""
                 if entry.sourceType == "crafted" then
                     local prof = addon:ParseCraftingProfession(entry)
                     if prof then
                         local level = addon:GetPlayerProfessionLevel(prof)
                         if level then
-                            srcText = srcText .. " |cff00ff00[your " .. prof .. ": " .. level .. "]|r"
+                            indicators = indicators .. " |cff00ff00✓|r"
+                            row.profStatus = "|cff00ff00You have " .. prof .. " (" .. level .. ").|r"
                         else
-                            srcText = srcText .. " |cffff6060[no " .. prof .. "]|r"
+                            indicators = indicators .. " |cffff6060✗|r"
+                            row.profStatus = "|cffff6060You don't have " .. prof .. ".|r"
                         end
                     end
                 end
-                -- Mark quest sources with a clickable indicator if questId is known
                 if entry.questId and entry.questId > 0 then
-                    srcText = srcText .. " |cffffd700ⓘ|r"
+                    indicators = indicators .. " |cffffd700ⓘ|r"
                 end
-                row.srcLbl:SetText(srcColor .. srcText .. "|r")
+                row.srcLbl:SetText(srcColor .. srcShort .. "|r" .. indicators)
 
                 local slotName = addon.SLOT_LABELS[slot] or slot
                 if tierInfo then
@@ -1817,6 +1849,9 @@ function UI:Refresh()
                 -- Empty slot — placeholder, prompt right-click to import
                 row.itemId = 0
                 row.questId = nil
+                row.sourceFull = nil
+                row.sourceType = nil
+                row.profStatus = nil
                 row.itemLbl:SetText("|cff666666(empty — right-click to import)|r")
                 row.srcLbl:SetText("")
                 row.chk:SetChecked(false)
