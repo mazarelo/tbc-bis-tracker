@@ -177,10 +177,10 @@ function UI:Build()
         TBCBisTrackerDB.windowPos = { point = pt or "CENTER", x = x or 0, y = y or 0 }
     end)
 
-    -- Title
+    -- Title — class/spec/phase context gets injected by Refresh().
     local title = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
     title:SetPoint("TOP", f, "TOP", 0, -6)
-    title:SetText("|cffffd700TBC BIS Tracker|r  |cffaaaaaa— WoW TBC Anniversary|r")
+    title:SetText(UI_PAL.accent .. "TBC BIS Tracker|r")
     self.titleText = title
 
     -- Close button label (frame template already adds X button)
@@ -384,6 +384,17 @@ function UI:BuildPhaseTabs()
         bg:SetTexture("Interface\\ChatFrame\\ChatFrameBackground")
         btn.bg = bg
 
+        -- Top-accent strip for the active phase tab (parallel to the
+        -- bottom-accent strip on spec tabs, so both row types speak the
+        -- same visual language).
+        local accent = btn:CreateTexture(nil, "OVERLAY")
+        accent:SetColorTexture(1, 0.82, 0, 1)
+        accent:SetPoint("TOPLEFT", btn, "TOPLEFT", 2, 0)
+        accent:SetPoint("TOPRIGHT", btn, "TOPRIGHT", -2, 0)
+        accent:SetHeight(2)
+        accent:Hide()
+        btn.accent = accent
+
         local fs = btn:CreateFontString(nil, "OVERLAY")
         SetFontNormal(fs)
         fs:SetAllPoints()
@@ -429,11 +440,13 @@ function UI:RefreshPhaseTabs()
         end
         btn.fs:SetText(label)
         if phase == selected then
-            btn.bg:SetVertexColor(0.25, 0.20, 0.05, 0.9)
+            btn.bg:SetVertexColor(unpack(UI_PAL.selectBg))
             btn.fs:SetTextColor(1, 0.82, 0, 1)
+            if btn.accent then btn.accent:Show() end
         else
-            btn.bg:SetVertexColor(0.10, 0.10, 0.10, 0.8)
-            btn.fs:SetTextColor(0.70, 0.70, 0.70, 1)
+            btn.bg:SetVertexColor(unpack(UI_PAL.inactiveBg))
+            btn.fs:SetTextColor(0.78, 0.78, 0.80, 1)
+            if btn.accent then btn.accent:Hide() end
         end
     end
 end
@@ -1518,11 +1531,12 @@ function UI:RefreshStatCaps()
             else
                 row.fill:SetVertexColor(0.85, 0.30, 0.20, 0.85)
             end
+            local pctNum = math.floor(pct * 100 + 0.5)
             local txt
             if data.missing == 0 then
-                txt = string.format("|cff00ff00%d / %d|r", data.current, data.cap)
+                txt = string.format("|cff60ff60%d / %d  (%d%%)|r", data.current, data.cap, pctNum)
             else
-                txt = string.format("%d / %d  |cffff8800(-%d)|r", data.current, data.cap, data.missing)
+                txt = string.format("%d / %d  |cff888888%d%%|r  |cffff8800(-%d)|r", data.current, data.cap, pctNum, data.missing)
             end
             row.val:SetText(txt)
         end
@@ -1619,13 +1633,22 @@ function UI:RefreshBadgeStatus()
     local spec  = TBCBisTrackerDB.lastSpec
     local phase = TBCBisTrackerDB.lastPhase
     local owned, total, items = addon:GetBadgeProgress(class, spec, phase)
+    -- Compact badge readout. The verbose breakdown lives in the hover tooltip.
+    -- Format: "[icon] 0 / 66 BoJ  •  2 items"
+    local coin = "|TInterface\\Icons\\Spell_Holy_ChampionsBond:14:14|t"
     if total == 0 then
-        self.badgeStatus:SetText("|cff888888Badges of Justice: " .. owned .. "|r")
+        self.badgeStatus:SetText(coin .. " " .. UI_PAL.muted .. owned .. " BoJ|r")
     elseif owned >= total then
-        self.badgeStatus:SetText(string.format("|cffffd700Badges: %d / %d (enough!)|r — %d items remaining", owned, total, #items))
+        self.badgeStatus:SetText(string.format(
+            "%s %s%d / %d BoJ|r  %s|cff60ff60enough!|r  %s%d items|r",
+            coin, UI_PAL.accent, owned, total, UI_PAL.muted .. "•|r ", UI_PAL.muted, #items
+        ))
     else
         local diff = total - owned
-        self.badgeStatus:SetText(string.format("|cffaaaaaaBadges: %d / %d|r — need |cffff8800%d more|r for %d unobtained items", owned, total, diff, #items))
+        self.badgeStatus:SetText(string.format(
+            "%s %s%d / %d BoJ|r  %s|cffff8800need %d more|r  %s%d items|r",
+            coin, UI_PAL.mutedSoft, owned, total, UI_PAL.muted .. "•|r ", UI_PAL.muted .. "• ", #items
+        ))
     end
 end
 
@@ -1691,15 +1714,14 @@ function UI:Refresh()
 
     local data = addon:GetPhaseData(class, spec, phase)
 
-    -- Update title
+    -- Update title — class color + spec + phase as a contextual subtitle
     if class and spec then
         local info = addon.CLASS_INFO[class]
         if info then
             self.titleText:SetText(
-                "|cffffd700TBC BIS Tracker|r  " ..
-                "|cff" .. info.color .. info.name .. "|r" ..
-                " — " .. spec ..
-                "  |cffaaaaaa" .. addon.PHASE_LABELS[phase] .. "|r"
+                UI_PAL.accent .. "TBC BIS Tracker|r" ..
+                "  |cff" .. info.color .. info.name .. " " .. spec .. "|r" ..
+                "  " .. UI_PAL.muted .. addon.PHASE_LABELS[phase] .. "|r"
             )
         end
     end
@@ -1814,17 +1836,17 @@ function UI:Refresh()
                     row.slotLbl:SetTextColor(0.7, 0.7, 0.7, 1)
                 end
             else
-                -- Empty slot — placeholder, prompt right-click to import
+                -- Empty slot — invite the user to drop or right-click to import.
                 row.itemId = 0
                 row.questId = nil
                 row.sourceFull = nil
                 row.sourceType = nil
                 row.profStatus = nil
-                row.itemLbl:SetText("|cff666666(empty — right-click to import)|r")
-                row.srcLbl:SetText("")
+                row.itemLbl:SetText("|cff666666No BiS pick set|r  |cff444444· right-click to import|r")
+                row.srcLbl:SetText("|cff444444—|r")
                 row.chk:SetChecked(false)
                 row.chk:Hide()
-                row.slotLbl:SetTextColor(0.5, 0.5, 0.5, 1)
+                row.slotLbl:SetTextColor(0.45, 0.45, 0.45, 1)
             end
         end
     end
