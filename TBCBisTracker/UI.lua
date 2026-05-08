@@ -1963,6 +1963,235 @@ function UI:UpdateProgress(obtained, total)
 end
 
 -- ─────────────────────────────────────────────
+-- BiS Preview window — character-pane-style mockup with 3D model,
+-- slot icons, and stats summary. Triggered by right-click on the
+-- minimap button or "/tbcbis preview".
+-- ─────────────────────────────────────────────
+
+local PREV_W = 400
+local PREV_H = 600
+local PREV_SLOT = 38
+local PREV_PAD = 10
+
+-- Slot layout: 8 slots on the left, 6 on the right (rings/trinkets),
+-- 3 weapons across the bottom — total 17.
+local PREV_LEFT_SLOTS   = { "head", "neck", "shoulder", "back", "chest", "wrist", "hands", "waist" }
+local PREV_RIGHT_SLOTS  = { "legs", "feet", "ring1", "ring2", "trinket1", "trinket2" }
+local PREV_BOTTOM_SLOTS = { "mainhand", "offhand", "ranged" }
+
+function UI:BuildBisPreview()
+    if self.previewFrame then return self.previewFrame end
+
+    local f = CreateFrame("Frame", "TBCBisTrackerPreview", UIParent, "BasicFrameTemplateWithInset")
+    f:SetSize(PREV_W, PREV_H)
+    f:SetPoint("CENTER", UIParent, "CENTER", 200, 0)
+    f:SetMovable(true); f:EnableMouse(true)
+    f:RegisterForDrag("LeftButton")
+    f:SetScript("OnDragStart", f.StartMoving)
+    f:SetScript("OnDragStop",  f.StopMovingOrSizing)
+    f:SetClampedToScreen(true)
+    f:SetFrameStrata("HIGH")
+    f:SetToplevel(true)
+    f:Hide()
+    self.previewFrame = f
+
+    local title = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
+    title:SetPoint("TOP", f, "TOP", 0, -6)
+    title:SetText(UI_PAL.accent .. "BiS Preview|r")
+    self.previewTitle = title
+
+    local subtitle = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    subtitle:SetPoint("TOP", f, "TOP", 0, -28)
+    self.previewSubtitle = subtitle
+
+    -- 3D player model in the center
+    local model = CreateFrame("PlayerModel", nil, f)
+    model:SetSize(PREV_W - 2*(PREV_SLOT + 2*PREV_PAD), PREV_H - 220)
+    model:SetPoint("TOP", f, "TOP", 0, -50)
+    if model.SetUnit then model:SetUnit("player") end
+    model:SetFacing(0.4)
+    self.previewModel = model
+
+    -- Mouse drag to rotate the model
+    model:EnableMouse(true)
+    model:SetScript("OnMouseDown", function(self) self._rot_start = GetCursorPosition() end)
+    model:SetScript("OnMouseUp",   function(self) self._rot_start = nil end)
+    model:SetScript("OnUpdate", function(self)
+        if self._rot_start then
+            local x = GetCursorPosition()
+            local dx = (x - self._rot_start)
+            self:SetFacing((self:GetFacing() or 0) + dx * 0.005)
+            self._rot_start = x
+        end
+    end)
+
+    -- Slot button factory
+    local function makeSlotBtn(parent, x, y, slot)
+        local btn = CreateFrame("Button", nil, parent)
+        btn:SetSize(PREV_SLOT, PREV_SLOT)
+        btn:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y)
+        btn._slot = slot
+
+        local bg = btn:CreateTexture(nil, "BACKGROUND")
+        bg:SetAllPoints()
+        bg:SetTexture("Interface\\Buttons\\UI-EmptySlot-Disabled")
+        btn.bg = bg
+
+        local icon = btn:CreateTexture(nil, "ARTWORK")
+        icon:SetPoint("TOPLEFT", btn, "TOPLEFT", 4, -4)
+        icon:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", -4, 4)
+        icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)  -- crop default icon border
+        icon:SetTexture(addon.SLOT_ICONS[slot] or "Interface\\Icons\\INV_Misc_QuestionMark")
+        btn.icon = icon
+
+        local border = btn:CreateTexture(nil, "OVERLAY")
+        border:SetTexture("Interface\\Buttons\\UI-Quickslot2")
+        border:SetSize(PREV_SLOT + 24, PREV_SLOT + 24)
+        border:SetPoint("CENTER")
+        btn.border = border
+
+        local mark = btn:CreateTexture(nil, "OVERLAY")
+        mark:SetTexture("Interface\\RAIDFRAME\\ReadyCheck-Ready")
+        mark:SetSize(16, 16)
+        mark:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", 2, -2)
+        mark:Hide()
+        btn.mark = mark
+
+        btn:SetScript("OnEnter", function(self)
+            if self._itemId and self._itemId > 0 then
+                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                GameTooltip:SetHyperlink("item:" .. self._itemId .. ":0:0:0:0:0:0:0")
+                GameTooltip:AddLine(" ")
+                GameTooltip:AddLine(UI_PAL.muted .. (addon.SLOT_LABELS[self._slot] or self._slot) .. "|r", 1, 1, 1)
+                if self._obtained then
+                    GameTooltip:AddLine("|cff60ff60Obtained|r", 1, 1, 1)
+                else
+                    GameTooltip:AddLine("|cff888888Not obtained|r", 1, 1, 1)
+                end
+                GameTooltip:Show()
+            else
+                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                GameTooltip:SetText(addon.SLOT_LABELS[self._slot] or self._slot, 1, 1, 1)
+                GameTooltip:AddLine("|cff888888No BiS pick set|r", 1, 1, 1)
+                GameTooltip:Show()
+            end
+        end)
+        btn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        return btn
+    end
+
+    self.previewSlotBtns = {}
+
+    -- Left column
+    local leftX = PREV_PAD
+    for i, slot in ipairs(PREV_LEFT_SLOTS) do
+        local y = -50 - (i - 1) * (PREV_SLOT + 6)
+        self.previewSlotBtns[slot] = makeSlotBtn(f, leftX, y, slot)
+    end
+
+    -- Right column
+    local rightX = PREV_W - PREV_PAD - PREV_SLOT
+    for i, slot in ipairs(PREV_RIGHT_SLOTS) do
+        local y = -50 - (i - 1) * (PREV_SLOT + 6)
+        self.previewSlotBtns[slot] = makeSlotBtn(f, rightX, y, slot)
+    end
+
+    -- Bottom row (weapons)
+    local bottomY = -(50 + 8 * (PREV_SLOT + 6) - 4)
+    local bottomTotal = #PREV_BOTTOM_SLOTS * PREV_SLOT + (#PREV_BOTTOM_SLOTS - 1) * 8
+    local bottomStartX = (PREV_W - bottomTotal) / 2
+    for i, slot in ipairs(PREV_BOTTOM_SLOTS) do
+        local x = bottomStartX + (i - 1) * (PREV_SLOT + 8)
+        self.previewSlotBtns[slot] = makeSlotBtn(f, x, bottomY, slot)
+    end
+
+    -- Stats summary at the bottom
+    local statsLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    statsLbl:SetPoint("BOTTOM", f, "BOTTOM", 0, 14)
+    statsLbl:SetJustifyH("CENTER")
+    statsLbl:SetWidth(PREV_W - 20)
+    self.previewStatsLbl = statsLbl
+
+    local statsDiv = CreateDivider(f, UI_PAL.dividerSoft)
+    statsDiv:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", PREV_PAD, 38)
+    statsDiv:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -PREV_PAD, 38)
+    statsDiv:SetHeight(1)
+
+    return f
+end
+
+function UI:RefreshBisPreview(class, spec, phase)
+    class = class or TBCBisTrackerDB.lastClass
+    spec  = spec  or TBCBisTrackerDB.lastSpec
+    phase = phase or TBCBisTrackerDB.lastPhase
+    if not (self.previewFrame and class and spec and phase) then return end
+
+    -- Title context
+    local info = addon.CLASS_INFO[class]
+    local subtitle = ""
+    if info then
+        subtitle = "|cff" .. info.color .. info.name .. " " .. spec .. "|r  " ..
+                   UI_PAL.muted .. (addon.PHASE_LABELS[phase] or phase) .. "|r"
+    end
+    self.previewSubtitle:SetText(subtitle)
+
+    -- Reset the model to the player + try on each BiS pick.
+    if self.previewModel and self.previewModel.SetUnit then
+        self.previewModel:SetUnit("player")
+    end
+    -- Use Undress if available so we don't see player gear behind unset slots.
+    if self.previewModel and self.previewModel.Undress then
+        self.previewModel:Undress()
+    end
+
+    -- Update each slot button + try-on the item on the model
+    for slot, btn in pairs(self.previewSlotBtns) do
+        local entry = addon:GetSlotItem(class, spec, phase, slot)
+        if entry and entry.id and entry.id > 0 then
+            local _, link = GetItemInfo(entry.id)
+            local texture = select(10, GetItemInfo(entry.id))
+            btn._itemId = entry.id
+            btn._obtained = addon:IsObtained(class, spec, phase, slot)
+            btn.icon:SetTexture(texture or addon.SLOT_ICONS[slot] or "Interface\\Icons\\INV_Misc_QuestionMark")
+            btn.icon:SetAlpha(1)
+            btn.mark:SetShown(btn._obtained == true)
+            if link and self.previewModel and self.previewModel.TryOn then
+                self.previewModel:TryOn(link)
+            end
+        else
+            btn._itemId = nil
+            btn._obtained = false
+            btn.icon:SetTexture(addon.SLOT_ICONS[slot] or "Interface\\Icons\\INV_Misc_QuestionMark")
+            btn.icon:SetAlpha(0.35)
+            btn.mark:Hide()
+        end
+    end
+
+    -- Stats summary line
+    local rows = addon:GetCapStatus(class, spec, phase, "selected")
+    if rows then
+        local parts = {}
+        for _, r in ipairs(rows) do
+            if r.cap and r.cap > 0 then
+                local color = (r.missing == 0) and "|cff60ff60" or "|cffaaaaaa"
+                parts[#parts + 1] = color .. r.label .. ": " .. r.current .. " / " .. r.cap .. "|r"
+            else
+                parts[#parts + 1] = UI_PAL.mutedSoft .. r.label .. ": " .. r.current .. "|r"
+            end
+        end
+        self.previewStatsLbl:SetText(table.concat(parts, "  •  "))
+    else
+        self.previewStatsLbl:SetText("")
+    end
+end
+
+function UI:ShowBisPreview(class, spec, phase)
+    self:BuildBisPreview()
+    self:RefreshBisPreview(class, spec, phase)
+    self.previewFrame:Show()
+end
+
+-- ─────────────────────────────────────────────
 -- Toggle / Show / Hide
 -- ─────────────────────────────────────────────
 

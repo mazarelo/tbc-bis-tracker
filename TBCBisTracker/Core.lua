@@ -410,19 +410,6 @@ end
 -- (mirrors AtlasLoot's right-click preview / native dressing room).
 -- ─────────────────────────────────────────────
 
--- Resolve whatever model API the current client exposes.
--- TBC Classic: DressUpModel (top-level global)
--- Retail / newer: DressUpFrame.ModelScene with a child model
-local function getDressUpModel()
-    if _G.DressUpModel then return _G.DressUpModel end
-    local frame = _G.DressUpFrame
-    if not frame then return nil end
-    if frame.ModelScene and frame.ModelScene.GetPlayerActor then
-        return frame.ModelScene:GetPlayerActor()
-    end
-    return frame.model or frame.Model
-end
-
 function addon:ShowGearPreview(class, spec, phase)
     class = class or TBCBisTrackerDB.lastClass
     spec  = spec  or TBCBisTrackerDB.lastSpec
@@ -431,56 +418,10 @@ function addon:ShowGearPreview(class, spec, phase)
         self:Print("Set a class/spec/phase first.")
         return
     end
-
-    -- Collect every BiS pick (split into ready / pending).
-    local ready, pending, firstLink = {}, 0, nil
-    for _, slot in ipairs(self.SLOTS) do
-        local entry = self:GetSlotItem(class, spec, phase, slot)
-        if entry and entry.id and entry.id > 0 then
-            local _, link = GetItemInfo(entry.id)
-            if link then
-                ready[#ready + 1] = link
-                firstLink = firstLink or link
-            else
-                pending = pending + 1
-            end
-        end
-    end
-    if #ready == 0 and pending == 0 then
-        self:Print("No BiS items selected for " .. (self.PHASE_LABELS[phase] or phase) .. ".")
-        return
-    end
-
-    -- Lazy-load DressUpFrame by calling DressUpItemLink with the first item.
-    -- This is the canonical way to open the dressing room; subsequent items
-    -- get added via the model's TryOn method.
-    if firstLink and DressUpItemLink then
-        DressUpItemLink(firstLink)
-    elseif _G.DressUpFrame then
-        if not _G.DressUpFrame:IsShown() then
-            if ShowUIPanel then ShowUIPanel(_G.DressUpFrame) else _G.DressUpFrame:Show() end
-        end
-        local m0 = getDressUpModel()
-        if m0 and m0.SetUnit then m0:SetUnit("player") end
+    if self.UI and self.UI.ShowBisPreview then
+        self.UI:ShowBisPreview(class, spec, phase)
     else
-        self:Print("DressUpFrame is not available in this client.")
-        return
-    end
-
-    -- Now the frame should exist. Add the remaining items.
-    local model = getDressUpModel()
-    if not (model and model.TryOn) then
-        self:Print("DressUp model is not available in this client.")
-        return
-    end
-    for i = 2, #ready do
-        model:TryOn(ready[i])
-    end
-
-    -- Queue any still-uncached items for GET_ITEM_INFO_RECEIVED retry
-    self._pendingPreview = (pending > 0) and { class = class, spec = spec, phase = phase } or nil
-    if pending > 0 then
-        self:Print("Previewing " .. #ready .. " items (" .. pending .. " still loading)…")
+        self:Print("UI not loaded yet.")
     end
 end
 
@@ -1756,11 +1697,9 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1)
         if addon.UI and addon.UI.RefreshStatCaps then
             addon.UI:RefreshStatCaps()
         end
-        -- And re-apply the dress-up preview if items were still loading.
-        if addon._pendingPreview and DressUpFrame and DressUpFrame:IsShown() then
-            local p = addon._pendingPreview
-            addon._pendingPreview = nil
-            addon:ShowGearPreview(p.class, p.spec, p.phase)
+        -- And re-apply the BiS preview if it's open and items were still loading.
+        if addon.UI and addon.UI.previewFrame and addon.UI.previewFrame:IsShown() then
+            addon.UI:RefreshBisPreview()
         end
 
     elseif event == "LOOT_OPENED" then
