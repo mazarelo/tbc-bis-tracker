@@ -9,8 +9,10 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
 <link rel="stylesheet" href="styles.css" />
 <script>
-  /* Wowhead enhances <a href="https://www.wowhead.com/tbc/item=ID"> with rich
-     tooltips, item icons, and quality colors. */
+  /* Wowhead's power widget enhances <a href="https://www.wowhead.com/tbc/item=ID">
+     links with rich hover tooltips, item icons, and quality colours. The
+     `renameLinks: true` flag replaces the link text with the item's real
+     name once the widget loads. */
   window.whTooltips = {
     colorLinks: true,
     iconizeLinks: true,
@@ -18,7 +20,7 @@
     renameLinks: true,
   };
 </script>
-<script src="https://wow.zamimg.com/js/tooltips.js" defer></script>
+<script src="https://wow.zamimg.com/widgets/power.js" defer></script>
 </head>
 <body>
 <header class="topbar">
@@ -126,6 +128,7 @@
 </div>
 
 <script src="data/data.js"></script>
+<script src="data/bosses.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

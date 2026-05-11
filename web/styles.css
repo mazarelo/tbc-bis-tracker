@@ -1,0 +1,562 @@
+/* ──────────────────────────────────────────────────────────────────────
+   TBC BiS Tracker — boilerplate styles
+   Dark palette tuned to the in-game addon (gold accent #F0BC52).
+   No build step — vanilla CSS variables + grid/flex layout.
+   ────────────────────────────────────────────────────────────────────── */
+
+:root {
+  --bg-0: #0e0f12;
+  --bg-1: #15171c;
+  --bg-2: #1c1f26;
+  --bg-3: #232631;
+  --border: #2a2e3a;
+  --border-soft: #20232c;
+  --text: #e6e8ee;
+  --text-dim: #a8adb8;
+  --text-mute: #7a7f8a;
+  --accent: #f0bc52;
+  --accent-dim: #b08a3c;
+  --green: #6fcf6f;
+  --red: #e07070;
+  --blue: #6fb4ff;
+  --shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+  --radius: 6px;
+  --pad: 12px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg-0);
+  color: var(--text);
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.muted { color: var(--text-dim); }
+.small { font-size: 12px; }
+
+/* ── Top bar ────────────────────────────────────────────────────────── */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 10px 18px;
+  background: var(--bg-1);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.brand { display: flex; align-items: center; gap: 10px; color: inherit; }
+.brand:hover { text-decoration: none; }
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px; height: 32px;
+  background: var(--accent);
+  color: var(--bg-0);
+  font-weight: 700;
+  border-radius: 8px;
+}
+.brand-labels { display: flex; flex-direction: column; line-height: 1.1; }
+.brand-name { font-weight: 700; letter-spacing: 0.5px; }
+.brand-sub { color: var(--text-dim); font-size: 11px; }
+
+.phases { display: flex; gap: 4px; flex: 1; flex-wrap: wrap; }
+.phases button {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-dim);
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  font: inherit;
+  cursor: pointer;
+}
+.phases button:hover { color: var(--text); background: var(--bg-2); }
+.phases button.active {
+  color: var(--accent);
+  background: var(--bg-2);
+  border-color: var(--accent-dim);
+}
+
+.topbar-actions { display: flex; gap: 8px; align-items: center; }
+
+.toggle { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
+.toggle input { position: absolute; opacity: 0; pointer-events: none; }
+.toggle-box {
+  width: 16px; height: 16px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--bg-2);
+  display: inline-block;
+  position: relative;
+}
+.toggle input:checked + .toggle-box {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.toggle input:checked + .toggle-box::after {
+  content: "";
+  position: absolute;
+  left: 4px; top: 1px;
+  width: 4px; height: 8px;
+  border: solid var(--bg-0);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.toggle-label { color: var(--text-dim); font-size: 13px; }
+
+.btn {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font: inherit;
+}
+.btn:hover { background: var(--bg-3); }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: var(--bg-0); font-weight: 600; }
+.btn-primary:hover { background: #f7c75e; }
+.btn-ghost { background: transparent; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Class / spec bars ──────────────────────────────────────────────── */
+.classbar, .specbar {
+  display: flex;
+  gap: 6px;
+  padding: 8px 18px;
+  background: var(--bg-1);
+  border-bottom: 1px solid var(--border-soft);
+  overflow-x: auto;
+}
+.classbar button, .specbar button {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  padding: 5px 12px;
+  border-radius: var(--radius);
+  font: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.classbar button:hover, .specbar button:hover { background: var(--bg-2); color: var(--text); }
+.classbar button.active {
+  /* per-class colour applied inline via style attribute */
+  background: var(--bg-2);
+  border-color: currentColor;
+}
+.specbar button.active {
+  color: var(--accent);
+  border-color: var(--accent-dim);
+  background: var(--bg-2);
+}
+
+/* ── Main layout: slot list + side panel ────────────────────────────── */
+.main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 16px;
+  padding: 16px 18px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+@media (max-width: 880px) {
+  .main { grid-template-columns: 1fr; }
+}
+
+.panel {
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+}
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 10px;
+  gap: 12px;
+}
+.panel-title h2 { margin: 0; font-size: 16px; font-weight: 600; }
+.panel-sub { margin: 2px 0 0; color: var(--text-dim); font-size: 12px; }
+.badge {
+  background: var(--bg-3);
+  color: var(--text-dim);
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+}
+
+.progress { display: flex; align-items: center; gap: 8px; min-width: 160px; }
+.progress-track {
+  flex: 1;
+  height: 8px;
+  background: var(--bg-3);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--green), #aed98f);
+  width: 0;
+  transition: width 0.2s ease;
+}
+.progress-label { color: var(--text-dim); font-size: 12px; min-width: 50px; text-align: right; }
+
+/* ── Slot list ──────────────────────────────────────────────────────── */
+.slot-list { list-style: none; margin: 0; padding: 0; }
+.slot-row {
+  display: grid;
+  grid-template-columns: 110px 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.slot-row:last-child { border-bottom: none; }
+.slot-row:hover { background: var(--bg-2); }
+.slot-row.obtained .slot-item-name { color: var(--text-mute); text-decoration: line-through; }
+.slot-row.empty .slot-item-name { color: var(--text-mute); font-style: italic; }
+
+.slot-name { color: var(--text-dim); font-size: 12px; text-transform: uppercase; letter-spacing: 0.4px; }
+.slot-item { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.slot-item-name {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Wowhead enhanced links: don't underline, inherit colour */
+.slot-item-name a { color: inherit; text-decoration: none; }
+.slot-item-name a:hover { text-decoration: underline; }
+
+.slot-source { color: var(--text-dim); font-size: 12px; display: flex; gap: 6px; align-items: baseline; }
+/* Soften the coloured body text — the tag pill already shows the type
+   strongly, so the trailing description doesn't need to shout. */
+.slot-source a,
+.slot-source > span:not(.src-tag) { opacity: 0.7; }
+.slot-row:hover .slot-source a,
+.slot-row:hover .slot-source > span:not(.src-tag) { opacity: 1; }
+.slot-source a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-decoration-color: var(--border);
+  text-underline-offset: 2px;
+}
+.slot-source a:hover { text-decoration-color: var(--accent-dim); }
+
+/* Source-type colour palette mirrors the in-game addon's chat-colour scheme
+   (UI.lua SOURCE_TYPE_COLORS). Applied to both the slot-source text and the
+   alt-source label in the alternatives popover, so identical entries read
+   consistently in both places. */
+.src-quest      { color: #ff9900; }
+.src-heroic     { color: #40c0ff; }
+.src-raid       { color: #a335ee; }
+.src-reputation { color: #ffd700; }
+.src-pvp        { color: #ff5252; }
+.src-world      { color: #b8b8b8; }
+.src-dungeon    { color: #7fb2ff; }
+.src-crafted    { color: #00ff96; }
+
+/* Small uppercase pill in front of the source text — instantly readable. */
+.src-tag {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 0 5px;
+  border-radius: 2px;
+  border: 1px solid currentColor;
+  background: rgba(255, 255, 255, 0.03);
+  font-weight: 600;
+  flex-shrink: 0;
+  line-height: 1.5;
+  opacity: 0.65;
+}
+.slot-row:hover .src-tag { opacity: 0.9; }
+
+.slot-alts-btn {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  padding: 3px 8px;
+  border-radius: 4px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.slot-alts-btn:hover { color: var(--text); background: var(--bg-3); }
+
+.chk {
+  appearance: none;
+  width: 18px; height: 18px;
+  border: 1px solid var(--border);
+  background: var(--bg-2);
+  border-radius: 3px;
+  cursor: pointer;
+  position: relative;
+}
+.chk:checked { background: var(--green); border-color: var(--green); }
+.chk:checked::after {
+  content: "";
+  position: absolute;
+  left: 5px; top: 1px;
+  width: 5px; height: 10px;
+  border: solid var(--bg-0);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.empty-state { text-align: center; color: var(--text-dim); padding: 30px 12px; }
+
+/* ── Stat caps ──────────────────────────────────────────────────────── */
+.stat-list { list-style: none; margin: 0; padding: 0; }
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.stat-row:last-child { border-bottom: none; }
+.stat-row .stat-label { color: var(--text-dim); }
+.stat-row .stat-value { color: var(--text); font-weight: 500; }
+.stat-row.info .stat-value { color: var(--text-mute); font-style: italic; font-weight: 400; }
+
+/* ── Sync / share panel ─────────────────────────────────────────────── */
+.sync-panel { margin-top: 16px; }
+.sync-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.sync-header h2 { margin: 0; font-size: 14px; font-weight: 600; }
+.sync-icon { color: var(--accent); }
+.code-box {
+  background: var(--bg-0);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 8px;
+  margin: 0 0 8px;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+  overflow-x: auto;
+  white-space: pre;
+  max-height: 110px;
+}
+
+/* ── Modal ──────────────────────────────────────────────────────────── */
+.modal {
+  position: fixed; inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100;
+}
+.modal[hidden] { display: none; }
+.modal-card {
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  width: min(560px, 92vw);
+  padding: 16px;
+  box-shadow: var(--shadow);
+}
+.modal-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 8px;
+}
+.modal-header h3 { margin: 0; font-size: 16px; }
+.modal-close {
+  background: none; border: none; color: var(--text-dim);
+  font-size: 22px; line-height: 1; cursor: pointer; padding: 0 4px;
+}
+.modal-close:hover { color: var(--text); }
+.modal-desc { margin: 0 0 8px; color: var(--text-dim); font-size: 13px; }
+.modal textarea {
+  width: 100%;
+  background: var(--bg-0);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 8px;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12px;
+  resize: vertical;
+}
+.modal-footer {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 12px;
+}
+.modal-status { color: var(--text-dim); font-size: 12px; }
+.modal-status.ok { color: var(--green); }
+.modal-status.err { color: var(--red); }
+.modal-buttons { display: flex; gap: 8px; }
+
+/* ── Alts popover ───────────────────────────────────────────────────── */
+.popover {
+  position: absolute;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px;
+  box-shadow: var(--shadow);
+  z-index: 50;
+  min-width: 280px;
+  max-width: 420px;
+}
+.popover[hidden] { display: none; }
+.popover-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.popover-header h4 { margin: 0; font-size: 13px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.3px; }
+.popover-close {
+  background: none; border: none; color: var(--text-dim);
+  font-size: 18px; line-height: 1; cursor: pointer;
+}
+.alts-list { list-style: none; margin: 0; padding: 0; max-height: 320px; overflow-y: auto; }
+.alts-list li {
+  padding: 6px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.alts-list li:hover { background: var(--bg-3); }
+.alts-list li.active { background: var(--bg-3); color: var(--accent); }
+/* Colour comes from the `src-<type>` class added in JS; only the size
+   and the "muted by default" fallback live here. */
+.alts-list li .alt-source { font-size: 11px; color: var(--text-dim); opacity: 0.7; }
+.alts-list li:hover .alt-source { opacity: 1; }
+.alts-list li .alt-source.src-quest      { color: #ff9900; }
+.alts-list li .alt-source.src-heroic     { color: #40c0ff; }
+.alts-list li .alt-source.src-raid       { color: #a335ee; }
+.alts-list li .alt-source.src-reputation { color: #ffd700; }
+.alts-list li .alt-source.src-pvp        { color: #ff5252; }
+.alts-list li .alt-source.src-world      { color: #b8b8b8; }
+.alts-list li .alt-source.src-dungeon    { color: #7fb2ff; }
+.alts-list li .alt-source.src-crafted    { color: #00ff96; }
+
+/* ── Footer ─────────────────────────────────────────────────────────── */
+.bottom {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 18px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-1);
+  color: var(--text-dim);
+  font-size: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ── Mobile / narrow screens ─────────────────────────────────────────
+   Two breakpoints:
+     ≤ 880px  — sidebar stacks under the main list (already set above).
+     ≤ 640px  — phone layout: topbar stacks into two rows, brand subtitle
+                hides, slot rows reflow into a 2-row card with the
+                action controls pinned to the right, padding shrinks.
+   ──────────────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .topbar {
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    padding: 8px 12px;
+  }
+  .brand-sub { display: none; }
+  .brand-name { font-size: 13px; }
+  .brand-mark { width: 28px; height: 28px; }
+
+  /* Phases scroll horizontally on their own row, full-width. */
+  .phases {
+    order: 3;
+    flex-basis: 100%;
+    margin: 0 -12px;          /* bleed to viewport edges so swipe feels free */
+    padding: 0 12px 2px;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+  }
+  .phases::-webkit-scrollbar { display: none; }
+  .phases button {
+    padding: 6px 14px;        /* larger tap target */
+    flex-shrink: 0;
+  }
+
+  /* Action row stays inline with the brand; toggle text shrinks. */
+  .topbar-actions { gap: 6px; margin-left: auto; flex-wrap: wrap; justify-content: flex-end; }
+  .topbar-actions .btn { padding: 6px 10px; font-size: 13px; }
+  /* "Show missing only" → "Missing" to free up horizontal room. */
+  .toggle-label { font-size: 12px; }
+  .toggle-label::before { content: "Missing"; }
+  .toggle-label > * { display: none; }
+  /* If the existing label has plain text content, hide it via a span override.
+     Markup wraps the text in a sibling node, so this two-step rule keeps the
+     custom label without touching index.html. */
+
+  .classbar, .specbar {
+    padding: 6px 12px;
+    gap: 4px;
+  }
+  .classbar button, .specbar button {
+    padding: 6px 12px;        /* larger tap target */
+  }
+
+  .main {
+    grid-template-columns: 1fr;
+    padding: 10px 12px;
+    gap: 12px;
+  }
+  .panel { padding: 10px; }
+  .panel-header { flex-wrap: wrap; }
+  .progress { min-width: 100%; order: 2; }
+
+  /* Slot rows go from 4-column grid to a 2-row card:
+       row 1: slot name + alts button + checkbox
+       row 2: item name + source subtitle (full width)
+     This keeps everything tappable and the long item names readable. */
+  .slot-row {
+    grid-template-columns: 1fr auto auto;
+    grid-template-areas:
+      "name alts chk"
+      "item item item";
+    gap: 6px 10px;
+    padding: 10px 8px;
+  }
+  .slot-name { grid-area: name; font-size: 11px; }
+  .slot-item { grid-area: item; }
+  .slot-item-name { white-space: normal; }
+  .slot-alts-btn { grid-area: alts; padding: 5px 10px; }
+  .chk { grid-area: chk; width: 22px; height: 22px; }
+  .chk:checked::after { left: 7px; top: 2px; }
+
+  .slot-source { font-size: 11px; flex-wrap: wrap; }
+
+  .modal-card { padding: 12px; }
+  .modal textarea { font-size: 13px; }
+
+  .popover {
+    /* Pin to viewport edges so JS-positioned popovers never clip off-screen. */
+    position: fixed !important;
+    left: 8px !important;
+    right: 8px !important;
+    top: auto !important;
+    bottom: 8px;
+    min-width: 0;
+    max-width: none;
+    max-height: 60vh;
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.6);
+  }
+  .alts-list { max-height: 50vh; }
+
+  .bottom { padding: 8px 12px; font-size: 11px; flex-direction: column; align-items: flex-start; }
+}
+
+/* Hide the subtitle scrollbar on the topbar phases nav at all sizes
+   for a cleaner look (already non-wrappable on narrow screens). */
+.phases { scrollbar-color: var(--border) transparent; }

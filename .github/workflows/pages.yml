@@ -1,0 +1,60 @@
+# Builds the data JSON from the addon's Lua sources and deploys
+# the static `web/` folder to GitHub Pages on every push to main.
+#
+# Setup (one-time):
+#   1. In repo Settings → Pages, set Source = "GitHub Actions".
+#   2. Push to main; the deploy URL appears in the Actions log.
+#
+# After Database.lua / Core.lua change in the addon, this workflow
+# re-runs `web/scripts/build-db.py` so the site stays in sync.
+
+name: Deploy web/ to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "TBCBisTracker/**"
+      - "web/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Avoid concurrent deploys clobbering each other; cancel in-progress runs.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Re-extract data from Lua
+        run: python3 web/scripts/build-db.py
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
