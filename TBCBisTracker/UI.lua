@@ -814,20 +814,36 @@ function UI:CreateRowFrame(parent, idx)
             local link = GetQuestLink and GetQuestLink(qid)
             if link and ChatEdit_InsertLink then ChatEdit_InsertLink(link) end
         elseif button == "LeftButton" and IsControlKeyDown() then
-            local url = "https://www.wowhead.com/tbc/quest=" .. qid
+            local url = "https://www.wowhead.com/tbc/quest=" .. tostring(qid)
+            local function findEditBox(s)
+                if s and s.editBox then return s.editBox end
+                local name = s and s.GetName and s:GetName()
+                if name then return _G[name .. "EditBox"] end
+                return _G["StaticPopup1EditBox"] or _G["StaticPopup2EditBox"]
+                    or _G["StaticPopup3EditBox"] or _G["StaticPopup4EditBox"]
+            end
             StaticPopupDialogs["TBCBIS_WOWHEAD_QUEST_URL"] = {
                 text = "Wowhead Quest URL (Ctrl+C to copy):",
                 button1 = "Close",
                 hasEditBox = true, editBoxWidth = 350,
-                OnShow = function(s)
-                    local eb = (s and s.editBox) or _G["StaticPopup1EditBox"] or _G["StaticPopup2EditBox"]
+                OnShow = function(s, data)
+                    local eb = findEditBox(s)
                     if not eb then return end
-                    eb:SetText(url); eb:HighlightText(); eb:SetFocus()
+                    local value = tostring(data or "")
+                    eb:SetText(value)
+                    eb:HighlightText()
+                    eb:SetFocus()
+                    C_Timer.After(0, function()
+                        if eb:GetText() ~= value then
+                            eb:SetText(value)
+                            eb:HighlightText()
+                        end
+                    end)
                 end,
                 EditBoxOnEscapePressed = function(s) s:GetParent():Hide() end,
                 timeout = 0, whileDead = true, hideOnEscape = true,
             }
-            StaticPopup_Show("TBCBIS_WOWHEAD_QUEST_URL")
+            StaticPopup_Show("TBCBIS_WOWHEAD_QUEST_URL", nil, nil, url)
         end
     end)
     row.srcHover = srcHover
@@ -899,23 +915,44 @@ function UI:CreateRowFrame(parent, idx)
                 end
             end
         elseif button == "LeftButton" and IsControlKeyDown() and self.itemId and self.itemId > 0 then
-            local capturedId = self.itemId
+            -- Build the URL upfront and pass it via `data` to StaticPopup_Show
+            -- (4th arg). In TBC Classic the popup frame doesn't expose
+            -- `self.editBox` — it's only reachable through the global name
+            -- `<frameName>EditBox`. The OnShow handler below resolves it via
+            -- the popup's actual frame name, then re-applies the text on the
+            -- next frame in case Blizzard's StaticPopup clears it after OnShow
+            -- on some popup slots.
+            local url = addon.WOWHEAD_BASE .. tostring(self.itemId)
+            local function findEditBox(s)
+                if s and s.editBox then return s.editBox end
+                local name = s and s.GetName and s:GetName()
+                if name then return _G[name .. "EditBox"] end
+                return _G["StaticPopup1EditBox"] or _G["StaticPopup2EditBox"]
+                    or _G["StaticPopup3EditBox"] or _G["StaticPopup4EditBox"]
+            end
             StaticPopupDialogs["TBCBIS_WOWHEAD_URL"] = {
                 text = "Wowhead URL (Ctrl+C to copy):",
                 button1 = "Close",
                 hasEditBox = true,
                 editBoxWidth = 350,
-                OnShow = function(s)
-                    local eb = (s and s.editBox) or _G["StaticPopup1EditBox"] or _G["StaticPopup2EditBox"]
+                OnShow = function(s, data)
+                    local eb = findEditBox(s)
                     if not eb then return end
-                    eb:SetText(addon.WOWHEAD_BASE .. capturedId)
+                    local value = tostring(data or "")
+                    eb:SetText(value)
                     eb:HighlightText()
                     eb:SetFocus()
+                    C_Timer.After(0, function()
+                        if eb:GetText() ~= value then
+                            eb:SetText(value)
+                            eb:HighlightText()
+                        end
+                    end)
                 end,
                 EditBoxOnEscapePressed = function(s) s:GetParent():Hide() end,
                 timeout = 0, whileDead = true, hideOnEscape = true,
             }
-            StaticPopup_Show("TBCBIS_WOWHEAD_URL")
+            StaticPopup_Show("TBCBIS_WOWHEAD_URL", nil, nil, url)
         elseif button == "RightButton" and self.slotKey then
             UI:ShowAlternativesMenu(self, self.slotKey)
         end
@@ -1365,13 +1402,6 @@ local STAT_PANEL_BAR_H = 14
 local STAT_PANEL_ROW_H = 38   -- label + bar + spacing
 local STAT_PANEL_MAX_ROWS = 8
 
-local STAT_MODE_LABELS = {
-    obtained = "Obtained",
-    selected = "Selected BiS",
-    equipped = "Equipped",
-}
-local STAT_MODE_ORDER = { "obtained", "selected", "equipped" }
-
 -- 4-column compact slot ordering used by the integrated BiS preview grid in
 -- the right-side panel. Reading order roughly matches the WoW character pane:
 -- head/neck/shoulders/back, then armour, jewelry, trinkets, weapons, ranged.
@@ -1486,47 +1516,16 @@ function UI:BuildStatCapPanel()
     sectDiv:SetHeight(1)
 
     -- ── Section 2: Stat Caps ──
+    -- Always sums the stats of the SELECTED BiS pick for each slot in the
+    -- currently-active phase tab. No mode dropdown — switching alts directly
+    -- updates the bars.
     local statTitle = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     statTitle:SetPoint("TOPLEFT", panel, "TOPLEFT", UI_PAL.pad, slotsBottom - 8)
-    statTitle:SetText(UI_PAL.accent .. "Stat Caps|r")
+    statTitle:SetText(UI_PAL.accent .. "Stat Caps|r  " .. UI_PAL.muted .. "Selected BiS|r")
     self.statPanelTitle = statTitle
 
-    local ddY = slotsBottom - 28
-
-    -- ── Mode dropdown — single inline dropdown styled like the source filter,
-    --     no separate label (the selected value makes the meaning obvious). ──
-    local dd = CreateFrame("Frame", "TBCBisTrackerStatModeDropdown", panel, "UIDropDownMenuTemplate")
-    dd:SetPoint("TOPLEFT", panel, "TOPLEFT", UI_PAL.pad - 16, ddY)
-    UIDropDownMenu_SetWidth(dd, STAT_PANEL_W - 2 * UI_PAL.pad)
-    UIDropDownMenu_Initialize(dd, function(_, level)
-        for _, m in ipairs(STAT_MODE_ORDER) do
-            local info = UIDropDownMenu_CreateInfo()
-            info.text = STAT_MODE_LABELS[m]
-            info.value = m
-            info.tooltipTitle = STAT_MODE_LABELS[m]
-            info.tooltipText  =
-                m == "obtained" and "Sum stats from items you've ticked off as obtained for this spec/phase." or
-                m == "selected" and "Project stats assuming you complete the selected BiS for this phase." or
-                "Sum stats from your currently equipped gear."
-            info.tooltipOnButton = true
-            info.func = function()
-                TBCBisTrackerDB.statTrackerMode = m
-                UIDropDownMenu_SetSelectedValue(dd, m)
-                UIDropDownMenu_SetText(dd, STAT_MODE_LABELS[m])
-                CloseDropDownMenus()
-                UI:RefreshStatCaps()
-            end
-            UIDropDownMenu_AddButton(info, level)
-        end
-    end, "MENU")
-    UIDropDownMenu_SetSelectedValue(dd, TBCBisTrackerDB.statTrackerMode or "obtained")
-    UIDropDownMenu_SetText(dd, STAT_MODE_LABELS[TBCBisTrackerDB.statTrackerMode or "obtained"])
-    self.statModeDropdown = dd
-
-    -- Subtle divider between header section and the bars — anchored to the
-    -- dropdown so the layout stays correct when the slot grid above changes.
-    local sdivY = ddY - 30
-    local bodyY = ddY - 38
+    local sdivY = slotsBottom - 22
+    local bodyY = slotsBottom - 30
     local sdiv = CreateDivider(panel, UI_PAL.dividerSoft)
     sdiv:SetPoint("TOPLEFT", panel, "TOPLEFT", UI_PAL.pad, sdivY)
     sdiv:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -UI_PAL.pad, sdivY)
@@ -1630,7 +1629,7 @@ function UI:RefreshStatCaps()
     local class = TBCBisTrackerDB.lastClass
     local spec  = TBCBisTrackerDB.lastSpec
     local phase = TBCBisTrackerDB.lastPhase
-    local mode  = TBCBisTrackerDB.statTrackerMode or "obtained"
+    local mode  = "selected"
 
     -- Hide all rows
     for _, row in ipairs(self.statRowPool) do row:Hide() end

@@ -1,0 +1,67 @@
+{
+  "slots": [
+    "head",
+    "neck",
+    "shoulder",
+    "back",
+    "chest",
+    "wrist",
+    "hands",
+    "waist",
+    "legs",
+    "feet",
+    "ring1",
+    "ring2",
+    "trinket1",
+    "trinket2",
+    "mainhand",
+    "offhand",
+    "ranged"
+  ],
+  "phases": [
+    "prebis",
+    "phase1",
+    "phase2",
+    "phase3",
+    "phase4",
+    "phase5",
+    "pvp"
+  ],
+  "slotLabels": {
+    "head": "Head",
+    "neck": "Neck",
+    "shoulder": "Shoulders",
+    "back": "Back",
+    "chest": "Chest",
+    "wrist": "Wrist",
+    "hands": "Hands",
+    "waist": "Waist",
+    "legs": "Legs",
+    "feet": "Feet",
+    "ring1": "Ring 1",
+    "ring2": "Ring 2",
+    "trinket1": "Trinket 1",
+    "trinket2": "Trinket 2",
+    "mainhand": "Main Hand",
+    "offhand": "Off Hand",
+    "ranged": "Ranged"
+  },
+  "phaseLabels": {
+    "prebis": "Pre-BIS",
+    "phase1": "Phase 1",
+    "phase2": "Phase 2",
+    "phase3": "Phase 3",
+    "phase4": "Phase 4",
+    "phase5": "Phase 5",
+    "pvp": "PvP"
+  },
+  "phaseDescriptions": {
+    "prebis": "Pre-Raid Best in Slot — Heroic Dungeons, Crafted, Reputation",
+    "phase1": "Phase 1 — Karazhan · Gruul's Lair · Magtheridon's Lair",
+    "phase2": "Phase 2 — Serpentshrine Cavern · The Eye (Tempest Keep)",
+    "phase3": "Phase 3 — Black Temple · Battle for Mount Hyjal",
+    "phase4": "Phase 4 — Zul'Aman",
+    "phase5": "Phase 5 — Sunwell Plateau",
+    "pvp": "PvP — Honor + Arena gear (Battlegrounds, Arena Seasons)"
+  }
+}

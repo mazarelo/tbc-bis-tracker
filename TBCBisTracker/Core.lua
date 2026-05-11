@@ -137,29 +137,29 @@ addon.SLOT_INVENTORY_IDS = {
 -- ─────────────────────────────────────────────
 -- Stat caps per class/spec
 -- ─────────────────────────────────────────────
--- 1 hit rating  = 1.578% / 15.77 melee hit (so 9% melee hit cap = 142 rating)
--- 1 hit rating  = 0.792% spell hit (16% boss spell hit cap = 202 rating)
--- 1 expertise   = 1 expertise (26 = 6.5% dodge → dodge cap)
--- 1 defense rating = 0.4 defense skill (140 def rating ≈ 56 def → 350 def per side; 490 from rating alone is excessive — we display the rating threshold to reach 490 *defense skill* assuming +10 from the gear's base.)
--- For v1 we display the *rating* cap that's commonly cited in TBC.
+-- All caps are in *rating* units (what GetItemStats returns from gear), not
+-- skill / percentage. Conversion targets at lvl 70:
+--   142 hit rating       = 9% melee hit cap (vs lvl 73 boss).
+--   164 spell hit rating = 13% (talented) spell hit cap.
+--   202 spell hit rating = 16% (untalented) spell hit cap.
+--   350 defense rating   ≈ uncrittable plate tank threshold (covers the
+--                          ~140 def skill needed on top of the 350 base
+--                          skill from level; 1 def rating ≈ 0.4 def skill).
+--   102 expertise rating ≈ 26 expertise = 6.5% dodge cap on bosses.
 addon.STAT_CAPS = {
-    -- Melee hit cap (9%): 142 hit rating
-    -- Spell hit cap (16%): 202 hit rating; talented (~13%) ≈ 164; talented (~10%) ≈ 126
-    -- Defense rating: 415 = uncrittable for druid bear; 490 = uncrittable for plate tank
-    -- Expertise rating: 6.5% dodge cap on bosses ≈ 26 (5 expertise) — "expertise rating" displays as the rating
     -- Labels are kept short so they fit on one line in the side panel.
     -- The detailed talent/cap explanation lives in the row hover tooltip.
     WARRIOR = {
         Fury = {
             { stat="hit",       cap=142, label="Hit" },
-            { stat="expertise", cap=26,  label="Expertise" },
+            { stat="expertise", cap=102, label="Expertise" },
             { stat="crit",      cap=0,   label="Crit", info=true },
             { stat="haste",     cap=0,   label="Haste", info=true },
         },
         Protection = {
-            { stat="defense",   cap=490, label="Defense" },
+            { stat="defense",   cap=350, label="Defense" },
             { stat="hit",       cap=142, label="Hit" },
-            { stat="expertise", cap=26,  label="Expertise" },
+            { stat="expertise", cap=102, label="Expertise" },
             { stat="armor",     cap=0,   label="Armor", info=true },
         },
     },
@@ -171,14 +171,14 @@ addon.STAT_CAPS = {
             { stat="intellect", cap=0,   label="Intellect", info=true },
         },
         Protection = {
-            { stat="defense",   cap=490, label="Defense" },
+            { stat="defense",   cap=350, label="Defense" },
             { stat="hit",       cap=142, label="Hit" },
-            { stat="expertise", cap=26,  label="Expertise" },
+            { stat="expertise", cap=102, label="Expertise" },
             { stat="spelldmg",  cap=0,   label="Spell Power", info=true },
         },
         Retribution = {
             { stat="hit",       cap=142, label="Hit" },
-            { stat="expertise", cap=26,  label="Expertise" },
+            { stat="expertise", cap=102, label="Expertise" },
             { stat="crit",      cap=0,   label="Crit", info=true },
             { stat="strength",  cap=0,   label="Strength", info=true },
         },
@@ -203,13 +203,13 @@ addon.STAT_CAPS = {
     ROGUE = {
         Combat = {
             { stat="hit",       cap=142, label="Hit" },
-            { stat="expertise", cap=26,  label="Expertise" },
+            { stat="expertise", cap=102, label="Expertise" },
             { stat="crit",      cap=0,   label="Crit", info=true },
             { stat="agility",   cap=0,   label="Agility", info=true },
         },
         Assassination = {
             { stat="hit",       cap=142, label="Hit" },
-            { stat="expertise", cap=26,  label="Expertise" },
+            { stat="expertise", cap=102, label="Expertise" },
             { stat="crit",      cap=0,   label="Crit", info=true },
             { stat="agility",   cap=0,   label="Agility", info=true },
         },
@@ -288,14 +288,14 @@ addon.STAT_CAPS = {
             { stat="intellect", cap=0, label="Intellect", info=true },
         },
         ["Feral - Tank"] = {
-            { stat="defense",   cap=415, label="Defense" },
+            { stat="defense",   cap=165, label="Defense" },
             { stat="hit",       cap=142, label="Hit" },
-            { stat="expertise", cap=26,  label="Expertise" },
+            { stat="expertise", cap=102, label="Expertise" },
             { stat="armor",     cap=0,   label="Armor", info=true },
         },
         ["Feral - DPS"] = {
             { stat="hit",       cap=142, label="Hit" },
-            { stat="expertise", cap=26,  label="Expertise" },
+            { stat="expertise", cap=102, label="Expertise" },
             { stat="crit",      cap=0,   label="Crit", info=true },
             { stat="agility",   cap=0,   label="Agility", info=true },
         },
@@ -315,7 +315,7 @@ addon.STAT_CAPS = {
         },
         Enhancement = {
             { stat="hit",       cap=142, label="Hit" },
-            { stat="expertise", cap=26,  label="Expertise" },
+            { stat="expertise", cap=102, label="Expertise" },
             { stat="crit",      cap=0,   label="Crit", info=true },
             { stat="agility",   cap=0,   label="Agility", info=true },
         },
@@ -371,7 +371,7 @@ local DEFAULT_DB = {
     showMissingOnly = false,
     sourceFilter = "all",
     windowPos    = { point = "CENTER", x = 0, y = 0 },
-    statTrackerMode = "obtained",   -- "obtained" | "selected" | "equipped"
+    statTrackerMode = "selected",   -- "obtained" | "selected" | "equipped"
     statTrackerOpen = true,
     previewShowModel = true,
 }
@@ -1139,7 +1139,10 @@ function addon:GetItemStatsForLink(link)
         end
     end
     local raw = GetItemStats(link)
-    if not raw then return {} end
+    -- raw == nil means the client doesn't have the item's stat block ready yet.
+    -- Treat as still-loading so the caller increments `pending` and retries on
+    -- GET_ITEM_INFO_RECEIVED, instead of silently summing 0 for that slot.
+    if not raw then return nil end
     local out = {}
     for ourKey, candidates in pairs(self.STAT_GETITEMSTATS_KEYS) do
         out[ourKey] = readStat(raw, candidates, self.STAT_PATTERNS[ourKey])
@@ -1511,7 +1514,7 @@ SlashCmdList["TBCBISTRACKER"] = function(msg)
         local mode = cmd:match("^statsdebug%s+(%S+)$") or TBCBisTrackerDB.statTrackerMode or "equipped"
         addon:DumpStatDebug(TBCBisTrackerDB.lastClass, TBCBisTrackerDB.lastSpec, TBCBisTrackerDB.lastPhase, mode)
     elseif cmd == "stats" or cmd:match("^stats ") then
-        local mode = cmd:match("^stats%s+(%S+)$") or TBCBisTrackerDB.statTrackerMode or "obtained"
+        local mode = cmd:match("^stats%s+(%S+)$") or TBCBisTrackerDB.statTrackerMode or "selected"
         if mode ~= "obtained" and mode ~= "selected" and mode ~= "equipped" then
             addon:Print("Unknown mode '" .. mode .. "'. Use: obtained / selected / equipped.")
             return
@@ -1554,6 +1557,49 @@ SlashCmdList["TBCBISTRACKER"] = function(msg)
         end
     else
         addon.UI:Toggle()
+    end
+end
+
+-- Walks the entire BiS DB + per-character custom alts and calls GetItemInfo
+-- on every unique item id, forcing the WoW client to stream the item's data
+-- (name, link, stats) into the local cache. Idempotent: items already cached
+-- return immediately. Items not yet cached fire GET_ITEM_INFO_RECEIVED later,
+-- which the event handler uses to refresh the cap panel.
+function addon:PrimeItemCache()
+    local seen = {}
+    local function visitList(list)
+        if not list then return end
+        if list.id then
+            if list.id > 0 and not seen[list.id] then seen[list.id] = true; GetItemInfo(list.id) end
+        else
+            for _, it in ipairs(list) do
+                if it and it.id and it.id > 0 and not seen[it.id] then
+                    seen[it.id] = true
+                    GetItemInfo(it.id)
+                end
+            end
+        end
+    end
+    for _, classData in pairs(self.DB) do
+        for _, specData in pairs(classData) do
+            for _, phaseData in pairs(specData) do
+                if type(phaseData) == "table" then
+                    for _, slotData in pairs(phaseData) do
+                        visitList(slotData)
+                    end
+                end
+            end
+        end
+    end
+    -- Custom alts the player imported.
+    if TBCBisTrackerCharDB and TBCBisTrackerCharDB.customAlts then
+        for _, byPhase in pairs(TBCBisTrackerCharDB.customAlts) do
+            for _, bySlot in pairs(byPhase) do
+                for _, list in pairs(bySlot) do
+                    visitList(list)
+                end
+            end
+        end
     end
 end
 
@@ -1690,6 +1736,13 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1)
             addon.UI:Build()
         end
         addon:ScanEquipped()
+        -- Prime the item cache for every item in the BiS database. Without
+        -- this, switching to an alternative the player has never seen leaves
+        -- GetItemStats returning nil, so the slot silently contributes 0 to
+        -- the cap totals until the item happens to load. We fire one
+        -- GetItemInfo per id; the client streams the data in and
+        -- GET_ITEM_INFO_RECEIVED triggers a stat-cap refresh as each lands.
+        addon:PrimeItemCache()
 
     elseif event == "PLAYER_EQUIPMENT_CHANGED" or event == "BAG_UPDATE_DELAYED" then
         addon:ScanEquipped()

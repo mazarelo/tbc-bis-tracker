@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>TBC BiS Tracker</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23F0BC52'/%3E%3Ctext x='16' y='22' font-family='Inter,Arial,sans-serif' font-weight='700' font-size='17' fill='%230E0F12' text-anchor='middle'%3ET%3C/text%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://wow.zamimg.com" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="styles.css" />
+<script>
+  /* Wowhead enhances <a href="https://www.wowhead.com/tbc/item=ID"> with rich
+     tooltips, item icons, and quality colors. */
+  window.whTooltips = {
+    colorLinks: true,
+    iconizeLinks: true,
+    iconSize: "small",
+    renameLinks: true,
+  };
+</script>
+<script src="https://wow.zamimg.com/js/tooltips.js" defer></script>
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="#" aria-label="TBC BiS Tracker">
+    <span class="brand-mark">T</span>
+    <span class="brand-labels">
+      <span class="brand-name">TBC BIS TRACKER</span>
+      <span class="brand-sub">Burning Crusade Classic</span>
+    </span>
+  </a>
+
+  <nav class="phases" id="phases" aria-label="Phase"></nav>
+
+  <div class="topbar-actions">
+    <label class="toggle">
+      <input type="checkbox" id="missing-only" />
+      <span class="toggle-box" aria-hidden="true"></span>
+      <span class="toggle-label">Show missing only</span>
+    </label>
+    <button class="btn btn-primary" id="btn-export">Export</button>
+    <button class="btn" id="btn-import">Import</button>
+    <button class="btn btn-ghost" id="btn-reset" title="Reset all selections + obtained checks for the current spec">Reset</button>
+  </div>
+</header>
+
+<nav class="classbar" id="classbar" aria-label="Class"></nav>
+<nav class="specbar" id="specbar" aria-label="Specialisation"></nav>
+
+<main class="main">
+  <section class="panel slots-panel" aria-labelledby="phase-title">
+    <header class="panel-header">
+      <div class="panel-title">
+        <h2 id="phase-title">—</h2>
+        <p class="panel-sub" id="phase-desc"></p>
+      </div>
+      <div class="progress" id="progress" aria-label="Phase progress">
+        <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+        <span class="progress-label" id="progress-label">0 / 0</span>
+      </div>
+    </header>
+    <ul class="slot-list" id="slot-list" role="list"></ul>
+    <div class="empty-state" id="empty-state" hidden>
+      <p>No items in the database for this phase yet.</p>
+      <p class="muted small">The addon's Database.lua only ships pre-BIS and Phase 1 data for most specs — later phases are placeholders.</p>
+    </div>
+  </section>
+
+  <aside class="side">
+    <section class="panel stats-panel" aria-labelledby="stats-title">
+      <header class="panel-header">
+        <div class="panel-title">
+          <h2 id="stats-title">Stat caps</h2>
+          <p class="panel-sub" id="stats-sub">Reference targets for this spec</p>
+        </div>
+        <span class="badge">Reference</span>
+      </header>
+      <ul class="stat-list" id="stat-list" role="list"></ul>
+    </section>
+
+    <section class="panel sync-panel" aria-labelledby="sync-title">
+      <header class="sync-header">
+        <span class="sync-icon" aria-hidden="true">⇆</span>
+        <h2 id="sync-title">Sync with addon</h2>
+      </header>
+      <pre class="code-box" id="export-preview"></pre>
+      <p class="muted small">
+        Round-trip with the in-game addon. Press <strong>Export</strong> for a copyable string,
+        or <strong>Import</strong> to paste one from <code>/tbcbis</code>.
+      </p>
+    </section>
+  </aside>
+</main>
+
+<footer class="bottom">
+  <span class="muted small">Data: Wowhead TBC Classic · Selections persist locally in your browser.</span>
+  <span class="muted small">Round-trips with TBCBisTracker addon · TBCBIS:v1</span>
+</footer>
+
+<!-- Modal -->
+<div class="modal" id="modal" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <header class="modal-header">
+      <h3 id="modal-title">Export</h3>
+      <button class="modal-close" id="modal-close" aria-label="Close">&times;</button>
+    </header>
+    <p class="modal-desc" id="modal-desc"></p>
+    <textarea id="modal-text" rows="6" spellcheck="false"></textarea>
+    <footer class="modal-footer">
+      <span class="modal-status" id="modal-status"></span>
+      <div class="modal-buttons">
+        <button class="btn" id="modal-copy" hidden>Copy</button>
+        <button class="btn btn-primary" id="modal-action">OK</button>
+      </div>
+    </footer>
+  </div>
+</div>
+
+<!-- Alts popover (single instance, repositioned per row) -->
+<div class="popover" id="alts-popover" hidden>
+  <header class="popover-header">
+    <h4 id="alts-title">Alternatives</h4>
+    <button class="popover-close" id="alts-close" aria-label="Close">&times;</button>
+  </header>
+  <ul class="alts-list" id="alts-list"></ul>
+</div>
+
+<script src="data/data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
