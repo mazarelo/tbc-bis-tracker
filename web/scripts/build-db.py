@@ -14,10 +14,15 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent.parent
 ADDON = REPO / "TBCBisTracker"
-OUT = REPO / "web" / "data"
+# Vite serves `web/public/` at the site root, so the generated JSON/JS
+# bundles live there. The previous `web/data/` location is gone after
+# the React refactor.
+OUT = REPO / "web" / "public" / "data"
 
 DB_FILE = ADDON / "Database.lua"
 CORE_FILE = ADDON / "Core.lua"
+PKG_FILE = REPO / "web" / "package.json"
+TOC_FILE = ADDON / "TBCBisTracker.toc"
 
 
 def strip_comments(text: str) -> str:
@@ -315,6 +320,22 @@ def main() -> int:
     stat_caps = parse_stat_caps(core_text)
     meta = parse_meta(core_text)
 
+    # Version metadata. The website version comes from web/package.json
+    # (the single source of truth for the site). The addon's .toc
+    # version travels alongside so the footer can display both — they
+    # may drift independently when only one component ships an update.
+    version = "0.0.0"
+    if PKG_FILE.is_file():
+        try:
+            version = json.loads(PKG_FILE.read_text(encoding="utf-8"))["version"]
+        except (KeyError, json.JSONDecodeError):
+            pass
+    addon_version = None
+    if TOC_FILE.is_file():
+        m = re.search(r"^##\s*Version:\s*(\S+)", TOC_FILE.read_text(encoding="utf-8", errors="replace"), re.MULTILINE)
+        if m:
+            addon_version = m.group(1)
+
     (OUT / "database.json").write_text(
         json.dumps(db, ensure_ascii=False, indent=1), encoding="utf-8"
     )
@@ -326,7 +347,13 @@ def main() -> int:
     )
 
     # Combined JS payload — lets the page work over file:// without CORS pain.
-    combined = {"database": db, "statCaps": stat_caps, "meta": meta}
+    combined = {
+        "database": db,
+        "statCaps": stat_caps,
+        "meta": meta,
+        "version": version,
+        "addonVersion": addon_version,
+    }
     (OUT / "data.js").write_text(
         "window.TBC_DATA = "
         + json.dumps(combined, ensure_ascii=False, separators=(",", ":"))
@@ -342,8 +369,10 @@ def main() -> int:
                 for _slot, lst in slots.items():
                     n_items += len(lst)
     print(
-        f"OK: {len(db)} classes, {n_specs} specs, {n_items} items "
-        f"-> {OUT.relative_to(REPO)}"
+        f"OK: web v{version}"
+        + (f" / addon v{addon_version}" if addon_version else "")
+        + f" — {len(db)} classes, {n_specs} specs, {n_items} items "
+        + f"-> {OUT.relative_to(REPO)}"
     )
     return 0
 

@@ -1,2 +1,17 @@
+# Packaged addon artifact produced by the release flow.
 *.zip
+
+# Claude Code metadata.
 .claude
+
+# Python venv (if anyone runs build-db.py from a local virtualenv).
+.venv
+venv
+
+# OS / editor noise — committed once at the repo root rather than in
+# every subdirectory.
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo

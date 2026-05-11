@@ -1,0 +1,75 @@
+# Visual regression tests via Chromatic.
+#
+# Builds the Storybook in web/ and uploads it to Chromatic, which renders
+# every story in real browsers, captures screenshots, and diffs them
+# against an accepted baseline on the target branch. Reviewable failures
+# show up as a PR check linking to the Chromatic web UI.
+#
+# One-time setup:
+#   1. Create the project at https://www.chromatic.com and grab its
+#      project token.
+#   2. Repo Settings → Secrets and variables → Actions → New repository
+#      secret → name `CHROMATIC_PROJECT_TOKEN`, value the token from (1).
+#
+# Notes:
+#   - `fetch-depth: 0` is required so Chromatic can detect the merge base
+#     for branch comparisons.
+#   - `onlyChanged: true` enables TurboSnap — only stories affected by
+#     the diff get re-rendered, keeping snapshot usage (and PR latency)
+#     down on docs-only or unrelated changes.
+#   - `exitOnceUploaded: true` makes the job finish as soon as the build
+#     is in Chromatic's queue. The Chromatic UI itself reports the diff
+#     status; we just need to know the upload succeeded.
+#   - `externals: ["public/**"]` tells TurboSnap to invalidate when any
+#     generated data file changes — otherwise a refreshed database.json
+#     wouldn't trigger story re-renders.
+
+name: Chromatic
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: chromatic-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  chromatic:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository || github.event_name != 'pull_request' }}
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Chromatic
+        uses: chromaui/action@latest
+        with:
+          projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
+          workingDir: web
+          exitOnceUploaded: true
+          onlyChanged: true
+          externals: |
+            public/**

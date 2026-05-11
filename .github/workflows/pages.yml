@@ -1,12 +1,15 @@
-# Builds the data JSON from the addon's Lua sources and deploys
-# the static `web/` folder to GitHub Pages on every push to main.
+# Builds the React/TypeScript site under web/ and deploys it to GitHub Pages.
 #
-# Setup (one-time):
-#   1. In repo Settings → Pages, set Source = "GitHub Actions".
-#   2. Push to main; the deploy URL appears in the Actions log.
+# Pipeline:
+#   1. Refresh data/data.js + bosses.js from the addon's Lua sources
+#      (web/scripts/build-db.py).
+#   2. Install pnpm deps, typecheck, lint, run unit tests.
+#   3. `vite build` with the Pages base path baked in.
+#   4. Publish the resulting `web/dist` directory as the Pages artifact.
 #
-# After Database.lua / Core.lua change in the addon, this workflow
-# re-runs `web/scripts/build-db.py` so the site stays in sync.
+# One-time repo setup: Settings → Pages → Source = "GitHub Actions".
+# pnpm version is pinned via the `packageManager` field in web/package.json
+# so local and CI environments stay aligned.
 
 name: Deploy web/ to GitHub Pages
 
@@ -24,7 +27,6 @@ permissions:
   pages: write
   id-token: write
 
-# Avoid concurrent deploys clobbering each other; cancel in-progress runs.
 concurrency:
   group: pages
   cancel-in-progress: true
@@ -32,6 +34,9 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
     steps:
       - uses: actions/checkout@v4
 
@@ -41,12 +46,48 @@ jobs:
           python-version: "3.12"
 
       - name: Re-extract data from Lua
-        run: python3 web/scripts/build-db.py
+        run: python3 scripts/build-db.py
+
+      # Set up pnpm *before* setup-node so node's `cache: "pnpm"` resolver
+      # can find it on PATH. Version comes from package.json's
+      # `packageManager` field (Corepack-compatible) so this stays a
+      # single source of truth.
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Unit tests
+        run: pnpm test:run
+
+      - name: Build
+        env:
+          # GitHub Pages serves at /<repo>/ — set the Vite base accordingly.
+          # `github.event.repository.name` keeps this portable if the repo
+          # is renamed or forked under a different name.
+          VITE_BASE: /${{ github.event.repository.name }}/
+        run: pnpm build
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./web
+          path: web/dist
 
   deploy:
     needs: build
