@@ -49,13 +49,15 @@ jobs:
         run: python3 scripts/build-db.py
 
       # Set up pnpm *before* setup-node so node's `cache: "pnpm"` resolver
-      # can find it on PATH. Version comes from package.json's
-      # `packageManager` field (Corepack-compatible) so this stays a
-      # single source of truth.
+      # can find it on PATH. `package_json_file` points at web/package.json
+      # so the action reads its `packageManager` field (which pins the
+      # pnpm version) — the default ./package.json doesn't exist at the
+      # repo root.
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
         with:
           run_install: false
+          package_json_file: web/package.json
 
       - name: Set up Node
         uses: actions/setup-node@v4
