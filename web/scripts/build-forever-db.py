@@ -9,6 +9,7 @@ Entries without an item ID are kept as comments (the add-on needs real IDs).
 Run from anywhere; paths are resolved relative to the repo root.
 """
 import json
+import re
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent.parent
@@ -53,6 +54,12 @@ def source_text(e):
     return src
 
 
+def quest_id(e):
+    """Quest ID from a foreverchanges quest link (…/quest/5561, …#quest-95682), else None."""
+    m = re.search(r"(?:/quest/|#quest-)(\d+)", e.get("sourceUrl") or "")
+    return int(m.group(1)) if m else None
+
+
 def source_type(e):
     return e.get("sourceType") if e.get("sourceType") in SOURCE_TYPES else "world"
 
@@ -69,7 +76,7 @@ def write_web(doc):
                     if not e.get("id"):
                         continue
                     it = {"id": int(e["id"]), "source": source_text(e), "sourceType": source_type(e),
-                          "note": e.get("note"), "questId": None}
+                          "note": e.get("note"), "questId": quest_id(e)}
                     if e.get("faction") in ("Alliance", "Horde"):
                         it["faction"] = e["faction"]
                     if e.get("sourceUrl"):
@@ -121,8 +128,9 @@ def main():
         "",
         "local DB = TBCBisTracker.FOREVER_DB",
         "",
-        "local function item(id, source, sourceType, note, faction)",
-        '    return { id = id, source = source, sourceType = sourceType or "dungeon", note = note, faction = faction }',
+        "local function item(id, source, sourceType, note, faction, questId)",
+        '    return { id = id, source = source, sourceType = sourceType or "dungeon", note = note,',
+        '             faction = faction, questId = questId }',
         "end",
         "",
     ]
@@ -154,8 +162,11 @@ def main():
                     with_id += 1
                     faction = e.get("faction") if e.get("faction") in ("Alliance", "Horde") else None
                     args = [str(int(e["id"])), lua_str(src), lua_str(st), lua_str(e.get("note"))]
-                    if faction:
+                    qid = quest_id(e)
+                    if faction or qid:
                         args.append(lua_str(faction))
+                    if qid:
+                        args.append(str(qid))
                     body.append("        item(%s)," % ", ".join(args))
                 if any(not l.lstrip().startswith("--") for l in body):
                     lines.append("    %s = {" % slot)

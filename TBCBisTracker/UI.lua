@@ -911,6 +911,78 @@ function UI:UpdateScrollRange(rowCount)
     end
 end
 
+-- Copyable link popup. The URL goes in via StaticPopup_Show's `data`: on TBC
+-- Classic the popup has no `self.editBox`, only the global `<frameName>EditBox`,
+-- and some popup slots clear the box after OnShow, so the text is re-applied
+-- on the next frame.
+function UI:ShowUrlPopup(label, url)
+    local function findEditBox(s)
+        if s and s.editBox then return s.editBox end
+        local name = s and s.GetName and s:GetName()
+        if name then return _G[name .. "EditBox"] end
+        return _G["StaticPopup1EditBox"] or _G["StaticPopup2EditBox"]
+            or _G["StaticPopup3EditBox"] or _G["StaticPopup4EditBox"]
+    end
+    StaticPopupDialogs["TBCBIS_URL"] = {
+        text = label,
+        button1 = "Close",
+        hasEditBox = true,
+        editBoxWidth = 350,
+        OnShow = function(s, data)
+            local eb = findEditBox(s)
+            if not eb then return end
+            local value = tostring(data or "")
+            eb:SetText(value)
+            eb:HighlightText()
+            eb:SetFocus()
+            C_Timer.After(0, function()
+                if eb:GetText() ~= value then
+                    eb:SetText(value)
+                    eb:HighlightText()
+                end
+            end)
+        end,
+        EditBoxOnEscapePressed = function(s) s:GetParent():Hide() end,
+        timeout = 0, whileDead = true, hideOnEscape = true,
+    }
+    StaticPopup_Show("TBCBIS_URL", nil, nil, url)
+end
+
+-- ─────────────────────────────────────────────
+-- Native quest tooltips
+-- ─────────────────────────────────────────────
+-- The game draws a quest tooltip from a "quest:<id>" link. Newer clients may
+-- need the quest loaded first: ask once, and re-open the tooltip when
+-- QUEST_DATA_LOAD_RESULT says it arrived (if it's still showing that quest).
+local questRequested = {}
+local questLoader = CreateFrame("Frame")
+pcall(questLoader.RegisterEvent, questLoader, "QUEST_DATA_LOAD_RESULT")
+questLoader:SetScript("OnEvent", function(_, _, questId, success)
+    local owner = GameTooltip:IsShown() and GameTooltip:GetOwner()
+    if success and owner and owner.pendingQuestId == questId then
+        local handler = owner:GetScript("OnEnter")
+        if handler then handler(owner) end
+    end
+end)
+
+-- Fills GameTooltip (already owned) with the game's quest tooltip. Returns
+-- false when this client can't draw one, so the caller shows its own text.
+local function SetQuestTooltip(owner, questId)
+    owner.pendingQuestId = nil
+    if not (questId and questId > 0) then return false end
+    if C_QuestLog and C_QuestLog.RequestLoadQuestByID and not questRequested[questId] then
+        questRequested[questId] = true
+        owner.pendingQuestId = questId
+        pcall(C_QuestLog.RequestLoadQuestByID, questId)
+    end
+    for _, link in ipairs({ "quest:" .. questId, "quest:" .. questId .. ":0" }) do
+        GameTooltip:ClearLines()
+        local ok = pcall(GameTooltip.SetHyperlink, GameTooltip, link)
+        if ok and (GameTooltip:NumLines() or 0) > 0 then return true end
+    end
+    return false
+end
+
 function UI:CreateRowFrame(parent, idx)
     local row = CreateFrame("Button", nil, parent)
     row:SetHeight(ROW_H)
@@ -989,8 +1061,16 @@ function UI:CreateRowFrame(parent, idx)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         local typeLabel  = SOURCE_TYPE_LABELS[row.sourceType] or "Source"
         local typeColor  = SOURCE_TYPE_COLORS[row.sourceType] or "|cffcccccc"
-        GameTooltip:SetText(typeColor .. typeLabel .. "|r")
-        GameTooltip:AddLine(row.sourceFull, 1, 1, 1, true)
+        local qid = row.questId
+        -- Quest rewards: the game's own quest tooltip, source text underneath.
+        local native = SetQuestTooltip(self, qid)
+        if native then
+            GameTooltip:AddLine(" ")
+            GameTooltip:AddLine(typeColor .. typeLabel .. "|r  " .. row.sourceFull, 1, 1, 1, true)
+        else
+            GameTooltip:SetText(typeColor .. typeLabel .. "|r")
+            GameTooltip:AddLine(row.sourceFull, 1, 1, 1, true)
+        end
         if row.profStatus then
             GameTooltip:AddLine(" ")
             GameTooltip:AddLine(row.profStatus, 1, 1, 1, true)
@@ -1000,14 +1080,15 @@ function UI:CreateRowFrame(parent, idx)
             GameTooltip:AddLine("|TInterface\\GossipFrame\\TrainerGossipIcon:12:12|t |cffd6b85aYour note|r", 1, 1, 1)
             GameTooltip:AddLine("|cffffffff" .. row.userNote .. "|r", 1, 1, 1, true)
         end
-        local qid = row.questId
         if qid and qid > 0 then
             GameTooltip:AddLine(" ")
             local qTitle
-            if C_QuestLog and C_QuestLog.GetTitleForQuestID then
+            if not native and C_QuestLog and C_QuestLog.GetTitleForQuestID then
                 qTitle = C_QuestLog.GetTitleForQuestID(qid)
             end
-            if qTitle and qTitle ~= "" then
+            if native then
+                -- title and objectives are already shown above
+            elseif qTitle and qTitle ~= "" then
                 GameTooltip:AddLine("|cffffd700Quest:|r |cffffff00[" .. qTitle .. "]|r", 1, 1, 1, true)
             else
                 GameTooltip:AddLine("|cffffd700Quest reward|r (id " .. qid .. ")", 1, 1, 1, true)
@@ -1027,36 +1108,7 @@ function UI:CreateRowFrame(parent, idx)
             local link = GetQuestLink and GetQuestLink(qid)
             if link and ChatEdit_InsertLink then ChatEdit_InsertLink(link) end
         elseif button == "LeftButton" and IsControlKeyDown() then
-            local url = addon.WOWHEAD_QUEST_BASE .. tostring(qid)
-            local function findEditBox(s)
-                if s and s.editBox then return s.editBox end
-                local name = s and s.GetName and s:GetName()
-                if name then return _G[name .. "EditBox"] end
-                return _G["StaticPopup1EditBox"] or _G["StaticPopup2EditBox"]
-                    or _G["StaticPopup3EditBox"] or _G["StaticPopup4EditBox"]
-            end
-            StaticPopupDialogs["TBCBIS_WOWHEAD_QUEST_URL"] = {
-                text = "Wowhead Quest URL (Ctrl+C to copy):",
-                button1 = "Close",
-                hasEditBox = true, editBoxWidth = 350,
-                OnShow = function(s, data)
-                    local eb = findEditBox(s)
-                    if not eb then return end
-                    local value = tostring(data or "")
-                    eb:SetText(value)
-                    eb:HighlightText()
-                    eb:SetFocus()
-                    C_Timer.After(0, function()
-                        if eb:GetText() ~= value then
-                            eb:SetText(value)
-                            eb:HighlightText()
-                        end
-                    end)
-                end,
-                EditBoxOnEscapePressed = function(s) s:GetParent():Hide() end,
-                timeout = 0, whileDead = true, hideOnEscape = true,
-            }
-            StaticPopup_Show("TBCBIS_WOWHEAD_QUEST_URL", nil, nil, url)
+            UI:ShowUrlPopup("Wowhead Quest URL (Ctrl+C to copy):", addon.WOWHEAD_QUEST_BASE .. tostring(qid))
         end
     end)
     row.srcHover = srcHover
@@ -1134,44 +1186,7 @@ function UI:CreateRowFrame(parent, idx)
                 end
             end
         elseif button == "LeftButton" and IsControlKeyDown() and self.itemId and self.itemId > 0 then
-            -- Build the URL upfront and pass it via `data` to StaticPopup_Show
-            -- (4th arg). In TBC Classic the popup frame doesn't expose
-            -- `self.editBox` — it's only reachable through the global name
-            -- `<frameName>EditBox`. The OnShow handler below resolves it via
-            -- the popup's actual frame name, then re-applies the text on the
-            -- next frame in case Blizzard's StaticPopup clears it after OnShow
-            -- on some popup slots.
-            local url = addon.WOWHEAD_BASE .. tostring(self.itemId)
-            local function findEditBox(s)
-                if s and s.editBox then return s.editBox end
-                local name = s and s.GetName and s:GetName()
-                if name then return _G[name .. "EditBox"] end
-                return _G["StaticPopup1EditBox"] or _G["StaticPopup2EditBox"]
-                    or _G["StaticPopup3EditBox"] or _G["StaticPopup4EditBox"]
-            end
-            StaticPopupDialogs["TBCBIS_WOWHEAD_URL"] = {
-                text = "Wowhead URL (Ctrl+C to copy):",
-                button1 = "Close",
-                hasEditBox = true,
-                editBoxWidth = 350,
-                OnShow = function(s, data)
-                    local eb = findEditBox(s)
-                    if not eb then return end
-                    local value = tostring(data or "")
-                    eb:SetText(value)
-                    eb:HighlightText()
-                    eb:SetFocus()
-                    C_Timer.After(0, function()
-                        if eb:GetText() ~= value then
-                            eb:SetText(value)
-                            eb:HighlightText()
-                        end
-                    end)
-                end,
-                EditBoxOnEscapePressed = function(s) s:GetParent():Hide() end,
-                timeout = 0, whileDead = true, hideOnEscape = true,
-            }
-            StaticPopup_Show("TBCBIS_WOWHEAD_URL", nil, nil, url)
+            UI:ShowUrlPopup("Wowhead URL (Ctrl+C to copy):", addon.WOWHEAD_BASE .. tostring(self.itemId))
         elseif button == "RightButton" and self.slotKey then
             UI:ShowAlternativesMenu(self, self.slotKey)
         end
@@ -1621,17 +1636,6 @@ local STAT_PANEL_BAR_H = 14
 local STAT_PANEL_ROW_H = 38   -- label + bar + spacing
 local STAT_PANEL_MAX_ROWS = 8
 
--- 4-column compact slot ordering used by the integrated BiS preview grid in
--- the right-side panel. Reading order roughly matches the WoW character pane:
--- head/neck/shoulders/back, then armour, jewelry, trinkets, weapons, ranged.
-local PREV_GRID_SLOTS = {
-    "head", "neck", "shoulder", "back",
-    "chest", "wrist", "hands", "waist",
-    "legs", "feet", "ring1", "ring2",
-    "trinket1", "trinket2", "mainhand", "offhand",
-    "ranged",
-}
-
 function UI:BuildStatCapPanel()
     local f = self.frame
 
@@ -1649,92 +1653,11 @@ function UI:BuildStatCapPanel()
     panel:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -8, 10)
     self.statPanel = panel
 
-    -- ── Section 1: BiS slot preview ──
-    local slotsTitle = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    slotsTitle:SetPoint("TOPLEFT", panel, "TOPLEFT", UI_PAL.pad, -UI_PAL.pad)
-    slotsTitle:SetText(UI_PAL.accent .. "BiS Preview|r")
-    self.statPanelSlotsTitle = slotsTitle
+    -- The panel starts with its main section (the BiS icon grid that used to sit
+    -- above it was removed; the 3D preview window stays on minimap right-click).
+    local slotsBottom = 0
 
-    -- Hint text on the right of the title pointing at minimap right-click for
-    -- the standalone preview window with the 3D model.
-    local hint = panel:CreateFontString(nil, "OVERLAY")
-    SetFontSmall(hint)
-    hint:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -UI_PAL.pad, -UI_PAL.pad - 2)
-    hint:SetText(UI_PAL.muted .. "3D: right-click map icon|r")
-    hint:SetJustifyH("RIGHT")
-    self.statPanelSlotsHint = hint
-
-    local hdiv = CreateDivider(panel)
-    hdiv:SetPoint("TOPLEFT", panel, "TOPLEFT", UI_PAL.pad, -32)
-    hdiv:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -UI_PAL.pad, -32)
-    hdiv:SetHeight(1)
-
-    -- Build the 4-column compact slot grid centred in the panel.
-    local panelInnerW = STAT_PANEL_W - 2 * UI_PAL.pad
-    local SLOT_SZ = 30
-    local SLOT_GAP_X = 6
-    local SLOT_GAP_Y = 4
-    local cols = 4
-    local rows = math.ceil(#PREV_GRID_SLOTS / cols)
-    local gridW = cols * SLOT_SZ + (cols - 1) * SLOT_GAP_X
-    local gridStartX = UI_PAL.pad + (panelInnerW - gridW) / 2
-    local gridStartY = -42
-
-    self.integratedSlotBtns = {}
-    for i, slot in ipairs(PREV_GRID_SLOTS) do
-        local col = (i - 1) % cols
-        local rowI = math.floor((i - 1) / cols)
-        local x = gridStartX + col * (SLOT_SZ + SLOT_GAP_X)
-        local y = gridStartY - rowI * (SLOT_SZ + SLOT_GAP_Y)
-
-        local btn = CreateFrame("Button", nil, panel)
-        btn:SetSize(SLOT_SZ, SLOT_SZ)
-        btn:SetPoint("TOPLEFT", panel, "TOPLEFT", x, y)
-        btn._slot = slot
-
-        local bg = btn:CreateTexture(nil, "BACKGROUND")
-        bg:SetAllPoints(); bg:SetTexture("Interface\\Buttons\\UI-EmptySlot-Disabled")
-        btn.bg = bg
-
-        local icon = btn:CreateTexture(nil, "ARTWORK")
-        icon:SetPoint("TOPLEFT", btn, "TOPLEFT", 3, -3)
-        icon:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", -3, 3)
-        icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
-        icon:SetTexture(addon.SLOT_ICONS[slot] or "Interface\\Icons\\INV_Misc_QuestionMark")
-        btn.icon = icon
-
-        local mark = btn:CreateTexture(nil, "OVERLAY")
-        mark:SetTexture("Interface\\RAIDFRAME\\ReadyCheck-Ready")
-        mark:SetSize(12, 12); mark:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", 1, -1); mark:Hide()
-        btn.mark = mark
-
-        btn:SetScript("OnEnter", function(self)
-            if self._itemId and self._itemId > 0 then
-                GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-                GameTooltip:SetHyperlink("item:" .. self._itemId .. ":0:0:0:0:0:0:0")
-                GameTooltip:AddLine(" ")
-                GameTooltip:AddLine(UI_PAL.muted .. (addon.SLOT_LABELS[self._slot] or self._slot) .. "|r", 1, 1, 1)
-                GameTooltip:AddLine(self._obtained and "|cff60ff60Obtained|r" or "|cff888888Not obtained|r", 1, 1, 1)
-                GameTooltip:Show()
-            else
-                GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-                GameTooltip:SetText(addon.SLOT_LABELS[self._slot] or self._slot, 1, 1, 1)
-                GameTooltip:AddLine("|cff888888No BiS pick set|r", 1, 1, 1)
-                GameTooltip:Show()
-            end
-        end)
-        btn:SetScript("OnLeave", function() GameTooltip:Hide() end)
-        self.integratedSlotBtns[slot] = btn
-    end
-
-    -- Section divider between slots and stat caps.
-    local slotsBottom = gridStartY - rows * (SLOT_SZ + SLOT_GAP_Y) + SLOT_GAP_Y - 6
-    local sectDiv = CreateDivider(panel, UI_PAL.divider)
-    sectDiv:SetPoint("TOPLEFT", panel, "TOPLEFT", UI_PAL.pad, slotsBottom)
-    sectDiv:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -UI_PAL.pad, slotsBottom)
-    sectDiv:SetHeight(1)
-
-    -- ── Section 2: Stat Caps ──
+    -- ── Stat Caps (TBC) / Where to get it (Forever) ──
     -- Always sums the stats of the SELECTED BiS pick for each slot in the
     -- currently-active phase tab. No mode dropdown — switching alts directly
     -- updates the bars.
@@ -1846,30 +1769,29 @@ function UI:BuildStatCapPanel()
     if addon:IsForever() then
         statTitle:SetText(UI_PAL.accent .. "Where to get it|r  " .. UI_PAL.muted .. "still needed|r")
         fdiv:Hide()
+        -- One column: a coloured heading per source type, places listed under it.
         self.farmLines = {}
         local lineW = STAT_PANEL_W - 2 * (UI_PAL.pad + 4)
-        for i = 1, 16 do
-            local line = CreateFrame("Frame", nil, body)
+        for i = 1, 30 do
+            local line = CreateFrame("Button", nil, body)
             line:SetSize(lineW, 16)
-            line:SetPoint("TOPLEFT", body, "TOPLEFT", 0, -(i - 1) * 17)
-            local kind = line:CreateFontString(nil, "OVERLAY")
-            SetFontSmall(kind)
-            kind:SetPoint("LEFT", line, "LEFT", 0, 0)
-            kind:SetWidth(62)
-            kind:SetJustifyH("LEFT")
-            line.kind = kind
+            line:SetPoint("TOPLEFT", body, "TOPLEFT", 0, -(i - 1) * 16)
+            local hl = line:CreateTexture(nil, "HIGHLIGHT")
+            hl:SetAllPoints()
+            hl:SetColorTexture(1, 1, 1, 0.07)
             local count = line:CreateFontString(nil, "OVERLAY")
             SetFontSmall(count)
             count:SetPoint("RIGHT", line, "RIGHT", 0, 0)
             count:SetJustifyH("RIGHT")
             line.count = count
-            local where = line:CreateFontString(nil, "OVERLAY")
-            SetFontSmall(where)
-            where:SetPoint("LEFT", kind, "RIGHT", 4, 0)
-            where:SetPoint("RIGHT", count, "LEFT", -4, 0)
-            where:SetJustifyH("LEFT")
-            where:SetWordWrap(false)
-            line.where = where
+            local text = line:CreateFontString(nil, "OVERLAY")
+            SetFontSmall(text)
+            text:SetJustifyH("LEFT")
+            text:SetWordWrap(false)
+            line.text = text
+            line:SetScript("OnEnter", function(l) UI:ShowFarmTooltip(l) end)
+            line:SetScript("OnLeave", function() GameTooltip:Hide() end)
+            line:SetScript("OnClick", function(l) UI:OpenFarmSource(l) end)
             line:Hide()
             self.farmLines[i] = line
         end
@@ -1883,6 +1805,17 @@ local FARM_TYPE_LABELS = {
 }
 
 -- Forever side panel: still-needed items grouped by where they come from.
+local function SetFarmLine(line, indent, text, count, loc, kind)
+    line.text:ClearAllPoints()
+    line.text:SetPoint("LEFT", line, "LEFT", indent, 0)
+    line.text:SetPoint("RIGHT", line.count, "LEFT", -4, 0)
+    line.text:SetText(text)
+    line.count:SetText(count or "")
+    line.loc, line.kind = loc, kind
+    line:EnableMouse(loc ~= nil)
+    line:Show()
+end
+
 function UI:RefreshFarmPanel(class, spec, phase)
     for _, line in ipairs(self.farmLines) do line:Hide() end
     local groups = addon:GetFarmBreakdown(class, spec, phase)
@@ -1890,30 +1823,135 @@ function UI:RefreshFarmPanel(class, spec, phase)
         self.statPanelNote:SetText(UI_PAL.accent .. "Everything obtained!|r")
         return
     end
-    local i, hidden = 0, 0
-    for _, group in ipairs(groups) do
+    local i, hidden, max = 0, 0, #self.farmLines
+    for g, group in ipairs(groups) do
         local color = SOURCE_TYPE_COLORS[group.type] or "|cffcccccc"
-        for n, loc in ipairs(group.locations) do
-            if i < #self.farmLines then
-                i = i + 1
-                local line = self.farmLines[i]
-                line.kind:SetText(n == 1 and (color .. (FARM_TYPE_LABELS[group.type] or group.type) .. "|r") or "")
-                local where = ShortSource({ source = loc.location .. " (x)" })
-                local first = loc.items and loc.items[1] and loc.items[1].entry
-                local prof = first and addon:ParseCraftingProfession(first)
-                if prof and not addon:GetPlayerProfessionLevel(prof) then
-                    where = "|cffff6b5a" .. where .. " (not learned)|r"
+        -- heading (with a blank line before every group but the first)
+        if g > 1 and i < max then i = i + 1 end
+        if i < max - 1 then
+            i = i + 1
+            SetFarmLine(self.farmLines[i], 0,
+                color .. (FARM_TYPE_LABELS[group.type] or group.type):upper() .. "|r", nil, nil, nil)
+            for _, loc in ipairs(group.locations) do
+                if i < max then
+                    i = i + 1
+                    local where = ShortSource({ source = loc.location .. " (x)" })
+                    loc.where = where
+                    local first = loc.items and loc.items[1] and loc.items[1].entry
+                    local prof = first and addon:ParseCraftingProfession(first)
+                    local shown = where
+                    if prof and not addon:GetPlayerProfessionLevel(prof) then
+                        shown = "|cffff6b5a" .. where .. " (not learned)|r"
+                    end
+                    SetFarmLine(self.farmLines[i], 10, shown, UI_PAL.muted .. loc.count .. "|r", loc, group.type)
+                else
+                    hidden = hidden + loc.count
                 end
-                line.where:SetText(where)
-                line.count:SetText(UI_PAL.muted .. loc.count .. "|r")
-                line:Show()
-            else
-                hidden = hidden + loc.count
             end
+        else
+            hidden = hidden + group.count
         end
     end
     if hidden > 0 then
         self.statPanelNote:SetText(UI_PAL.muted .. "+" .. hidden .. " more|r")
+    end
+end
+
+-- Hover: full source text plus which of your items come from it.
+function UI:ShowFarmTooltip(line)
+    local loc = line.loc
+    if not loc then return end
+    GameTooltip:SetOwner(line, "ANCHOR_LEFT")
+    local first = loc.items and loc.items[1] and loc.items[1].entry
+    if SetQuestTooltip(line, first and first.questId) then
+        GameTooltip:AddLine(" ")
+    else
+        GameTooltip:SetText(loc.where, 1, 1, 1, 1, true)
+    end
+    for _, it in ipairs(loc.items or {}) do
+        local name = addon:GetItemName(it.entry.id)
+        local color = addon:GetItemQualityColor(it.entry.id) or "|cffffffff"
+        GameTooltip:AddDoubleLine(color .. name .. "|r", addon.SLOT_LABELS[it.slot] or it.slot, 1, 1, 1, 0.6, 0.6, 0.6)
+    end
+    GameTooltip:AddLine(" ")
+    if line.kind == "quest" then
+        GameTooltip:AddLine("Click: open in your quest log, or its Wowhead page", 0.6, 0.6, 0.6, true)
+    else
+        GameTooltip:AddLine("Click: Wowhead link", 0.6, 0.6, 0.6, true)
+    end
+    GameTooltip:Show()
+end
+
+-- Opens a quest log entry by title on any client; false when it isn't in the log.
+-- Newer quest map first, then the classic quest log; each tried on its own so
+-- one client's missing or changed API never blocks the other way.
+local function OpenQuestInMap(want, questId)
+    if C_QuestLog and C_QuestLog.GetNumQuestLogEntries and C_QuestLog.GetInfo and QuestMapFrame_OpenToQuestDetails then
+        for i = 1, C_QuestLog.GetNumQuestLogEntries() do
+            local info = C_QuestLog.GetInfo(i)
+            if info and not info.isHeader and info.questID
+                and ((questId and info.questID == questId) or (info.title and info.title:lower() == want)) then
+                QuestMapFrame_OpenToQuestDetails(info.questID)
+                return true
+            end
+        end
+    end
+    return false
+end
+
+local function OpenQuestInLog(want, questId)
+    if GetNumQuestLogEntries and GetQuestLogTitle then
+        for i = 1, GetNumQuestLogEntries() do
+            local qTitle, _, _, isHeader, _, _, _, qId = GetQuestLogTitle(i)
+            if not isHeader and ((questId and qId == questId) or (qTitle and qTitle:lower() == want)) then
+                if QuestLog_OpenToQuest then
+                    QuestLog_OpenToQuest(i)
+                elseif QuestLogFrame then
+                    ShowUIPanel(QuestLogFrame)
+                    if QuestLog_SetSelection then QuestLog_SetSelection(i) end
+                    if QuestLog_Update then QuestLog_Update() end
+                else
+                    return false
+                end
+                return true
+            end
+        end
+    end
+    return false
+end
+
+local function OpenQuest(title, questId)
+    local want = title and title:lower()
+    if not want then return false end
+    local ok, opened = pcall(OpenQuestInMap, want, questId)
+    if ok and opened then return true end
+    ok, opened = pcall(OpenQuestInLog, want, questId)
+    return ok and opened or false
+end
+
+local function UrlEncode(text)
+    return (text:gsub("[^%w%-_%.~]", function(c) return string.format("%%%02X", c:byte()) end))
+end
+
+-- Click: a quest you have opens in the quest log, a known quest links to its
+-- Wowhead page; one item links straight to its page (drop / quest / vendor
+-- tabs); anything else is a search.
+function UI:OpenFarmSource(line)
+    local loc = line.loc
+    if not loc then return end
+    local items = loc.items or {}
+    local questId = items[1] and items[1].entry.questId
+    if line.kind == "quest" then
+        if OpenQuest(loc.where, questId) then return end
+        if questId then
+            self:ShowUrlPopup("Wowhead quest (Ctrl+C to copy):", addon.WOWHEAD_QUEST_BASE .. questId)
+            return
+        end
+    end
+    if line.kind ~= "quest" and #items == 1 then
+        self:ShowUrlPopup("Wowhead (Ctrl+C to copy):", addon.WOWHEAD_BASE .. items[1].entry.id)
+    else
+        self:ShowUrlPopup("Wowhead search (Ctrl+C to copy):", addon.WOWHEAD_SEARCH_BASE .. UrlEncode(loc.where))
     end
 end
 
@@ -1926,29 +1964,6 @@ function UI:RefreshStatCaps()
 
     -- Hide all rows
     for _, row in ipairs(self.statRowPool) do row:Hide() end
-
-    -- Refresh the integrated BiS slot grid above the stat caps. We mirror
-    -- the standalone preview window: faded slot icon when no pick is set,
-    -- item icon (with green checkmark when obtained) when a BiS pick exists.
-    if self.integratedSlotBtns then
-        for slot, btn in pairs(self.integratedSlotBtns) do
-            local entry = (class and spec and phase) and addon:GetSlotItem(class, spec, phase, slot) or nil
-            if entry and entry.id and entry.id > 0 then
-                local texture = select(10, GetItemInfo(entry.id))
-                btn._itemId   = entry.id
-                btn._obtained = addon:IsObtained(class, spec, phase, slot)
-                btn.icon:SetTexture(texture or addon.SLOT_ICONS[slot] or "Interface\\Icons\\INV_Misc_QuestionMark")
-                btn.icon:SetAlpha(1)
-                btn.mark:SetShown(btn._obtained == true)
-            else
-                btn._itemId   = nil
-                btn._obtained = false
-                btn.icon:SetTexture(addon.SLOT_ICONS[slot] or "Interface\\Icons\\INV_Misc_QuestionMark")
-                btn.icon:SetAlpha(0.35)
-                btn.mark:Hide()
-            end
-        end
-    end
 
     if not (class and spec) then
         self.statPanelNote:SetText("No spec selected.")

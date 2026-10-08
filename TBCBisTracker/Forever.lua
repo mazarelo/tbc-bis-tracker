@@ -57,6 +57,7 @@ function addon:ApplyGameMode()
     -- Wowhead's Forever database knows both the new and the carried-over items.
     self.WOWHEAD_BASE       = "https://www.wowhead.com/forever/item="
     self.WOWHEAD_QUEST_BASE = "https://www.wowhead.com/forever/quest="
+    self.WOWHEAD_SEARCH_BASE = "https://www.wowhead.com/forever/search?q="
 end
 
 function addon:IsForever()

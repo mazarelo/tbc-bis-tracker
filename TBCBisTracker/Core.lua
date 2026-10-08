@@ -101,6 +101,7 @@ addon.QUALITY_COLORS = {
 
 addon.WOWHEAD_BASE = "https://www.wowhead.com/tbc/item="
 addon.WOWHEAD_QUEST_BASE = "https://www.wowhead.com/tbc/quest="
+addon.WOWHEAD_SEARCH_BASE = "https://www.wowhead.com/tbc/search?q="
 
 -- Acceptable equipLoc strings (from GetItemInfo) per BIS slot key
 addon.SLOT_INVTYPES = {

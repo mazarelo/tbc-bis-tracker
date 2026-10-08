@@ -268,6 +268,55 @@ local function windowTest(toc)
     end
     check(found and found.srcDetail.text:find("World drop · auction house"), "source detail spelled out: " .. tostring(found and found.srcDetail.text))
     check(found and found.itemLbl.text:find("Twilight Cape|r|cffa39d8c of Healing", 1, true), "suffix shown next to the base name: " .. tostring(found and found.itemLbl.text))
+
+    -- "Where to get it": one column, headings + places; quest click opens the log
+    local heading, quest
+    for _, line in ipairs(UI.farmLines) do
+        if line:IsShown() then
+            local loc = rawget(line, "loc")
+            if not loc and line.text.text:find("QUEST") then heading = line end
+            if rawget(line, "kind") == "quest" and loc and not quest then quest = line end
+        end
+    end
+    check(heading ~= nil, "source types shown as headings (one column)")
+    check(quest ~= nil, "quest sources listed under their heading")
+    local opened, popup
+    env.GetNumQuestLogEntries = function() return 2 end
+    env.GetQuestLogTitle = function(i)
+        if i == 1 then return "Desolace", nil, nil, true end
+        return quest.loc.where, 30, nil, false
+    end
+    env.QuestLog_OpenToQuest = function(i) opened = i end
+    env.C_QuestLog = {}  -- classic client: no quest map API
+    env.StaticPopup_Show = function(_, _, _, url) popup = url end
+    UI:OpenFarmSource(quest)
+    check(opened == 2 and popup == nil, "clicking a quest in your log opens it there")
+    opened = nil
+    env.GetNumQuestLogEntries = function() return 0 end
+    UI:OpenFarmSource(quest)
+    check(opened == nil and popup and popup:find("wowhead.com/forever/search%?q="), "quest not in the log: Wowhead search link " .. tostring(popup))
+
+    -- A quest with a known ID: native tooltip on hover, direct quest link on click
+    addon:SetSelectedAlt("PALADIN", "Holy", "lvl30", "feet", 2)  -- Everlast Boots, quest Power Stones
+    UI:Refresh()
+    local withId
+    for _, line in ipairs(UI.farmLines) do
+        local loc = rawget(line, "loc")
+        if line:IsShown() and loc and rawget(line, "kind") == "quest" and loc.items[1].entry.questId then withId = line end
+    end
+    check(withId ~= nil, "some quest sources carry a quest ID")
+    if withId then
+        local qid = withId.loc.items[1].entry.questId
+        local link
+        env.GameTooltip.SetHyperlink = function(_, l) link = l end
+        env.GameTooltip.NumLines = function() return link and 3 or 0 end
+        env.GameTooltip.ClearLines = function() link = nil end
+        UI:ShowFarmTooltip(withId)
+        check(link == "quest:" .. qid, "hover shows the game's quest tooltip (" .. tostring(link) .. ")")
+        popup = nil
+        UI:OpenFarmSource(withId)
+        check(popup == "https://www.wowhead.com/forever/quest=" .. qid, "click links the exact quest: " .. tostring(popup))
+    end
 end
 windowTest(16001)
 windowTest(20505)
