@@ -36,14 +36,38 @@ local function freshGlobals(toc)
     return setmetatable(env, { __index = function() return stub end })
 end
 
-local function loadAddon(toc, savedDB)
+-- A tooltip whose client may or may not still have the OnTooltipSetItem script.
+local function mockTooltip(hasSetItem)
+    local t = { hooks = {} }
+    function t:HasScript(name) return name ~= "OnTooltipSetItem" or hasSetItem end
+    function t:HookScript(name, fn)
+        if not self:HasScript(name) then error("bad argument #2 to '?' (Usage: local success = self:HookScript(...))") end
+        self.hooks[name] = fn
+    end
+    function t:AddLine(line) self.lines = self.lines or {}; self.lines[#self.lines + 1] = line end
+    function t:Show() end
+    return t
+end
+
+local function loadAddon(toc, savedDB, modernTooltips)
     local env = freshGlobals(toc)
+    env.GameTooltip = mockTooltip(not modernTooltips)
+    env.ItemRefTooltip = mockTooltip(not modernTooltips)
+    env.postCalls = {}
+    env.TooltipDataProcessor = false  -- old clients don't have it (the stub would look present)
+    if modernTooltips then
+        env.Enum = { TooltipDataType = { Item = 0 } }
+        env.TooltipDataProcessor = {
+            AddTooltipPostCall = function(kind, fn) env.postCalls[#env.postCalls + 1] = { kind = kind, fn = fn } end,
+        }
+    end
     env.TBCBisTrackerDB = savedDB
     env.TBCBisTracker = {}  -- otherwise "TBCBisTracker or {}" picks up the shared stub
     for _, file in ipairs({ "Localization.lua", "Core.lua", "Database.lua", "Database_Forever.lua", "Forever.lua" }) do
         local chunk = assert(loadfile(ADDON_DIR .. file))
         setfenv(chunk, env)
-        chunk()
+        local ok, err = pcall(chunk)
+        if not ok then env.loadError = file .. ": " .. tostring(err); return env end
     end
     for _, fn in ipairs(env.events) do fn(nil, "ADDON_LOADED", "TBCBisTracker") end
     return env
@@ -69,6 +93,17 @@ check(next(a.STAT_CAPS) == nil, "TBC stat caps disabled")
 check(a.WOWHEAD_BASE:find("/forever/"), "Wowhead Forever links")
 check(a:GetCapStatus("WARRIOR", "Fury", "lvl30", "selected") == nil, "no cap rows")
 check(fv.printed[#fv.printed]:find("Forever"), "load message mentions Forever")
+
+print("Tooltip hooks")
+check(rawget(tbc, "loadError") == nil and tbc.GameTooltip.hooks.OnTooltipSetItem ~= nil, "old client: OnTooltipSetItem hooked")
+local modern = loadAddon(16001, {}, true)
+local modernErr = rawget(modern, "loadError")
+check(modernErr == nil, "new client: loads without HookScript error" .. (modernErr and (" (" .. modernErr .. ")") or ""))
+check(#modern.postCalls == 1 and modern.GameTooltip.hooks.OnTooltipSetItem == nil, "new client: uses TooltipDataProcessor")
+local ok, err = pcall(modern.postCalls[1] and modern.postCalls[1].fn or error, modern.GameTooltip, { id = 6686 })
+check(ok, "item tooltip post-call runs" .. (ok and "" or (" (" .. tostring(err) .. ")")))
+local lines = table.concat(modern.GameTooltip.lines or {}, " | ")
+check(lines:find("Level 30"), "tracked item gets a Level 30 line: " .. lines)
 
 print("Forever client forced to TBC")
 local forced = loadAddon(16001, { gameMode = "tbc" })

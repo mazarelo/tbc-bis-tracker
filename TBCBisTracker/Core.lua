@@ -1449,30 +1449,42 @@ local function CreateMinimapButton()
 
     btn:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight", "ADD")
 
-    -- Position around minimap
-    local MINIMAP_RADIUS = 80
+    -- Position around minimap: just outside the edge. The radius is measured,
+    -- not fixed, because the Forever client uses a bigger minimap.
+    local EDGE_OFFSET = 5
     local function UpdatePosition()
         local pos = tonumber(TBCBisTrackerDB.minimap.pos) or 220
         local angle = math.rad(pos)
+        local radius = (Minimap:GetWidth() or 140) / 2 + EDGE_OFFSET
         btn:ClearAllPoints()
         btn:SetPoint("CENTER", Minimap, "CENTER",
-            math.cos(angle) * MINIMAP_RADIUS, math.sin(angle) * MINIMAP_RADIUS)
+            math.cos(angle) * radius, math.sin(angle) * radius)
     end
 
+    local function CursorAngle()
+        local cx, cy = Minimap:GetCenter()
+        if not cx then return nil end
+        local mx, my = GetCursorPosition()
+        local scale  = Minimap:GetEffectiveScale()
+        return math.deg(math.atan2(my / scale - cy, mx / scale - cx)) % 360
+    end
+
+    -- Follow the cursor while dragging.
     btn:SetScript("OnDragStart", function(self)
         self:LockHighlight()
+        self:SetScript("OnUpdate", function()
+            local angle = CursorAngle()
+            if angle then
+                TBCBisTrackerDB.minimap.pos = angle
+                UpdatePosition()
+            end
+        end)
     end)
     btn:SetScript("OnDragStop", function(self)
         self:UnlockHighlight()
-        local cx, cy  = Minimap:GetCenter()
-        if not cx then return end
-        local mx, my  = GetCursorPosition()
-        local scale   = UIParent:GetEffectiveScale()
-        mx, my = mx / scale, my / scale
-        local angle   = math.deg(math.atan2(my - cy, mx - cx))
-        TBCBisTrackerDB.minimap.pos = angle % 360
-        UpdatePosition()
+        self:SetScript("OnUpdate", nil)
     end)
+    Minimap:HookScript("OnSizeChanged", UpdatePosition)
 
     btn:SetScript("OnClick", function(self, button)
         if button == "LeftButton" then
@@ -1799,11 +1811,13 @@ end)
 -- Tooltip integration: append tracking info to any item tooltip
 -- ─────────────────────────────────────────────
 
-local function appendTrackingLines(tooltip)
-    if not tooltip or not tooltip.GetItem then return end
-    local _, link = tooltip:GetItem()
-    if not link then return end
-    local itemId = tonumber(link:match("item:(%d+)"))
+local function appendTrackingLines(tooltip, data)
+    if not tooltip or not tooltip.AddLine then return end
+    local itemId = data and tonumber(data.id)
+    if not itemId and tooltip.GetItem then
+        local _, link = tooltip:GetItem()
+        itemId = link and tonumber(link:match("item:(%d+)"))
+    end
     if not itemId then return end
 
     local matches = addon:GetItemTrackingInfo(itemId)
@@ -1839,9 +1853,20 @@ end
 
 local function clearStamp(self) self.tbcbisStamp = nil end
 
-GameTooltip:HookScript("OnTooltipSetItem", appendTrackingLines)
-GameTooltip:HookScript("OnHide", clearStamp)
-if ItemRefTooltip then
-    ItemRefTooltip:HookScript("OnTooltipSetItem", appendTrackingLines)
-    ItemRefTooltip:HookScript("OnHide", clearStamp)
+-- Newer clients (WoW Forever) dropped the OnTooltipSetItem script in favour of
+-- TooltipDataProcessor; hooking a missing script errors, so pick whichever exists.
+local useDataProcessor = TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall
+    and Enum and Enum.TooltipDataType and Enum.TooltipDataType.Item
+if useDataProcessor then
+    TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, function(tooltip, data)
+        if tooltip == GameTooltip or tooltip == ItemRefTooltip then
+            appendTrackingLines(tooltip, data)
+        end
+    end)
+end
+for _, tooltip in ipairs({ GameTooltip, ItemRefTooltip }) do
+    if not useDataProcessor and tooltip:HasScript("OnTooltipSetItem") then
+        tooltip:HookScript("OnTooltipSetItem", appendTrackingLines)
+    end
+    tooltip:HookScript("OnHide", clearStamp)
 end
