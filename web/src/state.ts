@@ -1,4 +1,4 @@
-import type { Database } from "./types";
+import type { Database, Faction, Game } from "./types";
 
 /**
  * Single AppState shape persisted via useLocalStorage. Nested maps are
@@ -6,6 +6,10 @@ import type { Database } from "./types";
  * variables schema). Helpers below keep that pyramid tidy.
  */
 export interface AppState {
+  /** Active data set; optional because older saved states predate it. */
+  game?: Game;
+  /** Player faction for faction-only items (WoW Forever). */
+  faction?: Faction;
   cls: string | null;
   spec: string | null;
   phase: string;
@@ -19,6 +23,8 @@ export interface AppState {
 export const STORAGE_KEY = "tbcbis:web:v1";
 
 export const initialState: AppState = {
+  game: "tbc",
+  faction: "Alliance",
   cls: null,
   spec: null,
   phase: "prebis",

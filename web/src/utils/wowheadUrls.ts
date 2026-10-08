@@ -10,33 +10,40 @@ export const DROP_TYPES: ReadonlySet<SourceType> = new Set([
 ]);
 
 /**
- * Best wowhead URL for an item's subtitle row, in priority order:
+ * Best URL for an item's subtitle row, in priority order:
  *
- *   1. Quest reward            → wowhead.com/tbc/quest=<questId>
- *   2. Known boss              → wowhead.com/tbc/npc=<id>/<slug>
- *   3. Parseable boss name     → wowhead.com/tbc/search?q=<name>
- *   4. Otherwise (still a drop)→ wowhead.com/tbc/item=<id>#dropped-by
- *   5. No useful target        → null
+ *   1. Quest reward            → wowhead.com/<site>/quest=<questId>
+ *   2. Curated source page     → item.sourceUrl (WoW Forever data)
+ *   3. Known boss              → wowhead.com/<site>/npc=<id>/<slug>
+ *   4. Parseable boss name     → wowhead.com/<site>/search?q=<name>
+ *   5. Otherwise (still a drop)→ wowhead.com/<site>/item=<id>#dropped-by
+ *   6. No useful target        → null
  *
- * Power.js will tooltip 1, 2, and 4 (search URLs are not supported).
+ * `site` is the Wowhead database segment: "tbc" or "forever".
+ * Power.js will tooltip 1, 3, and 5 (search URLs are not supported).
  */
-export function subtitleWowheadUrl(item: Item, bosses: Record<string, number>): string | null {
+export function subtitleWowheadUrl(
+  item: Item,
+  bosses: Record<string, number>,
+  site = "tbc",
+): string | null {
   if (item.questId) {
-    return `https://www.wowhead.com/tbc/quest=${item.questId}`;
+    return `https://www.wowhead.com/${site}/quest=${item.questId}`;
   }
+  if (item.sourceUrl) return item.sourceUrl;
   if (!DROP_TYPES.has(item.sourceType)) {
     return null;
   }
   const boss = parseBossName(item.source);
   if (boss) {
     const id = bosses[boss];
-    if (id) return `https://www.wowhead.com/tbc/npc=${id}/${slugify(boss)}`;
-    return `https://www.wowhead.com/tbc/search?q=${encodeURIComponent(boss)}`;
+    if (id) return `https://www.wowhead.com/${site}/npc=${id}/${slugify(boss)}`;
+    return `https://www.wowhead.com/${site}/search?q=${encodeURIComponent(boss)}`;
   }
-  if (item.id) return `https://www.wowhead.com/tbc/item=${item.id}#dropped-by`;
+  if (item.id) return `https://www.wowhead.com/${site}/item=${item.id}#dropped-by`;
   return null;
 }
 
-export function itemWowheadUrl(itemId: number): string {
-  return `https://www.wowhead.com/tbc/item=${itemId}`;
+export function itemWowheadUrl(itemId: number, site = "tbc"): string {
+  return `https://www.wowhead.com/${site}/item=${itemId}`;
 }

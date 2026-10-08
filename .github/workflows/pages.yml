@@ -2,7 +2,8 @@
 #
 # Pipeline:
 #   1. Refresh data/data.js + bosses.js from the addon's Lua sources
-#      (web/scripts/build-db.py).
+#      (web/scripts/build-db.py), and data/forever.js from
+#      web/scripts/forever-lvl30.json (web/scripts/build-forever-db.py).
 #   2. Install pnpm deps, typecheck, lint, run unit tests.
 #   3. `vite build` with the Pages base path baked in.
 #   4. Publish the resulting `web/dist` directory as the Pages artifact.
@@ -47,6 +48,9 @@ jobs:
 
       - name: Re-extract data from Lua
         run: python3 scripts/build-db.py
+
+      - name: Rebuild WoW Forever data (forever.js + Database_Forever.lua)
+        run: python3 scripts/build-forever-db.py
 
       # Set up pnpm *before* setup-node so node's `cache: "pnpm"` resolver
       # can find it on PATH. `package_json_file` points at web/package.json

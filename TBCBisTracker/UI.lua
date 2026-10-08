@@ -7,6 +7,9 @@ local addon = TBCBisTracker
 addon.UI = {}
 local UI = addon.UI
 
+-- Newer clients (WoW Forever) only ship this under C_Item.
+local GetItemInfo = GetItemInfo or (C_Item and C_Item.GetItemInfo)
+
 -- Re-fire the current tooltip's owner OnEnter when shift state changes,
 -- so pressing/releasing Shift mid-hover toggles the side-by-side comparison.
 local modWatcher = CreateFrame("Frame")
@@ -180,7 +183,7 @@ function UI:Build()
     -- Title — class/spec/phase context gets injected by Refresh().
     local title = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
     title:SetPoint("TOP", f, "TOP", 0, -6)
-    title:SetText(UI_PAL.accent .. "TBC BIS Tracker|r")
+    title:SetText(UI_PAL.accent .. addon.TITLE .. "|r")
     self.titleText = title
 
     -- Close button label (frame template already adds X button)
@@ -212,8 +215,10 @@ function UI:Build()
     -- ── Progress bar ──
     self:BuildProgressBar()
 
-    -- ── Badge of Justice status line ──
-    self:BuildBadgeStatus()
+    -- ── Badge of Justice status line (TBC only) ──
+    if not addon:IsForever() then
+        self:BuildBadgeStatus()
+    end
 
     -- ── Tier set bonus tracker ──
     self:BuildTierStatus()
@@ -799,7 +804,7 @@ function UI:CreateRowFrame(parent, idx)
             else
                 GameTooltip:AddLine("|cffffd700Quest reward|r (id " .. qid .. ")", 1, 1, 1, true)
             end
-            GameTooltip:AddLine("|cffaaaaaahttps://www.wowhead.com/tbc/quest=" .. qid .. "|r", 1, 1, 1, true)
+            GameTooltip:AddLine("|cffaaaaaa" .. addon.WOWHEAD_QUEST_BASE .. qid .. "|r", 1, 1, 1, true)
             GameTooltip:AddLine("|cff888888Ctrl+click for URL  •  Shift+click for chat-link|r", 0.7, 0.7, 0.7, true)
         end
         GameTooltip:Show()
@@ -814,7 +819,7 @@ function UI:CreateRowFrame(parent, idx)
             local link = GetQuestLink and GetQuestLink(qid)
             if link and ChatEdit_InsertLink then ChatEdit_InsertLink(link) end
         elseif button == "LeftButton" and IsControlKeyDown() then
-            local url = "https://www.wowhead.com/tbc/quest=" .. tostring(qid)
+            local url = addon.WOWHEAD_QUEST_BASE .. tostring(qid)
             local function findEditBox(s)
                 if s and s.editBox then return s.editBox end
                 local name = s and s.GetName and s:GetName()
@@ -873,7 +878,7 @@ function UI:CreateRowFrame(parent, idx)
                 else
                     GameTooltip:AddLine("|cffffd700Quest reward|r", 1, 1, 1)
                 end
-                GameTooltip:AddLine("|cffaaaaaahttps://www.wowhead.com/tbc/quest=" .. self.questId .. "|r", 0.8, 0.8, 0.8, true)
+                GameTooltip:AddLine("|cffaaaaaa" .. addon.WOWHEAD_QUEST_BASE .. self.questId .. "|r", 0.8, 0.8, 0.8, true)
             end
             -- User note
             if self.userNote and self.userNote ~= "" then
@@ -1893,7 +1898,7 @@ function UI:Refresh()
         local info = addon.CLASS_INFO[class]
         if info then
             self.titleText:SetText(
-                UI_PAL.accent .. "TBC BIS Tracker|r" ..
+                UI_PAL.accent .. addon.TITLE .. "|r" ..
                 "  |cff" .. info.color .. info.name .. " " .. spec .. "|r" ..
                 "  " .. UI_PAL.muted .. addon.PHASE_LABELS[phase] .. "|r"
             )

@@ -21,6 +21,8 @@ interface SlotRowProps {
   isObtained: boolean;
   /** Boss-name → wowhead NPC id, used by the subtitle URL builder. */
   bosses: Record<string, number>;
+  /** Wowhead database segment for links ("tbc" | "forever"). */
+  wowheadSite?: string;
   onToggleObtained: (on: boolean) => void;
   onOpenAlts: (anchor: HTMLElement) => void;
 }
@@ -32,6 +34,7 @@ export function SlotRow({
   altsCount,
   isObtained,
   bosses,
+  wowheadSite = "tbc",
   onToggleObtained,
   onOpenAlts,
 }: SlotRowProps) {
@@ -50,11 +53,11 @@ export function SlotRow({
         {item ? (
           <>
             <div className="slot-item-name">
-              <a href={itemWowheadUrl(item.id)} target="_blank" rel="noopener">
+              <a href={itemWowheadUrl(item.id, wowheadSite)} target="_blank" rel="noopener">
                 {nameFromSource(item.source) || `Item ${item.id}`}
               </a>
             </div>
-            <SourceLine item={item} bosses={bosses} />
+            <SourceLine item={item} bosses={bosses} wowheadSite={wowheadSite} />
           </>
         ) : (
           <div className="slot-item-name">(no BiS in database)</div>
@@ -78,10 +81,18 @@ export function SlotRow({
   );
 }
 
-function SourceLine({ item, bosses }: { item: Item; bosses: Record<string, number> }) {
+function SourceLine({
+  item,
+  bosses,
+  wowheadSite,
+}: {
+  item: Item;
+  bosses: Record<string, number>;
+  wowheadSite: string;
+}) {
   const text = sourceWithoutName(item.source);
   const type = item.sourceType;
-  const url = subtitleWowheadUrl(item, bosses);
+  const url = subtitleWowheadUrl(item, bosses, wowheadSite);
   const label = SOURCE_LABELS[type] || type;
 
   return (

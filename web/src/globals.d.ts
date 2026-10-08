@@ -1,7 +1,7 @@
 import type { TbcDataBundle } from "./types";
 
 /**
- * `data/data.js` and `data/bosses.js` (generated + curated) load before
+ * `data/data.js`, `data/forever.js` and `data/bosses.js` (generated + curated) load before
  * the Vite bundle and attach their payloads to `window`. Declaring the
  * shape here so the rest of the codebase reads them with type-safety
  * instead of `(window as any).TBC_DATA`.
@@ -9,6 +9,8 @@ import type { TbcDataBundle } from "./types";
 declare global {
   interface Window {
     TBC_DATA: TbcDataBundle;
+    /* data/forever.js — WoW Forever bundle, same shape as TBC_DATA. */
+    FOREVER_DATA?: TbcDataBundle;
     TBC_BOSSES: Record<string, number>;
     /* Wowhead's `power.js` reads this on load (set in index.html). */
     whTooltips?: {

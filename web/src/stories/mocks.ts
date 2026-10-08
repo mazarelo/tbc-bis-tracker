@@ -98,3 +98,66 @@ export const mockStatCaps: StatCaps = {
     ],
   },
 };
+
+/* ── WoW Forever fixtures (window.FOREVER_DATA shape) ── */
+
+export const mockForeverMeta: Meta = {
+  slots: ["head", "neck", "back"],
+  phases: ["lvl30"],
+  slotLabels: { head: "Head", neck: "Neck", back: "Back" },
+  phaseLabels: { lvl30: "Level 30" },
+  phaseDescriptions: { lvl30: "Level 30 — beta cap: dungeons, quests, crafted and world drops" },
+};
+
+export const mockForeverDatabase: Database = {
+  WARRIOR: {
+    Fury: {
+      lvl30: {
+        head: [
+          {
+            id: 250498,
+            source: "Blacksmithing (Veteran's Chain Helm)",
+            sourceType: "crafted",
+            note: null,
+            questId: null,
+            sourceUrl: "https://foreverchanges.pro/professions/blacksmithing#r-250498",
+          },
+          {
+            id: 6686,
+            source: "Overlord Ramtusk, Razorfen Kraul (Tusken Helm)",
+            sourceType: "dungeon",
+            note: null,
+            questId: null,
+          },
+        ],
+        neck: [
+          {
+            id: 7731,
+            source: "Azshir the Sleepless, Scarlet Monastery Graveyard (Ghostshard Talisman)",
+            sourceType: "dungeon",
+            note: null,
+            questId: null,
+          },
+        ],
+        back: [
+          {
+            id: 6751,
+            source: "Quest: Mortality Wanes (Alliance only) (Mourning Shawl)",
+            sourceType: "quest",
+            note: null,
+            questId: null,
+            faction: "Alliance",
+          },
+          {
+            id: 4643,
+            source: "Quest: Vorrel's Revenge (Horde only) (Grimsteel Cape)",
+            sourceType: "quest",
+            note: null,
+            questId: null,
+            faction: "Horde",
+          },
+        ],
+      },
+    },
+  },
+};

@@ -23,6 +23,21 @@ A **World of Warcraft TBC Anniversary** add-on that lets you select gear for eve
 
 ---
 
+## WoW Forever mode
+
+On the **WoW Forever** client (interface 1.60) the add-on switches itself to Forever mode on load:
+
+- One **Level 30** stage (the beta cap), for all 26 class/spec lists. End-game stages get added at release.
+- Alliance-only / Horde-only items are hidden from the other faction.
+- Item links go to `wowhead.com/forever`; TBC-only extras (Badges of Justice, rating caps) are hidden.
+- `/tbcbis mode` shows the detected mode; `/tbcbis mode forever|tbc|auto` + `/reload` forces one.
+
+The data lives in `web/scripts/forever-lvl30.json` (from [foreverchanges.pro](https://foreverchanges.pro/bis/warrior)) and is turned into
+`TBCBisTracker/Database_Forever.lua` (add-on) and `web/public/data/forever.js` (website: TBC / Forever switch
+in the top bar, `?game=forever`) with `python3 web/scripts/build-forever-db.py`. Test with `lua tests/harness.lua` (Lua 5.1).
+
+---
+
 ## Installation
 
 1. Download or clone this repository.

@@ -1,11 +1,16 @@
-import type { Database, Item, Meta } from "../types";
+import type { Database, Faction, Item, Meta } from "../types";
 import { CLASS_INFO } from "../classInfo";
+import { filterByFaction } from "../games";
 import { SlotRow } from "./SlotRow";
 
 interface SlotListProps {
   database: Database;
   meta: Meta;
   bosses: Record<string, number>;
+  /** Wowhead database segment for links ("tbc" | "forever"). */
+  wowheadSite?: string;
+  /** Hide items reserved for the other faction (null = show all). */
+  faction?: Faction | null;
   cls: string | null;
   spec: string | null;
   phase: string;
@@ -17,7 +22,8 @@ interface SlotListProps {
 }
 
 export function SlotList(props: SlotListProps) {
-  const { database, meta, bosses, cls, spec, phase, missingOnly, picks, obtained } = props;
+  const { database, meta, bosses, wowheadSite, faction, cls, spec, phase, missingOnly, picks, obtained } =
+    props;
 
   const phaseLabel = meta.phaseLabels[phase] || phase;
   const title =
@@ -31,7 +37,7 @@ export function SlotList(props: SlotListProps) {
 
   if (cls && spec) {
     for (const slot of meta.slots) {
-      const alts = database[cls]?.[spec]?.[phase]?.[slot] ?? [];
+      const alts = filterByFaction(database[cls]?.[spec]?.[phase]?.[slot] ?? [], faction ?? null);
       if (!alts.length) continue;
       total++;
       const pickedId = picks[slot];
@@ -73,6 +79,7 @@ export function SlotList(props: SlotListProps) {
               altsCount={alts.length}
               isObtained={isObtained}
               bosses={bosses}
+              wowheadSite={wowheadSite}
               onToggleObtained={(on) => props.onToggleObtained(slot, on)}
               onOpenAlts={(anchor) => props.onOpenAlts(slot, alts, anchor)}
             />

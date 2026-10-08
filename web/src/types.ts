@@ -13,7 +13,16 @@ export interface Item {
   note: string | null;
   /** Wowhead quest id (when the item is a quest reward). */
   questId: number | null;
+  /** Faction-only item (WoW Forever data); absent = both factions. */
+  faction?: Faction;
+  /** Page describing where the item comes from (WoW Forever data). */
+  sourceUrl?: string;
 }
+
+export type Faction = "Alliance" | "Horde";
+
+/** Which game's data set is active. */
+export type Game = "tbc" | "forever";
 
 export type SourceType =
   | "crafted"

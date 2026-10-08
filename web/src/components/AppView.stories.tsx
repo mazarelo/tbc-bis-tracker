@@ -4,6 +4,8 @@ import { fn } from "@storybook/test";
 import { AppView } from "./AppView";
 import {
   mockDatabase,
+  mockForeverDatabase,
+  mockForeverMeta,
   mockMeta,
   mockStatCaps,
 } from "../stories/mocks";
@@ -26,6 +28,9 @@ const meta: Meta<typeof AppView> = {
     bosses,
     version: "1.0.0",
     addonVersion: "1.0.0",
+    game: "tbc",
+    games: ["tbc", "forever"],
+    faction: "Alliance",
     cls: "WARRIOR",
     spec: "Fury",
     phase: "prebis",
@@ -36,6 +41,8 @@ const meta: Meta<typeof AppView> = {
       "TBCBIS:v1;class=WARRIOR;spec=Fury;phase=prebis;head=18096;neck=29381",
     altsTarget: null,
     modalTarget: null,
+    onSelectGame: fn(),
+    onSelectFaction: fn(),
     onSelectClass: fn(),
     onSelectSpec: fn(),
     onSelectPhase: fn(),
@@ -85,6 +92,22 @@ export const ImportModalLoadedFromURL: Story = {
       status: { text: "Loaded from URL.", level: "ok" },
     },
   },
+};
+
+export const Forever: Story = {
+  args: {
+    game: "forever",
+    database: mockForeverDatabase,
+    meta: mockForeverMeta,
+    statCaps: {},
+    bosses: {},
+    phase: "lvl30",
+    exportString: "TBCBIS:v1;class=WARRIOR;spec=Fury;phase=lvl30;head=250498;neck=7731;back=6751",
+  },
+};
+
+export const ForeverHorde: Story = {
+  args: { ...Forever.args, faction: "Horde" },
 };
 
 export const Mobile: Story = {

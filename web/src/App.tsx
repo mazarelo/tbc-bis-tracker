@@ -2,6 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { AppView, type AltsTarget, type ModalTarget } from "./components/AppView";
 import { CLASS_INFO, CLASS_ORDER } from "./classInfo";
+import {
+  GAMES,
+  availableGames,
+  filterByFaction,
+  gameForPhase,
+  resolveGame,
+  type Bundles,
+} from "./games";
 import { useLocalStorage } from "./hooks/useLocalStorage";
 import {
   STORAGE_KEY,
@@ -19,10 +27,14 @@ import {
   buildExportString,
   parseExportString,
 } from "./utils/exportFormat";
+import type { Faction, Game } from "./types";
+
+const bundles: Bundles = { tbc: window.TBC_DATA, forever: window.FOREVER_DATA };
 
 /**
  * Container — wires the pure `AppView` presenter up to:
- *   - the `window.TBC_DATA` / `window.TBC_BOSSES` globals (data source),
+ *   - the `window.TBC_DATA` / `window.FOREVER_DATA` / `window.TBC_BOSSES`
+ *     globals (data source; the TBC/Forever switch picks the bundle),
  *   - `useLocalStorage` (persistent state),
  *   - the browser URL (`?build=…` round-trip),
  *   - the export/import format helpers.
@@ -33,11 +45,15 @@ import {
  * side-effecting machinery here.
  */
 export function App() {
-  const data = window.TBC_DATA;
-  const { database, statCaps, meta, version, addonVersion } = data;
-  const bosses = window.TBC_BOSSES ?? {};
-
   const [state, setState] = useLocalStorage<AppState>(STORAGE_KEY, initialState);
+
+  const games = availableGames(bundles);
+  const game = resolveGame(bundles, state.game);
+  const gameInfo = GAMES[game];
+  const faction: Faction = state.faction ?? "Alliance";
+  const { database, statCaps, meta, version, addonVersion } = bundles[game]!;
+  // Boss → NPC id map only covers TBC bosses.
+  const bosses = game === "tbc" ? (window.TBC_BOSSES ?? {}) : {};
 
   // ── First-run / stale-state defaults ───────────────────────────────
   const initRanRef = useRef(false);
@@ -45,28 +61,37 @@ export function App() {
     if (initRanRef.current) return;
     initRanRef.current = true;
 
+    // ?game=forever opens the Forever data (a ?build=… string overrides it).
+    const wantedGame = new URLSearchParams(window.location.search).get("game");
     setState((s) => {
       let next = s;
+      if ((wantedGame === "tbc" || wantedGame === "forever") && bundles[wantedGame]) {
+        next = { ...next, game: wantedGame };
+      }
+      const g = resolveGame(bundles, next.game);
+      const gMeta = bundles[g]!.meta;
+      const gDb = bundles[g]!.database;
+      if (next.game !== g) next = { ...next, game: g };
       // Header toggle was removed; reset stale `true` from older sessions.
       if (next.missingOnly) next = { ...next, missingOnly: false };
       if (!next.cls) {
-        const firstCls = CLASS_ORDER.find((c) => database[c]) ?? null;
+        const firstCls = CLASS_ORDER.find((c) => gDb[c]) ?? null;
         next = { ...next, cls: firstCls };
       }
       if (next.cls && !next.spec) {
         const info = CLASS_INFO[next.cls];
         const firstSpec =
-          info?.specs.find((s) => database[next.cls!]?.[s]) ??
-          Object.keys(database[next.cls!] ?? {})[0] ??
+          info?.specs.find((s) => gDb[next.cls!]?.[s]) ??
+          Object.keys(gDb[next.cls!] ?? {})[0] ??
           null;
         next = { ...next, spec: firstSpec };
       }
-      if (!meta.phases.includes(next.phase)) {
-        next = { ...next, phase: meta.phases[0] || "prebis" };
+      if (!gMeta.phases.includes(next.phase)) {
+        next = { ...next, phase: gMeta.phases[0] || "prebis" };
       }
       return next;
     });
-  }, [database, meta, setState]);
+  }, [setState]);
 
   // ── Derived: picks / obtained / export string for active selection ─
   const currentPicks = useMemo(
@@ -86,14 +111,26 @@ export function App() {
       phase: state.phase,
       slots: meta.slots,
       resolveSelectedItemId: (slot) => {
-        const alts = database[state.cls!]?.[state.spec!]?.[state.phase]?.[slot] ?? [];
+        const alts = filterByFaction(
+          database[state.cls!]?.[state.spec!]?.[state.phase]?.[slot] ?? [],
+          gameInfo.hasFactions ? faction : null,
+        );
         if (!alts.length) return null;
         const pickedId = currentPicks[slot];
         const found = pickedId && alts.find((a) => a.id === pickedId);
         return (found || alts[0])?.id ?? null;
       },
     });
-  }, [database, meta.slots, state.cls, state.spec, state.phase, currentPicks]);
+  }, [
+    database,
+    meta.slots,
+    state.cls,
+    state.spec,
+    state.phase,
+    currentPicks,
+    gameInfo.hasFactions,
+    faction,
+  ]);
 
   // Mirror the export string to the URL so the page is shareable.
   useEffect(() => {
@@ -123,18 +160,45 @@ export function App() {
     }
     const parsed = parseExportString(text);
     if (!parsed) return;
+    const g = gameForPhase(bundles, parsed.phase);
+    if (!g) return;
     setState((s) => {
-      const res = applyParsed(s, database, parsed);
-      return res?.state ?? s;
+      const res = applyParsed(s, bundles[g]!.database, parsed);
+      return res ? { ...res.state, game: g } : s;
     });
     setModalTarget({
       mode: "import",
       text,
       status: { text: "Loaded from URL.", level: "ok" },
     });
-  }, [database, setState]);
+  }, [setState]);
 
   // ── Callbacks ─────────────────────────────────────────────────────
+  const onSelectGame = useCallback(
+    (g: Game) => {
+      const gData = bundles[g];
+      if (!gData) return;
+      setState((s) => {
+        const cls = s.cls && gData.database[s.cls] ? s.cls : (CLASS_ORDER.find((c) => gData.database[c]) ?? null);
+        const spec =
+          cls && s.spec && gData.database[cls]?.[s.spec]
+            ? s.spec
+            : cls
+              ? (CLASS_INFO[cls]?.specs.find((sp) => gData.database[cls]?.[sp]) ??
+                Object.keys(gData.database[cls] ?? {})[0] ??
+                null)
+              : null;
+        const phase = gData.meta.phases.includes(s.phase) ? s.phase : gData.meta.phases[0];
+        return { ...s, game: g, cls, spec, phase };
+      });
+      setAltsTarget(null);
+    },
+    [setState],
+  );
+  const onSelectFaction = useCallback(
+    (f: Faction) => setState((s) => ({ ...s, faction: f })),
+    [setState],
+  );
   const onSelectPhase = useCallback(
     (phase: string) => setState((s) => ({ ...s, phase })),
     [setState],
@@ -207,9 +271,11 @@ export function App() {
           msg: `Couldn't parse — expected ${EXPORT_HEADER};class=...;spec=...;phase=...`,
         };
       }
+      const g = gameForPhase(bundles, parsed.phase);
+      if (!g) return { ok: false, msg: `Unknown phase: ${parsed.phase}` };
       let result: { ok: boolean; msg: string } = { ok: false, msg: "Unknown class/spec." };
       setState((s) => {
-        const r = applyParsed(s, database, parsed);
+        const r = applyParsed(s, bundles[g]!.database, parsed);
         if (!r) {
           result = { ok: false, msg: `Unknown class/spec: ${parsed.cls}/${parsed.spec}` };
           return s;
@@ -218,11 +284,11 @@ export function App() {
           ok: true,
           msg: `Imported ${r.applied} slot${r.applied === 1 ? "" : "s"}.`,
         };
-        return r.state;
+        return { ...r.state, game: g };
       });
       return result;
     },
-    [database, setState],
+    [setState],
   );
 
   // ── Render ─────────────────────────────────────────────────────────
@@ -234,6 +300,11 @@ export function App() {
       bosses={bosses}
       version={version}
       addonVersion={addonVersion}
+      game={game}
+      games={games}
+      faction={faction}
+      onSelectGame={onSelectGame}
+      onSelectFaction={onSelectFaction}
       cls={state.cls}
       spec={state.spec}
       phase={state.phase}

@@ -1,24 +1,80 @@
-import type { Meta } from "../types";
+import { GAMES } from "../games";
+import type { Faction, Game, Meta } from "../types";
+
+const FACTIONS: readonly Faction[] = ["Alliance", "Horde"];
 
 interface TopBarProps {
   phase: string;
   meta: Meta;
+  /** Active game data set. */
+  game?: Game;
+  /** Games with loaded data; the switch only shows when there's a choice. */
+  games?: readonly Game[];
+  onSelectGame?: (game: Game) => void;
+  /** Player faction — only shown for games with faction-only items. */
+  faction?: Faction;
+  onSelectFaction?: (faction: Faction) => void;
   onSelectPhase: (phase: string) => void;
   onExport: () => void;
   onImport: () => void;
   onReset: () => void;
 }
 
-export function TopBar({ phase, meta, onSelectPhase, onExport, onImport, onReset }: TopBarProps) {
+export function TopBar({
+  phase,
+  meta,
+  game = "tbc",
+  games = [],
+  onSelectGame,
+  faction,
+  onSelectFaction,
+  onSelectPhase,
+  onExport,
+  onImport,
+  onReset,
+}: TopBarProps) {
+  const info = GAMES[game];
   return (
     <header className="topbar">
-      <a className="brand" href="#" aria-label="TBC BiS Tracker">
-        <span className="brand-mark">T</span>
+      <a className="brand" href="#" aria-label={`${info.label} BiS Tracker`}>
+        <span className="brand-mark">{game === "forever" ? "F" : "T"}</span>
         <span className="brand-labels">
-          <span className="brand-name">TBC BIS TRACKER</span>
-          <span className="brand-sub">Burning Crusade Classic</span>
+          <span className="brand-name">{info.label.toUpperCase()} BIS TRACKER</span>
+          <span className="brand-sub">{info.subtitle}</span>
         </span>
       </a>
+
+      {games.length > 1 && onSelectGame && (
+        <div className="segmented" role="group" aria-label="Game">
+          {games.map((g) => (
+            <button
+              key={g}
+              className={g === game ? "active" : ""}
+              aria-pressed={g === game}
+              title={GAMES[g].subtitle}
+              onClick={() => onSelectGame(g)}
+            >
+              {GAMES[g].label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {info.hasFactions && faction && onSelectFaction && (
+        <div className="segmented" role="group" aria-label="Faction">
+          {FACTIONS.map((f) => (
+            <button
+              key={f}
+              className={`${f === faction ? "active" : ""} faction-${f.toLowerCase()}`}
+              aria-pressed={f === faction}
+              title={`Hide ${f === "Alliance" ? "Horde" : "Alliance"}-only items`}
+              onClick={() => onSelectFaction(f)}
+            >
+              {f}
+            </button>
+          ))}
+        </div>
+      )}
 
       <nav className="phases" aria-label="Phase">
         {meta.phases.map((p) => (

@@ -5,9 +5,19 @@ TBCBisTracker = TBCBisTracker or {}
 local addon = TBCBisTracker
 local L     = addon.L
 
+-- Newer clients (WoW Forever) only ship some of these under C_ namespaces.
+local GetItemInfo  = GetItemInfo  or (C_Item and C_Item.GetItemInfo)
+local GetItemStats = GetItemStats or (C_Item and C_Item.GetItemStats)
+local GetItemCount = GetItemCount or (C_Item and C_Item.GetItemCount)
+local GetContainerNumSlots = GetContainerNumSlots or (C_Container and C_Container.GetContainerNumSlots)
+local GetContainerItemID   = GetContainerItemID   or (C_Container and C_Container.GetContainerItemID)
+
 -- ─────────────────────────────────────────────
 -- Constants
 -- ─────────────────────────────────────────────
+
+addon.TITLE = "TBC BIS Tracker"
+addon.GAME_MODE = "tbc"
 
 addon.PHASES = { "prebis", "phase1", "phase2", "phase3", "phase4", "phase5", "pvp" }
 
@@ -90,6 +100,7 @@ addon.QUALITY_COLORS = {
 }
 
 addon.WOWHEAD_BASE = "https://www.wowhead.com/tbc/item="
+addon.WOWHEAD_QUEST_BASE = "https://www.wowhead.com/tbc/quest="
 
 -- Acceptable equipLoc strings (from GetItemInfo) per BIS slot key
 addon.SLOT_INVTYPES = {
@@ -498,7 +509,13 @@ function addon:GetSlotAlternatives(class, spec, phase, slot)
             if list.id then
                 table.insert(out, list)
             else
-                for _, it in ipairs(list) do table.insert(out, it) end
+                -- Faction-only items (WoW Forever data) are hidden from the other faction.
+                local faction = UnitFactionGroup and UnitFactionGroup("player")
+                for _, it in ipairs(list) do
+                    if not (it.faction and faction and it.faction ~= faction) then
+                        table.insert(out, it)
+                    end
+                end
             end
         end
     end
@@ -1330,7 +1347,7 @@ function addon:ResetPhase(class, spec, phase)
 end
 
 function addon:Print(msg)
-    DEFAULT_CHAT_FRAME:AddMessage("|cffffd700[TBC BIS]|r " .. tostring(msg))
+    DEFAULT_CHAT_FRAME:AddMessage("|cffffd700[" .. (self:IsForever() and "BiS Forever" or "TBC BIS") .. "]|r " .. tostring(msg))
 end
 
 -- ─────────────────────────────────────────────
@@ -1467,7 +1484,7 @@ local function CreateMinimapButton()
 
     btn:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-        GameTooltip:SetText("|cffffd700TBC BIS Tracker|r", 1, 1, 1)
+        GameTooltip:SetText("|cffffd700" .. addon.TITLE .. "|r", 1, 1, 1)
         GameTooltip:AddLine("Left-click to toggle window", 1, 1, 1)
         GameTooltip:AddLine("Right-click to preview BiS gear", 1, 1, 1)
         GameTooltip:AddLine("Drag to reposition", 0.7, 0.7, 0.7)
@@ -1539,6 +1556,8 @@ SlashCmdList["TBCBISTRACKER"] = function(msg)
             end
             addon:Print(line)
         end
+    elseif cmd == "mode" or cmd:match("^mode ") then
+        addon:HandleModeCommand(cmd:match("^mode%s+(%S+)$"))
     elseif cmd == "help" or cmd == "" then
         if cmd == "" then
             addon.UI:Toggle()
@@ -1551,6 +1570,7 @@ SlashCmdList["TBCBISTRACKER"] = function(msg)
             addon:Print("/tbcbis reset     — reset checkmarks for current phase")
             addon:Print("/tbcbis reset all — reset ALL tracking data")
             addon:Print("/tbcbis stats [mode]  — print stat-cap progress (modes: obtained/selected/equipped)")
+            addon:Print("/tbcbis mode [auto|forever|tbc] — show or force game mode")
             addon:Print("/tbcbis hide      — hide minimap button")
             addon:Print("/tbcbis show      — show minimap button")
             addon:Print("/tbcbis help      — show this message")
@@ -1684,6 +1704,10 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1)
         TBCBisTrackerCharDB = TBCBisTrackerCharDB or {}
         applyDefaults(TBCBisTrackerCharDB, DEFAULT_CHAR_DB)
 
+        -- Swap in WoW Forever data when running on the Forever client.
+        addon:ApplyGameMode()
+        addon:NormalizeLastPhase()
+
         -- One-time migration: if account-wide had tracking data and char DB is empty, copy it over
         if TBCBisTrackerDB.obtained and not TBCBisTrackerCharDB.__migrated then
             if next(TBCBisTrackerDB.obtained) and not next(TBCBisTrackerCharDB.obtained) then
@@ -1728,7 +1752,7 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1)
             addon.MinimapBtn:Hide()
         end
 
-        addon:Print("Loaded! Type /tbcbis to open.")
+        addon:Print("Loaded" .. (addon:IsForever() and " (WoW Forever mode)" or "") .. "! Type /tbcbis to open.")
 
     elseif event == "PLAYER_LOGIN" then
         -- Build the UI after all data is ready

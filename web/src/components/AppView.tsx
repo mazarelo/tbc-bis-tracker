@@ -1,4 +1,5 @@
-import type { Database, Item, Meta, StatCaps } from "../types";
+import { GAMES } from "../games";
+import type { Database, Faction, Game, Item, Meta, StatCaps } from "../types";
 import { TopBar } from "./TopBar";
 import { ClassBar } from "./ClassBar";
 import { SpecBar } from "./SpecBar";
@@ -42,6 +43,12 @@ export interface AppViewProps {
   bosses: Record<string, number>;
   version?: string;
   addonVersion?: string;
+  /** Active game data set (default "tbc"). */
+  game?: Game;
+  /** Games with loaded data — drives the top-bar switch. */
+  games?: readonly Game[];
+  /** Player faction, used to hide the other faction's items. */
+  faction?: Faction;
 
   // ── Current selection ──────────────────────────────────────────
   cls: string | null;
@@ -57,6 +64,8 @@ export interface AppViewProps {
   exportString: string;
 
   // ── Selection / mutation callbacks ─────────────────────────────
+  onSelectGame?: (game: Game) => void;
+  onSelectFaction?: (faction: Faction) => void;
   onSelectClass: (cls: string) => void;
   onSelectSpec: (spec: string) => void;
   onSelectPhase: (phase: string) => void;
@@ -77,6 +86,8 @@ export interface AppViewProps {
 }
 
 export function AppView(props: AppViewProps) {
+  const game = GAMES[props.game ?? "tbc"];
+  const faction = game.hasFactions ? (props.faction ?? null) : null;
   const footerVersions = (() => {
     const parts = ["Round-trips with TBCBisTracker addon"];
     if (props.addonVersion) parts.push(`addon v${props.addonVersion}`);
@@ -89,6 +100,11 @@ export function AppView(props: AppViewProps) {
       <TopBar
         phase={props.phase}
         meta={props.meta}
+        game={game.id}
+        games={props.games}
+        onSelectGame={props.onSelectGame}
+        faction={props.faction}
+        onSelectFaction={props.onSelectFaction}
         onSelectPhase={props.onSelectPhase}
         onExport={props.onOpenExport}
         onImport={props.onOpenImport}
@@ -111,6 +127,8 @@ export function AppView(props: AppViewProps) {
           database={props.database}
           meta={props.meta}
           bosses={props.bosses}
+          wowheadSite={game.wowheadSite}
+          faction={faction}
           cls={props.cls}
           spec={props.spec}
           phase={props.phase}
@@ -121,14 +139,16 @@ export function AppView(props: AppViewProps) {
           onOpenAlts={props.onOpenAlts}
         />
         <aside className="side">
-          <StatCapsPanel cls={props.cls} spec={props.spec} statCaps={props.statCaps} />
+          {game.hasStatCaps && (
+            <StatCapsPanel cls={props.cls} spec={props.spec} statCaps={props.statCaps} />
+          )}
           <SyncPanel exportPreview={props.exportString} />
         </aside>
       </main>
 
       <footer className="bottom">
         <span className="muted small">
-          Data: Wowhead TBC Classic · Selections persist locally in your browser.
+          {game.credit} · Selections persist locally in your browser.
         </span>
         <span className="muted small">{footerVersions}</span>
       </footer>
@@ -139,6 +159,7 @@ export function AppView(props: AppViewProps) {
           meta={props.meta}
           alts={props.altsTarget.alts}
           selectedId={props.picks[props.altsTarget.slot]}
+          wowheadSite={game.wowheadSite}
           anchor={props.altsTarget.anchor}
           onPick={(id) => props.onPickAlt(props.altsTarget!.slot, id)}
           onClose={props.onCloseAlts}

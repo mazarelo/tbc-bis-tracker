@@ -8,6 +8,8 @@ interface AltsPopoverProps {
   meta: Meta;
   alts: Item[];
   selectedId: number | undefined;
+  /** Wowhead database segment for links ("tbc" | "forever"). */
+  wowheadSite?: string;
   anchor: HTMLElement;
   onPick: (itemId: number) => void;
   onClose: () => void;
@@ -18,6 +20,7 @@ export function AltsPopover({
   meta,
   alts,
   selectedId,
+  wowheadSite = "tbc",
   anchor,
   onPick,
   onClose,
@@ -81,7 +84,7 @@ export function AltsPopover({
               }}
             >
               <div>
-                <a href={itemWowheadUrl(alt.id)} target="_blank" rel="noopener">
+                <a href={itemWowheadUrl(alt.id, wowheadSite)} target="_blank" rel="noopener">
                   {displayName}
                 </a>
               </div>

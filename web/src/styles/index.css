@@ -93,6 +93,29 @@ a:hover { text-decoration: underline; }
 
 .topbar-actions { display: flex; gap: 8px; align-items: center; }
 
+/* Game (TBC / Forever) and faction switches */
+.segmented {
+  display: inline-flex;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.segmented button {
+  background: transparent;
+  border: 0;
+  color: var(--text-dim);
+  padding: 5px 10px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.segmented button + button { border-left: 1px solid var(--border); }
+.segmented button:hover { color: var(--text); background: var(--bg-2); }
+.segmented button.active { color: var(--accent); background: var(--bg-2); }
+.segmented button.faction-alliance.active { color: #6fa8ff; }
+.segmented button.faction-horde.active { color: var(--red); }
+
 .btn {
   background: var(--bg-2);
   border: 1px solid var(--border);
@@ -162,7 +185,8 @@ a:hover { text-decoration: underline; }
   max-width: 1400px;
   margin: 0 auto;
 }
-@media (max-width: 880px) { .main { grid-template-columns: 1fr; } }
+@media (max-width: 880px) { .main { grid-template-columns: minmax(0, 1fr); } }
+.main > * { min-width: 0; }
 
 .panel {
   background: var(--bg-1);
@@ -439,6 +463,7 @@ a:hover { text-decoration: underline; }
   }
   .phases::-webkit-scrollbar { display: none; }
   .phases button { padding: 6px 14px; flex-shrink: 0; }
+  .segmented button { padding: 5px 8px; font-size: 12px; }
 
   .topbar-actions { gap: 6px; margin-left: auto; flex-wrap: wrap; justify-content: flex-end; }
   .topbar-actions .btn { padding: 6px 10px; font-size: 13px; }
