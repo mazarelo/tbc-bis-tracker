@@ -3,7 +3,7 @@
 ## Title: ZenaBis
 ## Notes: Track your Best-in-Slot gear progression for WoW TBC Anniversary (Pre-BIS, Phase 1-5) and WoW Forever (level 30), picked automatically from your client.
 ## Author: mazarelo
-## Version: 1.0.0
+## Version: 1.1.0
 ## SavedVariables: TBCBisTrackerDB
 ## SavedVariablesPerCharacter: TBCBisTrackerCharDB
 ## DefaultState: enabled

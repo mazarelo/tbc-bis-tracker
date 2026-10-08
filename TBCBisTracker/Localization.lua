@@ -7,7 +7,7 @@ TBCBisTracker.L = L
 
 -- General
 L["ADDON_NAME"]         = "ZenaBis"
-L["VERSION"]            = "1.0.0"
+L["VERSION"]            = "1.1.0"
 L["CLOSE"]              = "Close"
 L["RESET"]              = "Reset"
 L["HIDE"]               = "Hide"
