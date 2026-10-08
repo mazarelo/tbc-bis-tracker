@@ -47,7 +47,7 @@ function addon:ApplyGameMode()
     if self:GetWantedMode() ~= "forever" or not self.FOREVER_DB then return end
 
     self.GAME_MODE          = "forever"
-    self.TITLE              = "BiS Tracker — WoW Forever"
+    self.TITLE              = "ZenaBis — WoW Forever"
     self.DB                 = self.FOREVER_DB
     self.PHASES             = FOREVER_PHASES
     self.PHASE_LABELS       = FOREVER_PHASE_LABELS

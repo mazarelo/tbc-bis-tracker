@@ -1,6 +1,6 @@
 ## Interface: 20505, 20506, 16001
 ## Interface-Classic: 20505, 20506, 16001
-## Title: TBC BIS Tracker
+## Title: ZenaBis
 ## Notes: Track your Best-in-Slot gear progression for WoW TBC Anniversary (Pre-BIS, Phase 1-5) and WoW Forever (level 30), picked automatically from your client.
 ## Author: mazarelo
 ## Version: 1.0.0

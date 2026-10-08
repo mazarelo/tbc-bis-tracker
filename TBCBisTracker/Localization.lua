@@ -6,7 +6,7 @@ TBCBisTracker = TBCBisTracker or {}
 TBCBisTracker.L = L
 
 -- General
-L["ADDON_NAME"]         = "TBC BIS Tracker"
+L["ADDON_NAME"]         = "ZenaBis"
 L["VERSION"]            = "1.0.0"
 L["CLOSE"]              = "Close"
 L["RESET"]              = "Reset"
@@ -65,7 +65,7 @@ L["NO_DATA"]            = "No data available for this selection."
 L["WOWHEAD_LINK"]       = "Right-click to open on Wowhead"
 L["MINIMAP_TIP"]        = "Left-click to toggle\nRight-click for options"
 L["ALL_OBTAINED"]       = "All items obtained!"
-L["SLASH_HELP"]         = "TBC BIS Tracker slash commands:\n  /tbcbis — toggle window\n  /tbcbis reset — reset all data\n  /tbcbis help — show this message"
+L["SLASH_HELP"]         = "ZenaBis slash commands:\n  /tbcbis — toggle window\n  /tbcbis reset — reset all data\n  /tbcbis help — show this message"
 
 -- Classes (matches Blizzard locale keys)
 L["CLASS_WARRIOR"]      = "Warrior"

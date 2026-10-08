@@ -35,18 +35,26 @@ end)
 local LIST_W       = 760
 local STAT_AREA_W  = 230
 local FRAME_W      = LIST_W + STAT_AREA_W
-local FRAME_H      = 580
-local HEADER_H     = 90   -- class buttons + title
-local PHASE_TAB_H  = 30
-local PROGRESS_H   = 28
-local ROW_H        = 28
+local FRAME_H      = 640
+local PHASE_TAB_H  = 24
+local PROGRESS_H   = 18
+local ROW_H        = 34
 local ROW_PAD      = 2
-local SCROLL_W     = LIST_W - 40
-local COL_ICON_W   = 26
-local COL_SLOT_W   = 80
-local COL_ITEM_W   = 420
-local COL_SRC_W    = 110
+local SCROLL_W     = LIST_W - 52   -- leaves room for the slim scrollbar
+local COL_ICON_W   = 28
+local COL_SLOT_W   = 70
+local COL_ITEM_W   = 340
+local COL_SRC_W    = 200
 local COL_CHK_W    = 40
+
+-- Vertical layout (offsets from the top of the window).
+local ROW_A_Y      = -30   -- class dropdown, spec tabs, stage chip
+local ROW_B_Y      = -62   -- source filter, missing only, export/import
+local TABS_Y       = -92   -- phase tabs (only when there's more than one phase)
+local BANNER_H     = 26
+-- Space kept under the list: progress footer, plus badge/tier lines on TBC.
+local LIST_BOTTOM_FOREVER = 44
+local LIST_BOTTOM_TBC     = 80
 
 local CLASS_ORDER = {
     "WARRIOR","PALADIN","HUNTER","ROGUE","PRIEST",
@@ -147,6 +155,122 @@ local function SetFontSmall(fs)
     fs:SetFont("Fonts\\FRIZQT__.TTF", 10, "OUTLINE")
 end
 
+-- 1px border around a frame (no BackdropTemplate needed, works on every client).
+local function AddBorder(frame, r, g, b, a)
+    local edges = {}
+    for i, pts in ipairs({
+        { "TOPLEFT", "TOPRIGHT", nil, 1 }, { "BOTTOMLEFT", "BOTTOMRIGHT", nil, 1 },
+        { "TOPLEFT", "BOTTOMLEFT", 1, nil }, { "TOPRIGHT", "BOTTOMRIGHT", 1, nil },
+    }) do
+        local t = frame:CreateTexture(nil, "BORDER")
+        t:SetColorTexture(r, g, b, a or 1)
+        t:SetPoint(pts[1]); t:SetPoint(pts[2])
+        if pts[3] then t:SetWidth(pts[3]) else t:SetHeight(pts[4]) end
+        edges[i] = t
+    end
+    frame.borderEdges = edges
+end
+
+local function SetBorderColor(frame, r, g, b, a)
+    for _, t in ipairs(frame.borderEdges or {}) do t:SetColorTexture(r, g, b, a or 1) end
+end
+
+-- Flat dark background for a frame.
+local function AddFill(frame, r, g, b, a)
+    local t = frame:CreateTexture(nil, "BACKGROUND")
+    t:SetAllPoints()
+    t:SetColorTexture(r, g, b, a or 1)
+    return t
+end
+
+-- Classic tab: Blizzard's TabButtonTemplate (the Macro window's tabs) when the
+-- client has it, else a flat fallback. Tabs get global names because older
+-- PanelTemplates_* code finds their textures by name. The selected tab is the
+-- template's "disabled" look, so it can't be clicked again.
+local function CreateTab(parent, name)
+    local ok, tab = pcall(CreateFrame, "Button", name, parent, "TabButtonTemplate")
+    if ok and tab and PanelTemplates_TabResize and PanelTemplates_SelectTab and PanelTemplates_DeselectTab then
+        tab.classic = true
+        return tab
+    end
+    tab = CreateFrame("Button", name, parent)
+    tab:SetHeight(24)
+    tab.bg = AddFill(tab, 0.12, 0.12, 0.12, 0.8)
+    local accent = tab:CreateTexture(nil, "OVERLAY")
+    accent:SetColorTexture(1, 0.82, 0, 1)
+    accent:SetPoint("BOTTOMLEFT", 2, 0)
+    accent:SetPoint("BOTTOMRIGHT", -2, 0)
+    accent:SetHeight(2)
+    accent:Hide()
+    tab.accent = accent
+    local fs = tab:CreateFontString(nil, "OVERLAY")
+    SetFontNormal(fs)
+    fs:SetAllPoints()
+    tab:SetFontString(fs)
+    return tab
+end
+
+-- Label a tab and size it to the text (or to a fixed width).
+local function SetTabLabel(tab, text, width)
+    tab:SetText(text)
+    if tab.classic then
+        PanelTemplates_TabResize(tab, 0, width)
+    else
+        tab:SetWidth(width or (tab:GetFontString():GetStringWidth() + 24))
+    end
+end
+
+local function SetTabSelected(tab, selected)
+    if tab.classic then
+        if selected then PanelTemplates_SelectTab(tab) else PanelTemplates_DeselectTab(tab) end
+    else
+        tab.bg:SetColorTexture(unpack(selected and UI_PAL.selectBg or UI_PAL.inactiveBg))
+        tab:GetFontString():SetTextColor(selected and 1 or 0.8, selected and 0.82 or 0.8, selected and 0 or 0.8, 1)
+        tab.accent:SetShown(selected)
+    end
+end
+
+local function PlayerClass()
+    local _, class = UnitClass("player")
+    return class
+end
+
+-- Viewing a class other than your own: planning only, no ticks.
+local function IsBrowsing()
+    local class = PlayerClass()
+    return class ~= nil and TBCBisTrackerDB.lastClass ~= class
+end
+
+-- Where-it-comes-from text without the trailing "(Item Name)", shortened.
+local function ShortSource(entry)
+    local src = entry.source or ""
+    src = src:gsub("%s*%(([^()]*)%)%s*$", "")
+    src = src:gsub("^World drop, sold at the auction house", "World drop · auction house")
+    src = src:gsub("^Quest:%s*", "")
+    return src
+end
+
+-- Random-suffix items are listed by their base ID, so the client names them
+-- without the suffix ("Twilight Cape" for "Twilight Cape of Healing"). The
+-- list's own name keeps it: return the missing part to show next to the name.
+local function SuffixHint(entry, itemName)
+    local listed = entry.source and entry.source:match("%(([^()]*)%)%s*$")
+    if not (listed and itemName) then return nil end
+    if #listed > #itemName and listed:sub(1, #itemName) == itemName then
+        return listed:sub(#itemName + 1)
+    end
+    return nil
+end
+
+local function ItemQualityRGB(itemId)
+    local quality = itemId and select(3, GetItemInfo(itemId))
+    if quality and GetItemQualityColor then
+        local r, g, b = GetItemQualityColor(quality)
+        if r then return r, g, b end
+    end
+    return 0.35, 0.35, 0.35
+end
+
 -- ─────────────────────────────────────────────
 -- Main frame
 -- ─────────────────────────────────────────────
@@ -180,31 +304,25 @@ function UI:Build()
         TBCBisTrackerDB.windowPos = { point = pt or "CENTER", x = x or 0, y = y or 0 }
     end)
 
-    -- Title — class/spec/phase context gets injected by Refresh().
+    -- Title: just the add-on name; class and spec live in the toolbar below.
+    -- Left-aligned so it can never run under anything else in the title bar.
     local title = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
-    title:SetPoint("TOP", f, "TOP", 0, -6)
+    title:SetPoint("TOPLEFT", f, "TOPLEFT", 12, -5)
     title:SetText(UI_PAL.accent .. addon.TITLE .. "|r")
     self.titleText = title
 
-    -- Close button label (frame template already adds X button)
-
-    -- ── Class buttons row ──
+    -- ── Row A: class dropdown + spec tabs + stage ──
     self:BuildClassButtons()
-
-    -- ── Spec dropdown ──
     self:BuildSpecSelector()
-
-    -- ── Phase tabs ──
     self:BuildPhaseTabs()
 
-    -- ── Checkbox: show missing only ──
-    self:BuildMissingFilter()
-
-    -- ── Source-type filter dropdown ──
+    -- ── Row B: source filter, missing only, export/import ──
     self:BuildSourceFilter()
-
-    -- ── Export/Import buttons ──
+    self:BuildMissingFilter()
     self:BuildExportImportButtons()
+
+    -- ── "Browsing another class" banner ──
+    self:BuildBrowseBanner()
 
     -- ── Column headers ──
     self:BuildColumnHeaders()
@@ -212,19 +330,16 @@ function UI:Build()
     -- ── Scrollable gear list ──
     self:BuildScrollFrame()
 
-    -- ── Progress bar ──
+    -- ── Progress footer ──
     self:BuildProgressBar()
 
-    -- ── Badge of Justice status line (TBC only) ──
+    -- ── TBC extras under the list: badges, tier sets, farm plan hover ──
+    -- (Forever shows the farm plan in the side panel instead.)
     if not addon:IsForever() then
         self:BuildBadgeStatus()
+        self:BuildFarmPlan()
     end
-
-    -- ── Tier set bonus tracker ──
     self:BuildTierStatus()
-
-    -- ── Farm plan (bottom-right hover) ──
-    self:BuildFarmPlan()
 
     -- ── Stat-cap side panel ──
     self:BuildStatCapPanel()
@@ -240,40 +355,93 @@ end
 -- Class buttons
 -- ─────────────────────────────────────────────
 
+-- The window opens on your own class; the class dropdown lets you browse the
+-- others (planning only: ticks and auto-detect stay on your own class).
+
+-- Pick a valid spec for a class: the one last viewed for it, else its first.
+local function SpecForClass(class)
+    local info = addon.CLASS_INFO[class]
+    if not info then return nil end
+    local remembered = TBCBisTrackerDB.specByClass and TBCBisTrackerDB.specByClass[class]
+    for _, s in ipairs(info.specs) do
+        if s == remembered then return s end
+    end
+    return info.specs[1]
+end
+
+function UI:SetViewClass(class)
+    if not addon.CLASS_INFO[class] then return end
+    TBCBisTrackerDB.specByClass = TBCBisTrackerDB.specByClass or {}
+    if TBCBisTrackerDB.lastClass and TBCBisTrackerDB.lastSpec then
+        TBCBisTrackerDB.specByClass[TBCBisTrackerDB.lastClass] = TBCBisTrackerDB.lastSpec
+    end
+    TBCBisTrackerDB.lastClass = class
+    TBCBisTrackerDB.lastSpec = SpecForClass(class)
+    self:RefreshClassButtons()
+    self:RefreshSpecSelector()
+    self:Refresh()
+end
+
 function UI:BuildClassButtons()
-    -- Class is locked to the character; title bar already shows class/spec/phase.
-    local _, playerClass = UnitClass("player")
-    if not playerClass then playerClass = TBCBisTrackerDB.lastClass end
+    local f = self.frame
+    local playerClass = PlayerClass() or TBCBisTrackerDB.lastClass
     if not playerClass then return end
 
-    TBCBisTrackerDB.lastClass = playerClass
+    -- Every session starts on your own class.
     local info = addon.CLASS_INFO[playerClass]
-    if not info then return end
-
-    -- Normalize lastSpec for this class (e.g. saved spec from a different class alt)
-    local valid = {}
-    for _, s in ipairs(info.specs) do valid[s] = true end
-    if not (TBCBisTrackerDB.lastSpec and valid[TBCBisTrackerDB.lastSpec]) then
-        TBCBisTrackerDB.lastSpec = info.specs[1]
+    if info then
+        if TBCBisTrackerDB.lastClass ~= playerClass then
+            TBCBisTrackerDB.lastClass = playerClass
+            TBCBisTrackerDB.lastSpec = SpecForClass(playerClass)
+        end
+        local valid = false
+        for _, s in ipairs(info.specs) do valid = valid or s == TBCBisTrackerDB.lastSpec end
+        if not valid then TBCBisTrackerDB.lastSpec = info.specs[1] end
     end
-    self.classBtns = {}
+
+    -- Standard Blizzard dropdown, same look as the source filter.
+    local dd = CreateFrame("Frame", "TBCBisTrackerClassDropdown", f, "UIDropDownMenuTemplate")
+    dd:SetPoint("TOPLEFT", f, "TOPLEFT", 2, ROW_A_Y + 2)
+    UIDropDownMenu_SetWidth(dd, 110)
+    AddSimpleTooltip(dd, "Class", "Browse another class's lists. Ticks and auto-detect stay on your own class.")
+    UIDropDownMenu_Initialize(dd, function(_, level)
+        for _, class in ipairs(CLASS_ORDER) do
+            local c = addon.CLASS_INFO[class]
+            local info = UIDropDownMenu_CreateInfo()
+            info.text = "|cff" .. c.color .. c.name .. "|r"
+                .. (class == playerClass and ("  " .. UI_PAL.muted .. "(you)|r") or "")
+            info.value = class
+            info.checked = class == TBCBisTrackerDB.lastClass
+            local coords = CLASS_ICON_TCOORDS and CLASS_ICON_TCOORDS[class]
+            if coords then
+                info.icon = "Interface\\Glues\\CharacterCreate\\UI-CharacterCreate-Classes"
+                info.tCoordLeft, info.tCoordRight, info.tCoordTop, info.tCoordBottom = coords[1], coords[2], coords[3], coords[4]
+            end
+            info.func = function()
+                CloseDropDownMenus()
+                UI:SetViewClass(class)
+            end
+            UIDropDownMenu_AddButton(info, level)
+        end
+    end)
+    self.classDropdown = dd
 end
 
 function UI:RefreshClassButtons()
-    -- No-op: only the player's class is shown.
+    local class = TBCBisTrackerDB.lastClass
+    local info = class and addon.CLASS_INFO[class]
+    if not (self.classDropdown and info) then return end
+    UIDropDownMenu_SetSelectedValue(self.classDropdown, class)
+    UIDropDownMenu_SetText(self.classDropdown, "|cff" .. info.color .. info.name .. "|r")
 end
-
--- ─────────────────────────────────────────────
--- Spec selector (dropdown buttons below class row)
--- ─────────────────────────────────────────────
 
 function UI:BuildSpecSelector()
     local f = self.frame
     self.specBtns = {}
     self.specBtnRow = CreateFrame("Frame", nil, f)
-    self.specBtnRow:SetSize(LIST_W - 40, 22)
-    -- Below the filter row so the row above is clear for filter + missing-only.
-    self.specBtnRow:SetPoint("TOPLEFT", f, "TOPLEFT", 20, -66)
+    self.specBtnRow:SetSize(400, 24)
+    -- Right of the class dropdown (its frame has ~16 px of empty edge).
+    self.specBtnRow:SetPoint("TOPLEFT", f, "TOPLEFT", 166, ROW_A_Y)
 end
 
 local SPEC_POOL_SIZE = 4
@@ -282,32 +450,8 @@ local function GetOrCreateSpecBtn(self, idx)
     local btn = self.specBtns[idx]
     if btn then return btn end
 
-    btn = CreateFrame("Button", nil, self.specBtnRow)
-    btn:SetHeight(22)
-
-    local bg = btn:CreateTexture(nil, "BACKGROUND")
-    bg:SetAllPoints()
-    bg:SetTexture("Interface\\ChatFrame\\ChatFrameBackground")
-    btn.bg = bg
-
-    -- 1px bottom-border accent for the selected tab
-    local accent = btn:CreateTexture(nil, "OVERLAY")
-    accent:SetColorTexture(1, 0.82, 0, 1)
-    accent:SetPoint("BOTTOMLEFT", btn, "BOTTOMLEFT", 2, 0)
-    accent:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", -2, 0)
-    accent:SetHeight(2)
-    accent:Hide()
-    btn.accent = accent
-
-    local fs = btn:CreateFontString(nil, "OVERLAY")
-    SetFontSmall(fs)
-    fs:SetAllPoints()
-    btn.fs = fs
-
+    btn = CreateTab(self.specBtnRow, "TBCBisTrackerSpecTab" .. idx)
     btn:SetScript("OnEnter", function(s)
-        if s.spec ~= TBCBisTrackerDB.lastSpec then
-            s.bg:SetVertexColor(unpack(UI_PAL.hoverBg))
-        end
         if s.spec then
             GameTooltip:SetOwner(s, "ANCHOR_TOP")
             GameTooltip:SetText(s.spec, 1, 1, 1)
@@ -315,14 +459,7 @@ local function GetOrCreateSpecBtn(self, idx)
             GameTooltip:Show()
         end
     end)
-    btn:SetScript("OnLeave", function(s)
-        if s.spec == TBCBisTrackerDB.lastSpec then
-            s.bg:SetVertexColor(unpack(UI_PAL.selectBg))
-        else
-            s.bg:SetVertexColor(unpack(UI_PAL.inactiveBg))
-        end
-        GameTooltip:Hide()
-    end)
+    btn:SetScript("OnLeave", function() GameTooltip:Hide() end)
     btn:SetScript("OnClick", function(s)
         if not s.spec then return end
         TBCBisTrackerDB.lastSpec = s.spec
@@ -346,22 +483,12 @@ function UI:RefreshSpecSelector()
         local btn  = GetOrCreateSpecBtn(self, i)
         if spec then
             btn.spec = spec
-            btn.fs:SetText(spec)
-            local w = btn.fs:GetStringWidth() + 24
-            btn:SetWidth(w)
+            SetTabLabel(btn, spec)
             btn:ClearAllPoints()
-            btn:SetPoint("LEFT", self.specBtnRow, "LEFT", x, 0)
-            if spec == TBCBisTrackerDB.lastSpec then
-                btn.fs:SetTextColor(1, 0.82, 0, 1)
-                btn.bg:SetVertexColor(unpack(UI_PAL.selectBg))
-                if btn.accent then btn.accent:Show() end
-            else
-                btn.fs:SetTextColor(0.8, 0.8, 0.8, 1)
-                btn.bg:SetVertexColor(unpack(UI_PAL.inactiveBg))
-                if btn.accent then btn.accent:Hide() end
-            end
+            btn:SetPoint("BOTTOMLEFT", self.specBtnRow, "BOTTOMLEFT", x, 0)
+            SetTabSelected(btn, spec == TBCBisTrackerDB.lastSpec)
             btn:Show()
-            x = x + w + 4
+            x = x + btn:GetWidth() + 2
         else
             btn.spec = nil
             btn:Hide()
@@ -376,35 +503,30 @@ end
 function UI:BuildPhaseTabs()
     local f = self.frame
     self.phaseTabs = {}
-    local tabW    = (LIST_W - 40) / #addon.PHASES
-    local yOffset = -94  -- below spec tabs (y=-66, h=22) with 6 px gap
 
+    -- One stage (WoW Forever: Level 30): a single selected tab on the right of row A.
+    if #addon.PHASES == 1 then
+        local phase = addon.PHASES[1]
+        local tab = CreateTab(f, "TBCBisTrackerStageTab")
+        SetTabLabel(tab, addon.PHASE_LABELS[phase] or phase)
+        tab:SetPoint("TOPRIGHT", f, "TOPRIGHT", -(STAT_AREA_W + 20), ROW_A_Y)
+        SetTabSelected(tab, true)
+        local lbl = f:CreateFontString(nil, "OVERLAY")
+        SetFontSmall(lbl)
+        lbl:SetPoint("RIGHT", tab, "LEFT", -6, 0)
+        lbl:SetText(UI_PAL.muted .. "STAGE|r")
+        AddSimpleTooltip(tab, addon.PHASE_DESCRIPTIONS[phase] or phase)
+        self.stageChip = tab
+        return
+    end
+
+    -- Several phases (TBC): a tab row of their own.
+    local tabW = (LIST_W - 40) / #addon.PHASES
     for i, phase in ipairs(addon.PHASES) do
-        local btn = CreateFrame("Button", nil, f)
-        btn:SetSize(tabW - 2, PHASE_TAB_H)
-        btn:SetPoint("TOPLEFT", f, "TOPLEFT", 20 + (i-1) * tabW, yOffset)
-
-        local bg = btn:CreateTexture(nil, "BACKGROUND")
-        bg:SetAllPoints()
-        bg:SetTexture("Interface\\ChatFrame\\ChatFrameBackground")
-        btn.bg = bg
-
-        -- Top-accent strip for the active phase tab (parallel to the
-        -- bottom-accent strip on spec tabs, so both row types speak the
-        -- same visual language).
-        local accent = btn:CreateTexture(nil, "OVERLAY")
-        accent:SetColorTexture(1, 0.82, 0, 1)
-        accent:SetPoint("TOPLEFT", btn, "TOPLEFT", 2, 0)
-        accent:SetPoint("TOPRIGHT", btn, "TOPRIGHT", -2, 0)
-        accent:SetHeight(2)
-        accent:Hide()
-        btn.accent = accent
-
-        local fs = btn:CreateFontString(nil, "OVERLAY")
-        SetFontNormal(fs)
-        fs:SetAllPoints()
-        fs:SetText(addon.PHASE_LABELS[phase])
-        btn.fs = fs
+        local btn = CreateTab(f, "TBCBisTrackerPhaseTab" .. i)
+        btn.tabW = tabW - 2
+        SetTabLabel(btn, addon.PHASE_LABELS[phase], btn.tabW)
+        btn:SetPoint("TOPLEFT", f, "TOPLEFT", 20 + (i-1) * tabW, TABS_Y)
 
         local capturedPhase = phase
         btn:SetScript("OnClick", function()
@@ -422,12 +544,6 @@ function UI:BuildPhaseTabs()
 
         self.phaseTabs[phase] = btn
     end
-
-    -- separator line below tabs
-    local sep = f:CreateTexture(nil, "OVERLAY")
-    sep:SetSize(LIST_W - 40, 1)
-    sep:SetPoint("TOPLEFT", f, "TOPLEFT", 20, yOffset - PHASE_TAB_H)
-    sep:SetTexture(1, 0.82, 0, 0.4)
 end
 
 function UI:RefreshPhaseTabs()
@@ -443,16 +559,8 @@ function UI:RefreshPhaseTabs()
                 label = label .. " " .. pctColor .. "(" .. got .. "/" .. tot .. ")|r"
             end
         end
-        btn.fs:SetText(label)
-        if phase == selected then
-            btn.bg:SetVertexColor(unpack(UI_PAL.selectBg))
-            btn.fs:SetTextColor(1, 0.82, 0, 1)
-            if btn.accent then btn.accent:Show() end
-        else
-            btn.bg:SetVertexColor(unpack(UI_PAL.inactiveBg))
-            btn.fs:SetTextColor(0.78, 0.78, 0.80, 1)
-            if btn.accent then btn.accent:Hide() end
-        end
+        SetTabLabel(btn, label, btn.tabW)
+        SetTabSelected(btn, phase == selected)
     end
 end
 
@@ -564,9 +672,8 @@ local SOURCE_FILTER_LABELS = {
 function UI:BuildSourceFilter()
     local f = self.frame
     local dd = CreateFrame("Frame", "TBCBisTrackerSourceFilterDropdown", f, "UIDropDownMenuTemplate")
-    -- Right-aligned to the edge of the list area (10 px inside the vertical
-    -- divider that separates the list column from the stat-cap column).
-    dd:SetPoint("TOPRIGHT", f, "TOPRIGHT", -10 - STAT_AREA_W, -32)
+    -- Row B, left. The template draws ~16 px inside its frame, hence the offset.
+    dd:SetPoint("TOPLEFT", f, "TOPLEFT", 2, ROW_B_Y + 2)
     UIDropDownMenu_SetWidth(dd, 110)
     self.sourceFilterDropdown = dd
     -- Hover tooltip on the dropdown caret
@@ -595,8 +702,8 @@ end
 function UI:BuildExportImportButtons()
     local f = self.frame
     local importBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-    importBtn:SetSize(60, 18)
-    importBtn:SetPoint("TOPRIGHT", f, "TOPRIGHT", -30 - STAT_AREA_W, -8)
+    importBtn:SetSize(70, 22)
+    importBtn:SetPoint("TOPRIGHT", f, "TOPRIGHT", -(STAT_AREA_W + 20), ROW_B_Y)
     importBtn:SetText("Import")
     importBtn:SetScript("OnClick", function() UI:ShowImportPopup() end)
     -- Preserve the OnClick by adding tooltip via separate scripts (hooking, not overwriting)
@@ -609,8 +716,8 @@ function UI:BuildExportImportButtons()
     importBtn:HookScript("OnLeave", function() GameTooltip:Hide() end)
 
     local exportBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-    exportBtn:SetSize(60, 18)
-    exportBtn:SetPoint("RIGHT", importBtn, "LEFT", -4, 0)
+    exportBtn:SetSize(70, 22)
+    exportBtn:SetPoint("RIGHT", importBtn, "LEFT", -6, 0)
     exportBtn:SetText("Export")
     exportBtn:SetScript("OnClick", function() UI:ShowExportPopup() end)
     exportBtn:HookScript("OnEnter", function(self)
@@ -625,16 +732,15 @@ end
 function UI:BuildMissingFilter()
     local f = self.frame
     local chk = CreateFrame("CheckButton", "TBCBisTrackerMissingChk", f, "UICheckButtonTemplate")
-    chk:SetSize(20, 20)
-    -- Same row as the filter dropdown, positioned to its LEFT so both filters
-    -- live together. The dropdown frame is ~155 px wide; we leave 10 px gap.
-    chk:SetPoint("TOPRIGHT", f, "TOPRIGHT", -175 - STAT_AREA_W, -32)
+    chk:SetSize(22, 22)
+    -- Row B, right of the source filter.
+    chk:SetPoint("TOPLEFT", f, "TOPLEFT", 172, ROW_B_Y)
     chk:SetChecked(TBCBisTrackerDB.showMissingOnly or false)
 
     local lbl = f:CreateFontString(nil, "OVERLAY")
-    SetFontSmall(lbl)
-    lbl:SetText("Show missing only")
-    lbl:SetPoint("RIGHT", chk, "LEFT", -2, 0)
+    SetFontNormal(lbl)
+    lbl:SetText("Missing only")
+    lbl:SetPoint("LEFT", chk, "RIGHT", 2, 0)
 
     chk:SetScript("OnClick", function(self)
         TBCBisTrackerDB.showMissingOnly = self:GetChecked()
@@ -654,67 +760,154 @@ end
 -- Column headers
 -- ─────────────────────────────────────────────
 
+function UI:BuildBrowseBanner()
+    local f = self.frame
+    local banner = CreateFrame("Frame", nil, f)
+    banner:SetSize(LIST_W - 40, BANNER_H)
+    AddFill(banner, 0.10, 0.13, 0.19, 0.95)
+    AddBorder(banner, 0.18, 0.23, 0.32, 1)
+
+    local back = CreateFrame("Button", nil, banner, "UIPanelButtonTemplate")
+    back:SetSize(130, 20)
+    back:SetPoint("RIGHT", banner, "RIGHT", -4, 0)
+    back:SetScript("OnClick", function() UI:SetViewClass(PlayerClass()) end)
+    banner.back = back
+
+    local txt = banner:CreateFontString(nil, "OVERLAY")
+    SetFontNormal(txt)
+    txt:SetPoint("LEFT", banner, "LEFT", 10, 0)
+    txt:SetPoint("RIGHT", back, "LEFT", -8, 0)
+    txt:SetJustifyH("LEFT")
+    txt:SetTextColor(0.79, 0.84, 0.93, 1)
+    banner.txt = txt
+
+    banner:Hide()
+    self.browseBanner = banner
+end
+
 function UI:BuildColumnHeaders()
-    local f      = self.frame
-    local yOff   = -130  -- below phase tabs (y=-94, h=30) with 6 px gap
-    local xStart = 20
+    local f = self.frame
+    local header = CreateFrame("Frame", nil, f)
+    header:SetSize(SCROLL_W, 16)
+    self.colHeader = header
 
     local headers = {
-        { text = "",        w = COL_ICON_W },
-        { text = "Slot",    w = COL_SLOT_W },
-        { text = "Item",    w = COL_ITEM_W },
-        { text = "Source",  w = COL_SRC_W  },
-        { text = "Got It",  w = COL_CHK_W  },
+        { text = "",       w = COL_ICON_W },
+        { text = "Slot",   w = COL_SLOT_W },
+        { text = "Item",   w = COL_ITEM_W },
+        { text = "Source", w = COL_SRC_W  },
+        { text = "Got it", w = COL_CHK_W, center = true },
     }
 
-    local x = xStart
+    local x = 0
     for _, h in ipairs(headers) do
         if h.text ~= "" then
-            local fs = f:CreateFontString(nil, "OVERLAY")
+            local fs = header:CreateFontString(nil, "OVERLAY")
             SetFontSmall(fs)
-            fs:SetTextColor(0.7, 0.7, 0.7, 1)
+            fs:SetTextColor(0.55, 0.53, 0.48, 1)
             fs:SetWidth(h.w)
-            fs:SetJustifyH("LEFT")
-            fs:SetPoint("TOPLEFT", f, "TOPLEFT", x, yOff)
-            fs:SetText(h.text)
+            fs:SetJustifyH(h.center and "CENTER" or "LEFT")
+            fs:SetPoint("LEFT", header, "LEFT", x, 0)
+            fs:SetText(h.text:upper())
         end
         x = x + h.w + 4
     end
 
-    -- divider
-    local div = f:CreateTexture(nil, "OVERLAY")
-    div:SetSize(LIST_W - 40, 1)
-    div:SetPoint("TOPLEFT", f, "TOPLEFT", xStart, yOff - 14)
-    div:SetTexture(0.4, 0.4, 0.4, 0.8)
+    local div = header:CreateTexture(nil, "OVERLAY")
+    div:SetColorTexture(0.3, 0.3, 0.3, 0.7)
+    div:SetHeight(1)
+    div:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 0, -2)
+    div:SetPoint("TOPRIGHT", header, "BOTTOMRIGHT", 10, -2)
 end
 
 -- ─────────────────────────────────────────────
--- Scrollable gear list
+-- Scrollable gear list (plain scroll frame + slim scrollbar; the old
+-- UIPanelScrollFrameTemplate art draws as grey boxes on newer clients)
 -- ─────────────────────────────────────────────
 
 function UI:BuildScrollFrame()
-    local f       = self.frame
-    local scrollY = -148
-    local scrollH = FRAME_H - 148 - 80  -- leave room for progress bar + badge/tier status
+    local f = self.frame
 
-    -- Scroll frame
-    local sf = CreateFrame("ScrollFrame", "TBCBisTrackerScroll", f, "UIPanelScrollFrameTemplate")
-    sf:SetSize(LIST_W - 44, scrollH)
-    sf:SetPoint("TOPLEFT", f, "TOPLEFT", 20, scrollY)
+    local sf = CreateFrame("ScrollFrame", "TBCBisTrackerScroll", f)
+    sf:EnableMouseWheel(true)
     self.scrollFrame = sf
 
-    -- Content frame inside scroll frame
     local content = CreateFrame("Frame", nil, sf)
-    content:SetSize(LIST_W - 44, 17 * (ROW_H + ROW_PAD))
+    content:SetSize(SCROLL_W, 17 * (ROW_H + ROW_PAD))
     sf:SetScrollChild(content)
     self.scrollContent = content
 
-    -- Pool of row frames
+    -- Slim scrollbar on the right of the list.
+    local bar = CreateFrame("Slider", nil, f)
+    bar:SetOrientation("VERTICAL")
+    bar:SetWidth(6)
+    bar:EnableMouse(true)
+    bar:SetPoint("TOPLEFT", sf, "TOPRIGHT", 6, 0)
+    bar:SetPoint("BOTTOMLEFT", sf, "BOTTOMRIGHT", 6, 0)
+    AddFill(bar, 0.11, 0.12, 0.14, 1)
+    local thumb = bar:CreateTexture(nil, "OVERLAY")
+    thumb:SetColorTexture(0.42, 0.39, 0.30, 1)
+    thumb:SetSize(6, 40)
+    bar:SetThumbTexture(thumb)
+    bar:SetMinMaxValues(0, 0)
+    bar:SetValue(0)
+    bar:SetScript("OnValueChanged", function(_, value) sf:SetVerticalScroll(value) end)
+    sf:SetScript("OnMouseWheel", function(_, delta)
+        local lo, hi = bar:GetMinMaxValues()
+        local v = bar:GetValue() - delta * (ROW_H + ROW_PAD) * 2
+        bar:SetValue(math.max(lo, math.min(hi, v)))
+    end)
+    self.scrollBar = bar
+    self.scrollThumb = thumb
+    -- The list only knows its height once laid out; redo the range then.
+    sf:SetScript("OnSizeChanged", function() UI:UpdateScrollRange(UI.lastRowCount or 0) end)
+
     self.rowPool = {}
     for i = 1, 18 do
         local row = self:CreateRowFrame(content, i)
         self.rowPool[i] = row
         row:Hide()
+    end
+end
+
+-- Positions the header, banner and list for the current state: one stage or
+-- phase tabs, browsing banner or not, TBC footer lines or not.
+function UI:ApplyLayout()
+    local f = self.frame
+    local top = (#addon.PHASES > 1) and (TABS_Y - PHASE_TAB_H - 6) or (ROW_B_Y - 30)
+    local browsing = IsBrowsing()
+    if browsing then
+        self.browseBanner:ClearAllPoints()
+        self.browseBanner:SetPoint("TOPLEFT", f, "TOPLEFT", 20, top)
+        self.browseBanner:Show()
+        top = top - BANNER_H - 6
+    else
+        self.browseBanner:Hide()
+    end
+    self.colHeader:ClearAllPoints()
+    self.colHeader:SetPoint("TOPLEFT", f, "TOPLEFT", 20, top)
+
+    local bottom = addon:IsForever() and LIST_BOTTOM_FOREVER or LIST_BOTTOM_TBC
+    self.scrollFrame:ClearAllPoints()
+    self.scrollFrame:SetPoint("TOPLEFT", f, "TOPLEFT", 20, top - 22)
+    self.scrollFrame:SetPoint("BOTTOMRIGHT", f, "BOTTOMLEFT", 20 + SCROLL_W, bottom)
+end
+
+-- Scroll range and thumb size for the current number of rows.
+function UI:UpdateScrollRange(rowCount)
+    self.lastRowCount = rowCount
+    local contentH = math.max(1, rowCount) * (ROW_H + ROW_PAD)
+    self.scrollContent:SetHeight(contentH)
+    local viewH = self.scrollFrame:GetHeight() or 0
+    local maxScroll = math.max(0, contentH - viewH)
+    self.scrollBar:SetMinMaxValues(0, maxScroll)
+    if self.scrollBar:GetValue() > maxScroll then self.scrollBar:SetValue(maxScroll) end
+    self.scrollFrame:SetVerticalScroll(self.scrollBar:GetValue())
+    if viewH > 0 and maxScroll > 0 then
+        self.scrollThumb:SetHeight(math.max(24, viewH * viewH / contentH))
+        self.scrollBar:Show()
+    else
+        self.scrollBar:Hide()
     end
 end
 
@@ -735,10 +928,16 @@ function UI:CreateRowFrame(parent, idx)
 
     local x = 0
 
-    -- Slot icon
+    -- Item icon with a quality-coloured border
+    local iconBorder = row:CreateTexture(nil, "BORDER")
+    iconBorder:SetSize(26, 26)
+    iconBorder:SetPoint("LEFT", row, "LEFT", x + 1, 0)
+    iconBorder:SetColorTexture(0.35, 0.35, 0.35, 1)
+    row.iconBorder = iconBorder
     local iconTex = row:CreateTexture(nil, "ARTWORK")
-    iconTex:SetSize(22, 22)
-    iconTex:SetPoint("LEFT", row, "LEFT", x + 2, 0)
+    iconTex:SetSize(24, 24)
+    iconTex:SetPoint("CENTER", iconBorder, "CENTER", 0, 0)
+    iconTex:SetTexCoord(0.07, 0.93, 0.07, 0.93)
     row.iconTex = iconTex
     x = x + COL_ICON_W + 4
 
@@ -757,18 +956,27 @@ function UI:CreateRowFrame(parent, idx)
     SetFontNormal(itemLbl)
     itemLbl:SetWidth(COL_ITEM_W)
     itemLbl:SetJustifyH("LEFT")
+    itemLbl:SetWordWrap(false)
     itemLbl:SetPoint("LEFT", row, "LEFT", x, 0)
     row.itemLbl = itemLbl
     x = x + COL_ITEM_W + 4
 
-    -- Source label
+    -- Source: type on top (coloured), where-from underneath (dim, one line)
     local srcLbl = row:CreateFontString(nil, "OVERLAY")
     SetFontSmall(srcLbl)
     srcLbl:SetWidth(COL_SRC_W)
     srcLbl:SetJustifyH("LEFT")
-    srcLbl:SetPoint("LEFT", row, "LEFT", x, 0)
+    srcLbl:SetPoint("LEFT", row, "LEFT", x, 7)
     srcLbl:SetTextColor(0.65, 0.65, 0.65, 1)
     row.srcLbl = srcLbl
+    local srcDetail = row:CreateFontString(nil, "OVERLAY")
+    SetFontSmall(srcDetail)
+    srcDetail:SetWidth(COL_SRC_W)
+    srcDetail:SetJustifyH("LEFT")
+    srcDetail:SetWordWrap(false)
+    srcDetail:SetPoint("LEFT", row, "LEFT", x, -7)
+    srcDetail:SetTextColor(0.64, 0.62, 0.55, 1)
+    row.srcDetail = srcDetail
     -- Invisible mouse-capture overlay for the source column — shows a quest
     -- tooltip when this row's item has a questId.
     local srcHover = CreateFrame("Frame", nil, row)
@@ -805,7 +1013,7 @@ function UI:CreateRowFrame(parent, idx)
                 GameTooltip:AddLine("|cffffd700Quest reward|r (id " .. qid .. ")", 1, 1, 1, true)
             end
             GameTooltip:AddLine("|cffaaaaaa" .. addon.WOWHEAD_QUEST_BASE .. qid .. "|r", 1, 1, 1, true)
-            GameTooltip:AddLine("|cff888888Ctrl+click for URL  •  Shift+click for chat-link|r", 0.7, 0.7, 0.7, true)
+            GameTooltip:AddLine("|cff888888Ctrl+click for URL  ·  Shift+click for chat-link|r", 0.7, 0.7, 0.7, true)
         end
         GameTooltip:Show()
     end)
@@ -854,11 +1062,17 @@ function UI:CreateRowFrame(parent, idx)
     row.srcHover = srcHover
     x = x + COL_SRC_W + 4
 
-    -- Checkbox
+    -- Checkbox (a dash instead while browsing another class)
     local chk = CreateFrame("CheckButton", nil, row, "UICheckButtonTemplate")
-    chk:SetSize(20, 20)
-    chk:SetPoint("LEFT", row, "LEFT", x + 4, 0)
+    chk:SetSize(22, 22)
+    chk:SetPoint("LEFT", row, "LEFT", x + (COL_CHK_W - 22) / 2, 0)
     row.chk = chk
+    local dash = row:CreateFontString(nil, "OVERLAY")
+    SetFontNormal(dash)
+    dash:SetPoint("CENTER", chk, "CENTER", 0, 0)
+    dash:SetText("|cff4d4f57-|r")
+    dash:Hide()
+    row.dash = dash
 
     -- Hover highlight + tooltip; shift = side-by-side comparison
     row:SetScript("OnEnter", function(self)
@@ -1303,13 +1517,13 @@ end
 function UI:BuildBadgeStatus()
     local f = self.frame
     local fs = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    fs:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 22, 42)
+    fs:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 22, 44)
     fs:SetJustifyH("LEFT")
     self.badgeStatus = fs
 
     -- Hover: show breakdown of unobtained badge items
     local hoverFrame = CreateFrame("Frame", nil, f)
-    hoverFrame:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 18, 38)
+    hoverFrame:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 18, 40)
     hoverFrame:SetSize(380, 16)
     hoverFrame:EnableMouse(true)
     hoverFrame:SetScript("OnEnter", function(self)
@@ -1344,14 +1558,14 @@ end
 function UI:BuildFarmPlan()
     local f = self.frame
     local fs = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    fs:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -22 - STAT_AREA_W, 42)
+    fs:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -22 - STAT_AREA_W, 44)
     fs:SetJustifyH("RIGHT")
     fs:SetText("|cff00d0ff[Hover for farm plan]|r")
     self.farmHint = fs
 
     local hover = CreateFrame("Frame", nil, f)
     hover:SetSize(160, 16)
-    hover:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -18 - STAT_AREA_W, 38)
+    hover:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -18 - STAT_AREA_W, 40)
     hover:EnableMouse(true)
     hover:SetScript("OnEnter", function(self)
         local class = TBCBisTrackerDB.lastClass
@@ -1377,7 +1591,7 @@ function UI:BuildFarmPlan()
                                 if currentId >= requiredId then
                                     statusText = "|TInterface\\RAIDFRAME\\ReadyCheck-Ready:10:10|t |cff00ff00" .. current .. "|r"
                                 else
-                                    statusText = "|cffff8800" .. current .. " → " .. requiredStanding .. "|r"
+                                    statusText = "|cffff8800" .. current .. " to " .. requiredStanding .. "|r"
                                 end
                             else
                                 statusText = "|cff888888not yet discovered|r"
@@ -1446,7 +1660,7 @@ function UI:BuildStatCapPanel()
     local hint = panel:CreateFontString(nil, "OVERLAY")
     SetFontSmall(hint)
     hint:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -UI_PAL.pad, -UI_PAL.pad - 2)
-    hint:SetText(UI_PAL.muted .. "right-click minimap →|r")
+    hint:SetText(UI_PAL.muted .. "3D: right-click map icon|r")
     hint:SetJustifyH("RIGHT")
     self.statPanelSlotsHint = hint
 
@@ -1627,6 +1841,80 @@ function UI:BuildStatCapPanel()
     note:SetTextColor(0.6, 0.6, 0.6, 1)
     self.statPanelNote = note
 
+    -- WoW Forever has no rating caps: the same space lists where the
+    -- still-missing items come from (the farm plan, no longer hidden in a hover).
+    if addon:IsForever() then
+        statTitle:SetText(UI_PAL.accent .. "Where to get it|r  " .. UI_PAL.muted .. "still needed|r")
+        fdiv:Hide()
+        self.farmLines = {}
+        local lineW = STAT_PANEL_W - 2 * (UI_PAL.pad + 4)
+        for i = 1, 16 do
+            local line = CreateFrame("Frame", nil, body)
+            line:SetSize(lineW, 16)
+            line:SetPoint("TOPLEFT", body, "TOPLEFT", 0, -(i - 1) * 17)
+            local kind = line:CreateFontString(nil, "OVERLAY")
+            SetFontSmall(kind)
+            kind:SetPoint("LEFT", line, "LEFT", 0, 0)
+            kind:SetWidth(62)
+            kind:SetJustifyH("LEFT")
+            line.kind = kind
+            local count = line:CreateFontString(nil, "OVERLAY")
+            SetFontSmall(count)
+            count:SetPoint("RIGHT", line, "RIGHT", 0, 0)
+            count:SetJustifyH("RIGHT")
+            line.count = count
+            local where = line:CreateFontString(nil, "OVERLAY")
+            SetFontSmall(where)
+            where:SetPoint("LEFT", kind, "RIGHT", 4, 0)
+            where:SetPoint("RIGHT", count, "LEFT", -4, 0)
+            where:SetJustifyH("LEFT")
+            where:SetWordWrap(false)
+            line.where = where
+            line:Hide()
+            self.farmLines[i] = line
+        end
+    end
+
+end
+
+local FARM_TYPE_LABELS = {
+    raid = "Raid", heroic = "Heroic", dungeon = "Dungeon", crafted = "Profession",
+    reputation = "Vendor", world = "World", quest = "Quest", pvp = "PvP",
+}
+
+-- Forever side panel: still-needed items grouped by where they come from.
+function UI:RefreshFarmPanel(class, spec, phase)
+    for _, line in ipairs(self.farmLines) do line:Hide() end
+    local groups = addon:GetFarmBreakdown(class, spec, phase)
+    if #groups == 0 then
+        self.statPanelNote:SetText(UI_PAL.accent .. "Everything obtained!|r")
+        return
+    end
+    local i, hidden = 0, 0
+    for _, group in ipairs(groups) do
+        local color = SOURCE_TYPE_COLORS[group.type] or "|cffcccccc"
+        for n, loc in ipairs(group.locations) do
+            if i < #self.farmLines then
+                i = i + 1
+                local line = self.farmLines[i]
+                line.kind:SetText(n == 1 and (color .. (FARM_TYPE_LABELS[group.type] or group.type) .. "|r") or "")
+                local where = ShortSource({ source = loc.location .. " (x)" })
+                local first = loc.items and loc.items[1] and loc.items[1].entry
+                local prof = first and addon:ParseCraftingProfession(first)
+                if prof and not addon:GetPlayerProfessionLevel(prof) then
+                    where = "|cffff6b5a" .. where .. " (not learned)|r"
+                end
+                line.where:SetText(where)
+                line.count:SetText(UI_PAL.muted .. loc.count .. "|r")
+                line:Show()
+            else
+                hidden = hidden + loc.count
+            end
+        end
+    end
+    if hidden > 0 then
+        self.statPanelNote:SetText(UI_PAL.muted .. "+" .. hidden .. " more|r")
+    end
 end
 
 function UI:RefreshStatCaps()
@@ -1664,6 +1952,12 @@ function UI:RefreshStatCaps()
 
     if not (class and spec) then
         self.statPanelNote:SetText("No spec selected.")
+        return
+    end
+
+    if self.farmLines then
+        self.statPanelNote:SetText("")
+        self:RefreshFarmPanel(class, spec, phase)
         return
     end
 
@@ -1735,13 +2029,13 @@ end
 function UI:BuildTierStatus()
     local f = self.frame
     local fs = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    fs:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 22, 58)
+    fs:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 22, 60)
     fs:SetJustifyH("LEFT")
     self.tierStatus = fs
 
     -- Hover area covering the tier-set text — explains 2pc/4pc bonuses
     local hover = CreateFrame("Frame", nil, f)
-    hover:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 18, 56)
+    hover:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 18, 58)
     hover:SetSize(380, 16)
     hover:EnableMouse(true)
     hover:SetScript("OnEnter", function(self)
@@ -1813,20 +2107,20 @@ function UI:RefreshBadgeStatus()
     local phase = TBCBisTrackerDB.lastPhase
     local owned, total, items = addon:GetBadgeProgress(class, spec, phase)
     -- Compact badge readout. The verbose breakdown lives in the hover tooltip.
-    -- Format: "[icon] 0 / 66 BoJ  •  2 items"
+    -- Format: "[icon] 0 / 66 BoJ  ·  2 items"
     local coin = "|TInterface\\Icons\\Spell_Holy_ChampionsBond:14:14|t"
     if total == 0 then
         self.badgeStatus:SetText(coin .. " " .. UI_PAL.muted .. owned .. " BoJ|r")
     elseif owned >= total then
         self.badgeStatus:SetText(string.format(
             "%s %s%d / %d BoJ|r  %s|cff60ff60enough!|r  %s%d items|r",
-            coin, UI_PAL.accent, owned, total, UI_PAL.muted .. "•|r ", UI_PAL.muted, #items
+            coin, UI_PAL.accent, owned, total, UI_PAL.muted .. "·|r ", UI_PAL.muted, #items
         ))
     else
         local diff = total - owned
         self.badgeStatus:SetText(string.format(
             "%s %s%d / %d BoJ|r  %s|cffff8800need %d more|r  %s%d items|r",
-            coin, UI_PAL.mutedSoft, owned, total, UI_PAL.muted .. "•|r ", UI_PAL.muted .. "• ", #items
+            coin, UI_PAL.mutedSoft, owned, total, UI_PAL.muted .. "·|r ", diff, UI_PAL.muted .. "· ", #items
         ))
     end
 end
@@ -1834,44 +2128,42 @@ end
 function UI:BuildProgressBar()
     local f = self.frame
 
-    -- Divider line above the footer block to visually separate it from the gear list
+    -- Divider above the footer
     local fdiv = CreateDivider(f, UI_PAL.dividerSoft)
-    fdiv:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 20, 78)
-    fdiv:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -20 - STAT_AREA_W, 78)
+    fdiv:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 20, 38)
+    fdiv:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -20 - STAT_AREA_W, 38)
     fdiv:SetHeight(1)
 
     local container = CreateFrame("Frame", nil, f)
     container:SetSize(LIST_W - 40, PROGRESS_H)
-    container:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 20, 8)
+    container:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 20, 12)
     container:EnableMouse(true)
     self.progressContainer = container
 
-    -- Background track
-    local track = container:CreateTexture(nil, "BACKGROUND")
-    track:SetAllPoints()
-    track:SetTexture("Interface\\ChatFrame\\ChatFrameBackground")
-    track:SetVertexColor(0.1, 0.1, 0.1, 0.8)
-
-    -- Fill bar
-    local fill = container:CreateTexture(nil, "ARTWORK")
-    fill:SetPoint("LEFT", container, "LEFT", 2, 0)
-    fill:SetHeight(PROGRESS_H - 4)
-    fill:SetTexture("Interface\\TargetingFrame\\UI-StatusBar")
-    fill:SetVertexColor(0.1, 0.7, 0.2, 0.85)
-    self.progressFill = fill
-
-    -- Text
+    -- Text on the right, slim bar filling the rest
     local txt = container:CreateFontString(nil, "OVERLAY")
     SetFontNormal(txt)
-    txt:SetAllPoints()
-    txt:SetJustifyH("CENTER")
+    txt:SetPoint("RIGHT", container, "RIGHT", 0, 0)
+    txt:SetJustifyH("RIGHT")
     self.progressTxt = txt
 
-    -- Tooltip on hover — explains what the bar represents
+    local trackW = LIST_W - 40 - 190
+    local track = container:CreateTexture(nil, "BACKGROUND")
+    track:SetSize(trackW, 10)
+    track:SetPoint("LEFT", container, "LEFT", 0, 0)
+    track:SetColorTexture(0.11, 0.12, 0.14, 1)
+    self.progressTrackW = trackW
+
+    local fill = container:CreateTexture(nil, "ARTWORK")
+    fill:SetPoint("LEFT", track, "LEFT", 0, 0)
+    fill:SetHeight(10)
+    fill:SetColorTexture(0.25, 0.62, 0.18, 1)
+    self.progressFill = fill
+
     container:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        GameTooltip:SetText("BiS progress for this phase", 1, 1, 1)
-        GameTooltip:AddLine("Counts how many BiS slots you've ticked off. Click items in the list above to mark them obtained.", 0.8, 0.8, 0.8, true)
+        GameTooltip:SetText("BiS progress", 1, 1, 1)
+        GameTooltip:AddLine("How many BiS slots you've ticked off. Items you equip or carry are ticked automatically.", 0.8, 0.8, 0.8, true)
         GameTooltip:Show()
     end)
     container:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -1893,19 +2185,19 @@ function UI:Refresh()
 
     local data = addon:GetPhaseData(class, spec, phase)
 
-    -- Update title — class color + spec + phase as a contextual subtitle
-    if class and spec then
+    local browsing = IsBrowsing()
+    self:ApplyLayout()
+    if browsing then
         local info = addon.CLASS_INFO[class]
-        if info then
-            self.titleText:SetText(
-                UI_PAL.accent .. addon.TITLE .. "|r" ..
-                "  |cff" .. info.color .. info.name .. " " .. spec .. "|r" ..
-                "  " .. UI_PAL.muted .. addon.PHASE_LABELS[phase] .. "|r"
-            )
-        end
+        local home = addon.CLASS_INFO[PlayerClass()]
+        self.browseBanner.txt:SetText(
+            "Browsing |cff" .. info.color .. info.name .. "|r: planning only. Ticks stay on your |cff"
+            .. home.color .. home.name .. "|r.")
+        self.browseBanner.back:SetText("Back to " .. home.name)
     end
 
     if not data then
+        self:UpdateScrollRange(0)
         self:UpdateProgress(0, 0)
         return
     end
@@ -1936,8 +2228,9 @@ function UI:Refresh()
             row:Show()
             row.slotKey = slot
 
-            -- Slot icon + name (always shown)
+            -- Slot icon until the item's own icon is known
             row.iconTex:SetTexture(addon.SLOT_ICONS[slot] or "Interface\\Icons\\INV_Misc_QuestionMark")
+            row.iconBorder:SetColorTexture(0.35, 0.35, 0.35, 1)
             row.slotLbl:SetText(addon.SLOT_LABELS[slot] or slot)
 
             if entry then
@@ -1947,6 +2240,12 @@ function UI:Refresh()
                 row.questId    = entry.questId
                 local itemName = addon:GetItemName(itemId)
                 local color    = addon:GetItemQualityColor(itemId)
+                local texture  = select(10, GetItemInfo(itemId))
+                    or (C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(itemId))
+                if texture then row.iconTex:SetTexture(texture) end
+                row.iconBorder:SetColorTexture(ItemQualityRGB(itemId))
+                local suffix = SuffixHint(entry, itemName)
+                local suffixText = suffix and ("|cffa39d8c" .. suffix .. "|r") or ""
                 local altSuffix = (altCount > 1) and (" |cff888888[" .. selectedIdx .. "/" .. altCount .. "]|r") or ""
 
                 local tierInfo = addon:GetTierInfo(entry)
@@ -1965,7 +2264,7 @@ function UI:Refresh()
                     if #userNote > 36 then preview = preview .. "…" end
                     noteSuffix = "  |TInterface\\GossipFrame\\TrainerGossipIcon:12:12|t |cffd6b85a" .. preview .. "|r"
                 end
-                row.itemLbl:SetText(tierPrefix .. color .. itemName .. "|r" .. altSuffix .. noteSuffix)
+                row.itemLbl:SetText(tierPrefix .. color .. itemName .. "|r" .. suffixText .. altSuffix .. noteSuffix)
 
                 -- Source column — short category label inline; full text shown
                 -- in the source-column hover tooltip.
@@ -1982,6 +2281,8 @@ function UI:Refresh()
                 -- Inline indicators (texture-based — WoW renders Blizzard textures
                 -- reliably, unlike unicode glyphs that depend on the font).
                 local indicators = ""
+                local detail = ShortSource(entry)
+                local detailColor = "|cffa39d8c"
                 if entry.sourceType == "crafted" then
                     local prof = addon:ParseCraftingProfession(entry)
                     if prof then
@@ -1990,11 +2291,14 @@ function UI:Refresh()
                             indicators = indicators .. " |TInterface\\RAIDFRAME\\ReadyCheck-Ready:12:12|t"
                             row.profStatus = "|cff00ff00You have " .. prof .. " (" .. level .. ").|r"
                         else
-                            indicators = indicators .. " |TInterface\\RAIDFRAME\\ReadyCheck-NotReady:12:12|t"
+                            -- Spelled out instead of an unexplained red cross.
+                            detail = "Needs " .. detail
+                            detailColor = "|cffff6b5a"
                             row.profStatus = "|cffff6060You don't have " .. prof .. ".|r"
                         end
                     end
                 end
+                row.srcDetail:SetText(detailColor .. detail .. "|r")
                 if entry.questId and entry.questId > 0 then
                     -- Quest ! icon — the gold "available quest" exclamation mark
                     indicators = indicators .. " |TInterface\\GossipFrame\\AvailableQuestIcon:12:12|t"
@@ -2008,7 +2312,9 @@ function UI:Refresh()
                     row.slotLbl:SetText(slotName)
                 end
 
-                row.chk:Show()
+                -- Ticks belong to your own class; browsing shows a dash.
+                row.chk:SetShown(not browsing)
+                row.dash:SetShown(browsing)
                 row.chk:Enable()
                 row.chk:SetChecked(isObtained)
                 row.chk:SetScript("OnClick", function(chkSelf)
@@ -2034,16 +2340,17 @@ function UI:Refresh()
                 row.profStatus = nil
                 row.userNote = nil
                 row.itemLbl:SetText("|cff666666No BiS pick set|r  |cff444444· right-click to import|r")
-                row.srcLbl:SetText("|cff444444—|r")
+                row.srcLbl:SetText("|cff444444-|r")
+                row.srcDetail:SetText("")
                 row.chk:SetChecked(false)
                 row.chk:Hide()
+                row.dash:Hide()
                 row.slotLbl:SetTextColor(0.45, 0.45, 0.45, 1)
             end
         end
     end
 
-    -- Resize content frame
-    self.scrollContent:SetHeight(math.max(1, rowIdx) * (ROW_H + ROW_PAD))
+    self:UpdateScrollRange(rowIdx)
 
     self:UpdateProgress(obtained, total)
     self:RefreshPhaseTabs()
@@ -2054,27 +2361,20 @@ end
 
 function UI:UpdateProgress(obtained, total)
     if total == 0 then
-        self.progressFill:SetWidth(2)
-        self.progressTxt:SetText("|cffaaaaaa No data for this selection.|r")
+        self.progressFill:SetWidth(1)
+        self.progressTxt:SetText("|cffaaaaaaNo data for this selection.|r")
         return
     end
 
-    local pct  = obtained / total
-    local barW = (LIST_W - 44) * pct
-    self.progressFill:SetWidth(math.max(2, barW))
-
+    local pct = obtained / total
+    self.progressFill:SetWidth(math.max(1, self.progressTrackW * pct))
     if obtained == total then
-        self.progressFill:SetVertexColor(0.9, 0.75, 0.1, 0.9)  -- gold when complete
-        self.progressTxt:SetText(
-            "|cffffd700All " .. total .. " items obtained!|r  " ..
-            ColorText("Phase complete!", "ffffd700")
-        )
+        self.progressFill:SetColorTexture(0.9, 0.75, 0.1, 1)  -- gold when complete
+        self.progressTxt:SetText("|cffffd700All " .. total .. " obtained!|r")
     else
-        self.progressFill:SetVertexColor(0.1, 0.7, 0.2, 0.85)
-        self.progressTxt:SetText(
-            "|cff00ff00" .. obtained .. "/" .. total .. "|r items obtained" ..
-            "  |cffaaaaaa(" .. math.floor(pct * 100) .. "% complete)|r"
-        )
+        self.progressFill:SetColorTexture(0.25, 0.62, 0.18, 1)
+        self.progressTxt:SetText("|cff6fdc55" .. obtained .. " / " .. total .. "|r obtained  "
+            .. UI_PAL.muted .. math.floor(pct * 100) .. "%|r")
     end
 end
 
@@ -2410,7 +2710,7 @@ function UI:RefreshBisPreview(class, spec, phase)
                 parts[#parts + 1] = UI_PAL.mutedSoft .. r.label .. ": " .. r.current .. "|r"
             end
         end
-        self.previewStatsLbl:SetText(table.concat(parts, "  •  "))
+        self.previewStatsLbl:SetText(table.concat(parts, "  ·  "))
     else
         self.previewStatsLbl:SetText("")
     end

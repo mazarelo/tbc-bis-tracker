@@ -156,5 +156,121 @@ local nH, wH = countFaction("Horde")
 check(wA == 0 and wH == 0, "no other-faction items shown (" .. nA .. " Alliance / " .. nH .. " Horde rows)")
 check(nA < entries and nH < entries, "faction-only items filtered out")
 
+local function windowTest(toc)
+    local forever = toc < 20000
+    print(forever and "Window (Forever, class browsing)" or "Window (TBC)")
+    -- Widget mock: tracks shown state, text, scripts; anything else is a no-op.
+    local function widget()
+        local w = { shown = true, scripts = {}, text = "", checked = false, h = 300, value = 0, lo = 0, hi = 0 }
+        local m = {}
+        function m:Show() self.shown = true end
+        function m:Hide() self.shown = false end
+        function m:SetShown(v) self.shown = v and true or false end
+        function m:IsShown() return self.shown end
+        function m:SetText(t) self.text = t or "" end
+        function m:GetText() return self.text end
+        function m:SetScript(k, fn) self.scripts[k] = fn end
+        function m:HookScript(k, fn) self.scripts[k] = fn end
+        function m:GetScript(k) return self.scripts[k] end
+        function m:SetChecked(v) self.checked = v and true or false end
+        function m:GetChecked() return self.checked end
+        function m:GetHeight() return self.h end
+        function m:GetWidth() return 100 end
+        function m:GetStringWidth() return 50 end
+        function m:GetFrameLevel() return 1 end
+        function m:GetMinMaxValues() return self.lo, self.hi end
+        function m:SetMinMaxValues(lo, hi) self.lo, self.hi = lo, hi end
+        function m:GetValue() return self.value end
+        function m:SetValue(v) self.value = v end
+        function m:CreateTexture() return widget() end
+        function m:CreateFontString() return widget() end
+        function m:GetPoint() return "CENTER", nil, "CENTER", 0, 0 end
+        return setmetatable(w, { __index = function(_, k) return m[k] or function() end end })
+    end
+
+    local env = freshGlobals(toc)
+    env.TBCBisTracker = {}
+    env.TBCBisTrackerDB = {}
+    env.TBCBisTrackerCharDB = {}
+    env.GetNumSkillLines = function() return 0 end
+    -- The client names random-suffix items by their base item.
+    env.GetItemInfo = function(id) if id == 7436 then return "Twilight Cape", nil, 2 end end
+    env.GetNumFactions = function() return 0 end
+    env.UnitClass = function() return "Paladin", "PALADIN" end
+    env.UnitFactionGroup = function() return "Alliance" end
+    env.CreateFrame = function()
+        local f = widget()
+        local orig = f.SetScript
+        f.SetScript = function(self, k, fn) if k == "OnEvent" then env.events[#env.events + 1] = fn end self.scripts[k] = fn end
+        return f
+    end
+    env.GameTooltip = widget()
+    env.UIParent = widget()
+    env.UIDropDownMenu_SetText = function(dd, text) dd.ddText = text end
+    env.tabSelected = {}
+    env.PanelTemplates_TabResize = function() end
+    env.PanelTemplates_SelectTab = function(tab) env.tabSelected[tab] = true end
+    env.PanelTemplates_DeselectTab = function(tab) env.tabSelected[tab] = false end
+    env.C_Timer = { After = function(_, fn) fn() end }
+    for _, file in ipairs({ "Localization.lua", "Core.lua", "Database.lua", "Database_Forever.lua", "Forever.lua", "UI.lua" }) do
+        local chunk = assert(loadfile(ADDON_DIR .. file))
+        setfenv(chunk, env)
+        chunk()
+    end
+    for _, fn in ipairs(env.events) do fn(nil, "ADDON_LOADED", "TBCBisTracker") end
+    local addon, UI = env.TBCBisTracker, env.TBCBisTracker.UI
+    local ok, err = pcall(function() UI:Build(); UI:Refresh() end)
+    check(ok, "window builds and fills" .. (ok and "" or (" (" .. tostring(err) .. ")")))
+    if not ok then return end
+
+    local db = env.TBCBisTrackerDB
+    check(db.lastClass == "PALADIN" and db.lastSpec == "Holy", "opens on your own class")
+    check(tostring(UI.classDropdown.ddText):find("Paladin"), "class dropdown shows Paladin")
+    check(UI.specBtns[1].classic and env.tabSelected[UI.specBtns[1]] == true and env.tabSelected[UI.specBtns[2]] == false,
+        "spec tabs use the classic tab template, Holy selected")
+    if forever then
+        check(UI.stageChip ~= nil and next(UI.phaseTabs) == nil, "single stage shown as a tag, no tab row")
+    else
+        check(UI.stageChip == nil and next(UI.phaseTabs) ~= nil, "phase tab row")
+    end
+    check(not UI.browseBanner:IsShown(), "no browsing banner on your own class")
+    local row = UI.rowPool[1]
+    check(row:IsShown() and row.chk:IsShown() and not row.dash:IsShown(), "own class: Got it ticks shown")
+    local shown = 0
+    for _, line in ipairs(UI.farmLines or {}) do if line:IsShown() then shown = shown + 1 end end
+    if forever then
+        check(shown > 0, "side panel lists where to get items (" .. shown .. " lines)")
+    else
+        check(UI.farmLines == nil and UI.badgeStatus ~= nil, "stat caps and badge line kept")
+    end
+
+    -- Browse Mage
+    ok, err = pcall(function() UI:SetViewClass("MAGE") end)
+    check(ok, "switching class works" .. (ok and "" or (" (" .. tostring(err) .. ")")))
+    check(db.lastClass == "MAGE" and db.lastSpec == "Arcane", "Mage selected, first spec")
+    check(tostring(UI.classDropdown.ddText):find("Mage"), "dropdown shows Mage")
+    check(UI.browseBanner:IsShown() and UI.browseBanner.txt.text:find("Mage"), "browsing banner shown")
+    check(not row.chk:IsShown() and row.dash:IsShown(), "browsing: ticks replaced by a dash")
+    db.lastSpec = "Frost"
+
+    -- And back
+    UI:SetViewClass("PALADIN")
+    check(not UI.browseBanner:IsShown() and row.chk:IsShown(), "back to Paladin: ticks back, banner gone")
+    UI:SetViewClass("MAGE")
+    check(db.lastSpec == "Frost", "remembers the spec you last viewed per class")
+
+    if not forever then return end
+    -- Suffix hint and source detail on the Holy rows
+    UI:SetViewClass("PALADIN")
+    local found
+    for _, r in ipairs(UI.rowPool) do
+        if r:IsShown() and r.slotKey == "back" then found = r end
+    end
+    check(found and found.srcDetail.text:find("World drop · auction house"), "source detail spelled out: " .. tostring(found and found.srcDetail.text))
+    check(found and found.itemLbl.text:find("Twilight Cape|r|cffa39d8c of Healing", 1, true), "suffix shown next to the base name: " .. tostring(found and found.itemLbl.text))
+end
+windowTest(16001)
+windowTest(20505)
+
 print(failures == 0 and "\nALL PASSED" or ("\n" .. failures .. " FAILED"))
 os.exit(failures == 0 and 0 or 1)

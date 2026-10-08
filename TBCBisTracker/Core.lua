@@ -16,7 +16,7 @@ local GetContainerItemID   = GetContainerItemID   or (C_Container and C_Containe
 -- Constants
 -- ─────────────────────────────────────────────
 
-addon.TITLE = "TBC BIS Tracker"
+addon.TITLE = "ZenaBis"
 addon.GAME_MODE = "tbc"
 
 addon.PHASES = { "prebis", "phase1", "phase2", "phase3", "phase4", "phase5", "pvp" }
@@ -1347,7 +1347,7 @@ function addon:ResetPhase(class, spec, phase)
 end
 
 function addon:Print(msg)
-    DEFAULT_CHAT_FRAME:AddMessage("|cffffd700[" .. (self:IsForever() and "BiS Forever" or "TBC BIS") .. "]|r " .. tostring(msg))
+    DEFAULT_CHAT_FRAME:AddMessage("|cffffd700[" .. (self:IsForever() and "ZenaBis Forever" or "ZenaBis") .. "]|r " .. tostring(msg))
 end
 
 -- ─────────────────────────────────────────────
@@ -1793,6 +1793,16 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1)
         -- A previously-uncached item now has stats. Re-render the cap panel.
         if addon.UI and addon.UI.RefreshStatCaps then
             addon.UI:RefreshStatCaps()
+        end
+        -- Rows show names, icons and quality borders once items load; items
+        -- arrive in bursts, so refresh the open list at most every 0.3 s.
+        local frame = addon.UI and addon.UI.frame
+        if frame and frame:IsShown() and not addon.rowRefreshPending and C_Timer then
+            addon.rowRefreshPending = true
+            C_Timer.After(0.3, function()
+                addon.rowRefreshPending = false
+                if addon.UI.frame:IsShown() then addon.UI:Refresh() end
+            end)
         end
         -- And re-apply the BiS preview if it's open and items were still loading.
         if addon.UI and addon.UI.previewFrame and addon.UI.previewFrame:IsShown() then
