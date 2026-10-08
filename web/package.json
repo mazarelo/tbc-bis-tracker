@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Static companion site for the TBC BIS Tracker WoW addon.",
+  "description": "Static companion site for the ZenaBis WoW addon (TBC Anniversary + WoW Forever).",
   "homepage": "https://www.curseforge.com/wow/addons/zenabistracker",
   "repository": {
     "type": "git",

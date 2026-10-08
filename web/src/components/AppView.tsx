@@ -89,7 +89,7 @@ export function AppView(props: AppViewProps) {
   const game = GAMES[props.game ?? "tbc"];
   const faction = game.hasFactions ? (props.faction ?? null) : null;
   const footerVersions = (() => {
-    const parts = ["Round-trips with TBCBisTracker addon"];
+    const parts = ["Round-trips with the ZenaBis addon"];
     if (props.addonVersion) parts.push(`addon v${props.addonVersion}`);
     if (props.version) parts.push(`web v${props.version}`);
     return parts.join(" · ");

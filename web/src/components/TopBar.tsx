@@ -36,10 +36,10 @@ export function TopBar({
   const info = GAMES[game];
   return (
     <header className="topbar">
-      <a className="brand" href="#" aria-label={`${info.label} BiS Tracker`}>
-        <span className="brand-mark">{game === "forever" ? "F" : "T"}</span>
+      <a className="brand" href="#" aria-label={`ZenaBis — ${info.subtitle}`}>
+        <span className="brand-mark">Z</span>
         <span className="brand-labels">
-          <span className="brand-name">{info.label.toUpperCase()} BIS TRACKER</span>
+          <span className="brand-name">ZENABIS</span>
           <span className="brand-sub">{info.subtitle}</span>
         </span>
       </a>
