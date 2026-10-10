@@ -31,9 +31,10 @@ end)
 -- ─────────────────────────────────────────────
 -- LIST_W is the width of the gear-list / filters / footer area on the left.
 -- STAT_AREA_W is the width of the stat-cap column on the right inside the
--- same window. FRAME_W is the total window width.
+-- same window (TBC only). FRAME_W is the total window width.
 local LIST_W       = 760
-local STAT_AREA_W  = 230
+local STAT_COL_W   = 230
+local STAT_AREA_W  = STAT_COL_W           -- set in Build: 0 on WoW Forever (no side column)
 local FRAME_W      = LIST_W + STAT_AREA_W
 local FRAME_H      = 640
 local PHASE_TAB_H  = 24
@@ -49,6 +50,7 @@ local COL_CHK_W    = 40
 
 -- Vertical layout (offsets from the top of the window).
 local ROW_A_Y      = -30   -- class dropdown, spec tabs, stage chip
+local ROW_A_X      = 0     -- set in Build: right of the portrait on the game's window
 local ROW_B_Y      = -62   -- source filter, missing only, export/import
 local TABS_Y       = -92   -- phase tabs (only when there's more than one phase)
 local BANNER_H     = 26
@@ -140,6 +142,287 @@ local function AddSimpleTooltip(frame, title, desc, anchor)
 end
 
 -- ─────────────────────────────────────────────
+-- Blizzard's own templates
+-- ─────────────────────────────────────────────
+-- Same idea as Forever Chat: the windows are built from the game's own templates,
+-- atlases and font objects when the client has them, so they look like the client's
+-- own windows and UI add-ons that restyle Blizzard frames restyle these too. Each
+-- one falls back to the flat look below on a client without it.
+
+local function HasTemplate(name)
+    if C_XMLUtil and C_XMLUtil.GetTemplateInfo then
+        local ok, info = pcall(C_XMLUtil.GetTemplateInfo, name)
+        return ok and info ~= nil
+    end
+    return false
+end
+
+-- CreateFrame with a template, or nil when the client doesn't have it.
+local function FromTemplate(kind, name, parent, template)
+    if not HasTemplate(template) then return nil end
+    local ok, f = pcall(CreateFrame, kind, name, parent, template)
+    return ok and f or nil
+end
+
+local function HasAtlas(atlas)
+    if not (C_Texture and C_Texture.GetAtlasInfo) then return false end
+    local ok, info = pcall(C_Texture.GetAtlasInfo, atlas)
+    return ok and info ~= nil
+end
+
+-- true: windows are the game's portrait frame (ButtonFrameTemplate).
+local TEMPLATED = HasTemplate("ButtonFrameTemplate")
+
+-- A template's child by key path (f, "TitleContainer", "TitleText"), nil when missing.
+local function Child(f, ...)
+    local node = f
+    for _, key in ipairs({ ... }) do
+        if type(node) ~= "table" then return nil end
+        node = node[key]
+    end
+    return type(node) == "table" and node or nil
+end
+
+-- A movable window closed by Escape: the game's portrait frame (round portrait, title
+-- bar, red X; portrait = false hides the portrait) or BasicFrameTemplateWithInset.
+-- f.templated says which; f.heading is the template's title text (nil on the fallback).
+local function CreateWindow(name, width, height, portrait)
+    local f = FromTemplate("Frame", name, UIParent, "ButtonFrameTemplate")
+    if f then
+        f.templated = true
+        f.heading = Child(f, "TitleText") or Child(f, "TitleContainer", "TitleText") or Child(_G, name .. "TitleText")
+        f.portrait = Child(f, "PortraitContainer", "portrait") or Child(f, "portrait") or Child(_G, name .. "Portrait")
+        local inset = Child(f, "Inset")
+        if inset then inset:Hide() end -- the window brings its own insets
+        if ButtonFrameTemplate_HideButtonBar then pcall(ButtonFrameTemplate_HideButtonBar, f) end
+        if not portrait then
+            if ButtonFrameTemplate_HidePortrait then pcall(ButtonFrameTemplate_HidePortrait, f) end
+            f.portrait = nil
+        end
+    else
+        f = CreateFrame("Frame", name, UIParent, "BasicFrameTemplateWithInset")
+        f.templated, f.heading, f.portrait = false, false, false
+    end
+    f:SetSize(width, height)
+    f:SetMovable(true)
+    f:EnableMouse(true)
+    f:RegisterForDrag("LeftButton")
+    f:SetScript("OnDragStart", f.StartMoving)
+    f:SetScript("OnDragStop",  f.StopMovingOrSizing)
+    f:SetClampedToScreen(true)
+    f:SetFrameStrata("HIGH")
+    f:SetToplevel(true)
+    f:Hide()
+    if type(UISpecialFrames) == "table" then table.insert(UISpecialFrames, name) end
+    return f
+end
+
+-- The game's inset box (InsetFrameTemplate), or nil on a client without it.
+local function CreateInset(parent)
+    return FromTemplate("Frame", nil, parent, "InsetFrameTemplate")
+end
+
+-- The thin scroll bar of the game's newer lists (MinimalScrollBar), drawn from its
+-- atlases on the plain slider so scrolling works the same. Returns the thumb, or nil
+-- when the client doesn't have the atlases.
+local MINIMAL_SCROLL = {
+    { track = "minimal-scrollbar-track-middle", top = "minimal-scrollbar-track-top", bottom = "minimal-scrollbar-track-bottom",
+      thumb = "minimal-scrollbar-small-thumb-middle", thumbTop = "minimal-scrollbar-small-thumb-top",
+      thumbBottom = "minimal-scrollbar-small-thumb-bottom" },
+    { track = "minimal-scrollbar-track-middle", top = "minimal-scrollbar-track-top", bottom = "minimal-scrollbar-track-bottom",
+      thumb = "minimal-scrollbar-thumb-middle", thumbTop = "minimal-scrollbar-thumb-top",
+      thumbBottom = "minimal-scrollbar-thumb-bottom" },
+}
+local function SkinMinimalScrollBar(bar)
+    local art
+    for _, set in ipairs(MINIMAL_SCROLL) do
+        if HasAtlas(set.track) and HasAtlas(set.thumb) then art = set break end
+    end
+    if not art then return nil end
+    bar:SetWidth(8)
+    local function piece(atlas, layer)
+        local t = bar:CreateTexture(nil, layer)
+        if HasAtlas(atlas) then t:SetAtlas(atlas, true) end
+        return t
+    end
+    local top, bottom = piece(art.top, "BACKGROUND"), piece(art.bottom, "BACKGROUND")
+    top:SetPoint("TOP")
+    bottom:SetPoint("BOTTOM")
+    local track = piece(art.track, "BACKGROUND")
+    track:SetPoint("TOPLEFT", top, "BOTTOMLEFT")
+    track:SetPoint("BOTTOMRIGHT", bottom, "TOPRIGHT")
+    local thumb = bar:CreateTexture(nil, "OVERLAY")
+    thumb:SetAtlas(art.thumb)
+    thumb:SetSize(8, 40)
+    bar:SetThumbTexture(thumb)
+    local cap1, cap2 = piece(art.thumbTop, "OVERLAY"), piece(art.thumbBottom, "OVERLAY")
+    cap1:SetPoint("BOTTOM", thumb, "TOP")
+    cap2:SetPoint("TOP", thumb, "BOTTOM")
+    return thumb
+end
+
+-- The character window's stat pane: section title bars ("General", "Primary
+-- Attributes") and the light band behind every other "Label:  value" line.
+local SECTION_ATLAS = "UI-Character-Info-Title"
+local STRIPE_ATLAS  = "UI-Character-Info-Line-Bounce"
+
+-- Side tabs: the spellbook's skill-line tab (icon in a square frame, gold glow when
+-- selected) on the window's right edge, as Alt Command Center and Forever Chat draw them.
+local SPELLBOOK_TAB = "Interface\\SpellBook\\SpellBook-SkillLineTab"
+local SIDE_TAB      = { w = 40, h = 40, step = 52 }
+local CLASS_TABS_Y  = -48   -- under the title bar
+
+local function SetClassIcon(tex, class)
+    local coords = CLASS_ICON_TCOORDS and CLASS_ICON_TCOORDS[class]
+    tex:SetTexture("Interface\\Glues\\CharacterCreate\\UI-CharacterCreate-Classes")
+    if coords then tex:SetTexCoord(coords[1], coords[2], coords[3], coords[4]) end
+end
+
+-- A checkable icon tab for the right edge of a window (:SetChecked for the selected one).
+local function CreateSideTab(parent)
+    local b = CreateFrame("CheckButton", nil, parent)
+    b:SetSize(SIDE_TAB.w, SIDE_TAB.h)
+    local bg = b:CreateTexture(nil, "BACKGROUND")
+    bg:SetTexture(SPELLBOOK_TAB)
+    bg:SetSize(80, 80)
+    bg:SetPoint("TOPLEFT", -4, 14)
+    b.icon = b:CreateTexture(nil, "ARTWORK")
+    b.icon:SetAllPoints()
+    b:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
+    -- The selected glow is added over the icon; SetCheckedTexture takes no blend mode,
+    -- and drawn normally the glow's black square hides the icon.
+    local glow = b:CreateTexture(nil, "OVERLAY")
+    glow:SetTexture("Interface\\Buttons\\CheckButtonHilight")
+    glow:SetBlendMode("ADD")
+    glow:SetAllPoints()
+    b:SetCheckedTexture(glow)
+    b.glow = glow
+    return b
+end
+
+-- What the client offers for the add-on's native look (/tbcbis probe).
+function UI:ProbeLines()
+    local lines = {}
+    local function add(kind, name, yes) lines[#lines + 1] = kind .. " " .. name .. ": " .. (yes and "yes" or "no") end
+    for _, t in ipairs({ "ButtonFrameTemplate", "InsetFrameTemplate", "CharacterStatFrameCategoryTemplate",
+        "QuestLogTabButtonTemplate", "LargeSideTabButtonTemplate", "SideTabsTemplate",
+        "TabButtonTemplate", "PanelTabButtonTemplate", "PanelTopTabButtonTemplate", "TabSystemButtonTemplate",
+        "TabSystemTopButtonTemplate", "MinimalTabTemplate" }) do
+        add("template", t, HasTemplate(t))
+    end
+    for _, a in ipairs({ SECTION_ATLAS, STRIPE_ATLAS, "minimal-scrollbar-track-middle" }) do
+        add("atlas", a, HasAtlas(a))
+    end
+    lines[#lines + 1] = "spec tabs: " .. ((self.specBtns and self.specBtns[1] and self.specBtns[1].classic)
+        and "TabButtonTemplate" or "flat fallback")
+    return lines
+end
+
+-- ─── Reading the game's own tabs (/tbcbis probe tabs) ───
+-- The talent window's tabs (Primary / Secondary on Forever) are drawn from art whose
+-- names aren't known here. This finds those tabs in the live window and lists every
+-- texture on them (atlas or file, layer, size), so the spec tabs can copy them exactly.
+
+local TALENT_UI_ADDONS = { "Blizzard_PlayerSpells", "Blizzard_ClassTalentUI", "Blizzard_TalentUI" }
+local TALENT_FRAMES    = { "PlayerSpellsFrame", "ClassTalentFrame", "PlayerTalentFrame", "TalentFrame" }
+local TAB_WORDS        = { "Primary", "Secondary" }
+
+local function RegionText(region)
+    if region:GetObjectType() ~= "FontString" then return nil end
+    local ok, text = pcall(region.GetText, region)
+    return ok and type(text) == "string" and text or nil
+end
+
+-- The frame's own font strings mention one of the tab words.
+local function IsTalentTab(frame)
+    if not frame.GetRegions then return false end
+    for _, region in ipairs({ frame:GetRegions() }) do
+        local text = RegionText(region)
+        if text then
+            for _, word in ipairs(TAB_WORDS) do
+                if text:find(word, 1, true) then return true end
+            end
+        end
+    end
+    return false
+end
+
+local function DescribeRegion(region)
+    local kind = region:GetObjectType()
+    local name = region.GetName and region:GetName() or nil
+    local w, h = region:GetSize()
+    local layer = region.GetDrawLayer and region:GetDrawLayer() or "?"
+    local parts = { kind, name or "", layer, string.format("%dx%d", w or 0, h or 0),
+        region:IsShown() and "shown" or "hidden" }
+    if kind == "Texture" then
+        local atlas = region.GetAtlas and region:GetAtlas()
+        if atlas then parts[#parts + 1] = "atlas=" .. atlas end
+        local file = region:GetTexture()
+        if file then parts[#parts + 1] = "file=" .. tostring(file) end
+        if region.GetVertexColor then
+            local r, g, b, a = region:GetVertexColor()
+            parts[#parts + 1] = string.format("color=%.2f,%.2f,%.2f,%.2f", r or 1, g or 1, b or 1, a or 1)
+        end
+        if region.GetTexCoord then
+            local c = { region:GetTexCoord() }
+            if #c > 0 then
+                for i, v in ipairs(c) do c[i] = string.format("%.3f", v) end
+                parts[#parts + 1] = "coords=" .. table.concat(c, ",")
+            end
+        end
+    elseif kind == "FontString" then
+        parts[#parts + 1] = "text=" .. tostring(RegionText(region))
+        local font = region.GetFontObject and region:GetFontObject()
+        if font and font.GetName then parts[#parts + 1] = "font=" .. tostring(font:GetName()) end
+    end
+    return table.concat(parts, " | ")
+end
+
+local function DescribeTab(frame, lines)
+    local w, h = frame:GetSize()
+    lines[#lines + 1] = string.format("TAB %s (%s) %dx%d", tostring(frame:GetName()), frame:GetObjectType(), w or 0, h or 0)
+    for _, region in ipairs({ frame:GetRegions() }) do
+        lines[#lines + 1] = "  " .. DescribeRegion(region)
+    end
+    for _, child in ipairs({ frame:GetChildren() }) do
+        local cw, ch = child:GetSize()
+        lines[#lines + 1] = string.format("  child %s (%s) %dx%d", tostring(child:GetName()), child:GetObjectType(), cw or 0, ch or 0)
+        for _, region in ipairs({ child:GetRegions() }) do
+            lines[#lines + 1] = "    " .. DescribeRegion(region)
+        end
+    end
+end
+
+function UI:ProbeTalentTabs()
+    local load = (C_AddOns and C_AddOns.LoadAddOn) or LoadAddOn
+    if load then
+        for _, name in ipairs(TALENT_UI_ADDONS) do pcall(load, name) end
+    end
+    local lines, found, seen = {}, 0, {}
+    local function walk(frame, depth)
+        if depth > 10 or seen[frame] then return end
+        seen[frame] = true
+        if IsTalentTab(frame) and frame:GetObjectType() ~= "FontString" then
+            found = found + 1
+            if found <= 4 then DescribeTab(frame, lines) end
+        end
+        if frame.GetChildren then
+            for _, child in ipairs({ frame:GetChildren() }) do walk(child, depth + 1) end
+        end
+    end
+    for _, name in ipairs(TALENT_FRAMES) do
+        local root = _G[name]
+        if type(root) == "table" and root.GetChildren then
+            lines[#lines + 1] = "window " .. name
+            pcall(walk, root, 0)
+        end
+    end
+    lines[#lines + 1] = found .. " tab(s) with " .. table.concat(TAB_WORDS, "/") .. " found"
+    TBCBisTrackerDB.probe = { t = time and time() or 0, lines = lines }
+    return lines, found
+end
+
+-- ─────────────────────────────────────────────
 -- Helpers
 -- ─────────────────────────────────────────────
 
@@ -147,12 +430,21 @@ local function ColorText(text, hex)
     return "|cff" .. hex .. text .. "|r"
 end
 
+-- Text in the game's font objects (which UI add-ons restyle), or the outlined Friz Quadrata.
 local function SetFontNormal(fs)
-    fs:SetFont("Fonts\\FRIZQT__.TTF", 11, "OUTLINE")
+    if TEMPLATED and GameFontHighlight then
+        fs:SetFontObject(GameFontHighlight)
+    else
+        fs:SetFont("Fonts\\FRIZQT__.TTF", 11, "OUTLINE")
+    end
 end
 
 local function SetFontSmall(fs)
-    fs:SetFont("Fonts\\FRIZQT__.TTF", 10, "OUTLINE")
+    if TEMPLATED and GameFontHighlightSmall then
+        fs:SetFontObject(GameFontHighlightSmall)
+    else
+        fs:SetFont("Fonts\\FRIZQT__.TTF", 10, "OUTLINE")
+    end
 end
 
 -- 1px border around a frame (no BackdropTemplate needed, works on every client).
@@ -278,19 +570,16 @@ end
 function UI:Build()
     if self.frame then return end
 
-    -- Outer frame
-    local f = CreateFrame("Frame", "TBCBisTrackerFrame", UIParent, "BasicFrameTemplateWithInset")
-    f:SetSize(FRAME_W, FRAME_H)
+    -- Outer frame: the game's portrait window (your character's face top left), like
+    -- the character window, or the plain dialog frame on older clients.
+    -- TBC has the stat-cap column on the right; WoW Forever has no rating caps, so
+    -- the window is just the gear list.
+    STAT_AREA_W = addon:IsForever() and 0 or STAT_COL_W
+    FRAME_W = LIST_W + STAT_AREA_W
+    local f = CreateWindow("TBCBisTrackerFrame", FRAME_W, FRAME_H, true)
     f:SetPoint("CENTER")
-    f:SetMovable(true)
-    f:EnableMouse(true)
-    f:RegisterForDrag("LeftButton")
-    f:SetScript("OnDragStart", f.StartMoving)
-    f:SetScript("OnDragStop",  f.StopMovingOrSizing)
-    f:SetClampedToScreen(true)
-    f:SetFrameStrata("HIGH")
-    f:Hide()
     self.frame = f
+    ROW_A_X = f.portrait and 58 or 0
 
     -- Restore saved position
     local wp = TBCBisTrackerDB.windowPos
@@ -305,11 +594,17 @@ function UI:Build()
     end)
 
     -- Title: just the add-on name; class and spec live in the toolbar below.
-    -- Left-aligned so it can never run under anything else in the title bar.
-    local title = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
-    title:SetPoint("TOPLEFT", f, "TOPLEFT", 12, -5)
-    title:SetText(UI_PAL.accent .. addon.TITLE .. "|r")
-    self.titleText = title
+    if f.heading then
+        f.heading:SetText(addon.TITLE)
+        self.titleText = f.heading
+    else
+        -- Left-aligned so it can never run under anything else in the title bar.
+        local title = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
+        title:SetPoint("TOPLEFT", f, "TOPLEFT", 12, -5)
+        title:SetText(UI_PAL.accent .. addon.TITLE .. "|r")
+        self.titleText = title
+    end
+    self:RefreshPortrait()
 
     -- ── Row A: class dropdown + spec tabs + stage ──
     self:BuildClassButtons()
@@ -334,21 +629,29 @@ function UI:Build()
     self:BuildProgressBar()
 
     -- ── TBC extras under the list: badges, tier sets, farm plan hover ──
-    -- (Forever shows the farm plan in the side panel instead.)
     if not addon:IsForever() then
         self:BuildBadgeStatus()
         self:BuildFarmPlan()
     end
     self:BuildTierStatus()
 
-    -- ── Stat-cap side panel ──
-    self:BuildStatCapPanel()
+    -- ── Stat-cap side panel (TBC) ──
+    if not addon:IsForever() then self:BuildStatCapPanel() end
 
     -- Initial population
     self:RefreshClassButtons()
     self:RefreshSpecSelector()
     self:RefreshPhaseTabs()
     self:Refresh()
+end
+
+-- Your character's face in the window's portrait, as on the character window.
+function UI:RefreshPortrait()
+    local portrait = self.frame and self.frame.portrait
+    if not portrait then return end
+    if SetPortraitTexture then
+        pcall(SetPortraitTexture, portrait, "player")
+    end
 end
 
 -- ─────────────────────────────────────────────
@@ -399,40 +702,47 @@ function UI:BuildClassButtons()
         if not valid then TBCBisTrackerDB.lastSpec = info.specs[1] end
     end
 
-    -- Standard Blizzard dropdown, same look as the source filter.
-    local dd = CreateFrame("Frame", "TBCBisTrackerClassDropdown", f, "UIDropDownMenuTemplate")
-    dd:SetPoint("TOPLEFT", f, "TOPLEFT", 2, ROW_A_Y + 2)
-    UIDropDownMenu_SetWidth(dd, 110)
-    AddSimpleTooltip(dd, "Class", "Browse another class's lists. Ticks and auto-detect stay on your own class.")
-    UIDropDownMenu_Initialize(dd, function(_, level)
-        for _, class in ipairs(CLASS_ORDER) do
-            local c = addon.CLASS_INFO[class]
-            local info = UIDropDownMenu_CreateInfo()
-            info.text = "|cff" .. c.color .. c.name .. "|r"
-                .. (class == playerClass and ("  " .. UI_PAL.muted .. "(you)|r") or "")
-            info.value = class
-            info.checked = class == TBCBisTrackerDB.lastClass
-            local coords = CLASS_ICON_TCOORDS and CLASS_ICON_TCOORDS[class]
-            if coords then
-                info.icon = "Interface\\Glues\\CharacterCreate\\UI-CharacterCreate-Classes"
-                info.tCoordLeft, info.tCoordRight, info.tCoordTop, info.tCoordBottom = coords[1], coords[2], coords[3], coords[4]
+    -- One icon tab per class down the window's right edge, like the side tabs of the
+    -- game's own windows (group finder, spellbook).
+    self.classTabs = {}
+    for i, class in ipairs(CLASS_ORDER) do
+        local tab = CreateSideTab(f)
+        tab:SetPoint("TOPLEFT", f, "TOPRIGHT", f.templated and 0 or -4, CLASS_TABS_Y - (i - 1) * SIDE_TAB.step)
+        tab.class = class
+        SetClassIcon(tab.icon, class)
+        tab:SetScript("OnClick", function(t)
+            UI:SetViewClass(t.class)
+            t:SetChecked(TBCBisTrackerDB.lastClass == t.class)
+        end)
+        tab:SetScript("OnEnter", function(t)
+            local c = addon.CLASS_INFO[t.class]
+            GameTooltip:SetOwner(t, "ANCHOR_RIGHT")
+            GameTooltip:SetText("|cff" .. c.color .. c.name .. "|r"
+                .. (t.class == playerClass and ("  " .. UI_PAL.muted .. "(you)|r") or ""))
+            if t.class ~= playerClass then
+                GameTooltip:AddLine("Browse its lists. Ticks and auto-detect stay on your own class.",
+                    0.8, 0.8, 0.8, true)
             end
-            info.func = function()
-                CloseDropDownMenus()
-                UI:SetViewClass(class)
-            end
-            UIDropDownMenu_AddButton(info, level)
-        end
-    end)
-    self.classDropdown = dd
+            GameTooltip:Show()
+        end)
+        tab:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        self.classTabs[class] = tab
+    end
+    -- Keep the tabs on screen when the window is dragged to the right edge.
+    if f.SetClampRectInsets then f:SetClampRectInsets(0, SIDE_TAB.w, 0, 0) end
+
+    -- The class you're viewing, in its colour, where the dropdown used to be.
+    local label = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    label:SetPoint("LEFT", f, "TOPLEFT", 20 + ROW_A_X, ROW_A_Y - 12)
+    self.classLabel = label
 end
 
 function UI:RefreshClassButtons()
     local class = TBCBisTrackerDB.lastClass
     local info = class and addon.CLASS_INFO[class]
-    if not (self.classDropdown and info) then return end
-    UIDropDownMenu_SetSelectedValue(self.classDropdown, class)
-    UIDropDownMenu_SetText(self.classDropdown, "|cff" .. info.color .. info.name .. "|r")
+    if not (self.classTabs and info) then return end
+    for c, tab in pairs(self.classTabs) do tab:SetChecked(c == class) end
+    self.classLabel:SetText("|cff" .. info.color .. info.name .. "|r")
 end
 
 function UI:BuildSpecSelector()
@@ -440,8 +750,12 @@ function UI:BuildSpecSelector()
     self.specBtns = {}
     self.specBtnRow = CreateFrame("Frame", nil, f)
     self.specBtnRow:SetSize(400, 24)
-    -- Right of the class dropdown (its frame has ~16 px of empty edge).
-    self.specBtnRow:SetPoint("TOPLEFT", f, "TOPLEFT", 166, ROW_A_Y)
+    -- Right of the class name.
+    if self.classLabel then
+        self.specBtnRow:SetPoint("BOTTOMLEFT", self.classLabel, "BOTTOMRIGHT", 14, -6)
+    else
+        self.specBtnRow:SetPoint("TOPLEFT", f, "TOPLEFT", 20 + ROW_A_X, ROW_A_Y)
+    end
 end
 
 local SPEC_POOL_SIZE = 4
@@ -762,10 +1076,13 @@ end
 
 function UI:BuildBrowseBanner()
     local f = self.frame
-    local banner = CreateFrame("Frame", nil, f)
+    local banner = CreateInset(f)
+    if not banner then
+        banner = CreateFrame("Frame", nil, f)
+        AddFill(banner, 0.10, 0.13, 0.19, 0.95)
+        AddBorder(banner, 0.18, 0.23, 0.32, 1)
+    end
     banner:SetSize(LIST_W - 40, BANNER_H)
-    AddFill(banner, 0.10, 0.13, 0.19, 0.95)
-    AddBorder(banner, 0.18, 0.23, 0.32, 1)
 
     local back = CreateFrame("Button", nil, banner, "UIPanelButtonTemplate")
     back:SetSize(130, 20)
@@ -838,17 +1155,23 @@ function UI:BuildScrollFrame()
     self.scrollContent = content
 
     -- Slim scrollbar on the right of the list.
+    -- The list sits in the game's inset box (placed by ApplyLayout).
+    self.listInset = CreateInset(f)
+
     local bar = CreateFrame("Slider", nil, f)
     bar:SetOrientation("VERTICAL")
     bar:SetWidth(6)
     bar:EnableMouse(true)
     bar:SetPoint("TOPLEFT", sf, "TOPRIGHT", 6, 0)
     bar:SetPoint("BOTTOMLEFT", sf, "BOTTOMRIGHT", 6, 0)
-    AddFill(bar, 0.11, 0.12, 0.14, 1)
-    local thumb = bar:CreateTexture(nil, "OVERLAY")
-    thumb:SetColorTexture(0.42, 0.39, 0.30, 1)
-    thumb:SetSize(6, 40)
-    bar:SetThumbTexture(thumb)
+    local thumb = TEMPLATED and SkinMinimalScrollBar(bar)
+    if not thumb then
+        AddFill(bar, 0.11, 0.12, 0.14, 1)
+        thumb = bar:CreateTexture(nil, "OVERLAY")
+        thumb:SetColorTexture(0.42, 0.39, 0.30, 1)
+        thumb:SetSize(6, 40)
+        bar:SetThumbTexture(thumb)
+    end
     bar:SetMinMaxValues(0, 0)
     bar:SetValue(0)
     bar:SetScript("OnValueChanged", function(_, value) sf:SetVerticalScroll(value) end)
@@ -891,6 +1214,11 @@ function UI:ApplyLayout()
     self.scrollFrame:ClearAllPoints()
     self.scrollFrame:SetPoint("TOPLEFT", f, "TOPLEFT", 20, top - 22)
     self.scrollFrame:SetPoint("BOTTOMRIGHT", f, "BOTTOMLEFT", 20 + SCROLL_W, bottom)
+    if self.listInset then
+        self.listInset:ClearAllPoints()
+        self.listInset:SetPoint("TOPLEFT", f, "TOPLEFT", 12, top + 6)
+        self.listInset:SetPoint("BOTTOMRIGHT", f, "BOTTOMLEFT", LIST_W - 10, bottom - 6)
+    end
 end
 
 -- Scroll range and thumb size for the current number of rows.
@@ -1631,7 +1959,7 @@ end
 -- Stat-cap side panel
 -- ─────────────────────────────────────────────
 
-local STAT_PANEL_W = STAT_AREA_W - 12
+local STAT_PANEL_W = STAT_COL_W - 12
 local STAT_PANEL_BAR_H = 14
 local STAT_PANEL_ROW_H = 38   -- label + bar + spacing
 local STAT_PANEL_MAX_ROWS = 8
@@ -1639,12 +1967,19 @@ local STAT_PANEL_MAX_ROWS = 8
 function UI:BuildStatCapPanel()
     local f = self.frame
 
-    -- Vertical divider between gear list area and stat column inside the same frame
-    local vdiv = CreateDivider(f, UI_PAL.dividerSoft)
-    vdiv:SetPoint("TOPLEFT",    f, "TOPLEFT", LIST_W - 4, -32)
-    vdiv:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", LIST_W - 4, 32)
-    vdiv:SetWidth(1)
-    self.statColDivider = vdiv
+    -- The stat column sits in the game's inset box, or behind a divider line.
+    local sideInset = CreateInset(f)
+    if sideInset then
+        sideInset:SetPoint("TOPLEFT", f, "TOPLEFT", LIST_W - 2, -28)
+        sideInset:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -6, 6)
+        self.statColInset = sideInset
+    else
+        local vdiv = CreateDivider(f, UI_PAL.dividerSoft)
+        vdiv:SetPoint("TOPLEFT",    f, "TOPLEFT", LIST_W - 4, -32)
+        vdiv:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", LIST_W - 4, 32)
+        vdiv:SetWidth(1)
+        self.statColDivider = vdiv
+    end
 
     -- Stat column lives INSIDE the main frame on the right side.
     local panel = CreateFrame("Frame", "TBCBisTrackerStatCapPanel", f)
@@ -1673,6 +2008,19 @@ function UI:BuildStatCapPanel()
     sdiv:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -UI_PAL.pad, sdivY)
     sdiv:SetHeight(1)
     self.statPanelBodyDiv = sdiv
+
+    -- On the game's window the title sits on the character window's section bar.
+    if TEMPLATED and HasAtlas(SECTION_ATLAS) then
+        local bar = panel:CreateTexture(nil, "BACKGROUND")
+        bar:SetAtlas(SECTION_ATLAS)
+        bar:SetPoint("TOPLEFT", panel, "TOPLEFT", 2, slotsBottom - 2)
+        bar:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -2, slotsBottom - 2)
+        bar:SetHeight(26)
+        self.statPanelTitleBar = bar
+        statTitle:ClearAllPoints()
+        statTitle:SetPoint("CENTER", bar, "CENTER", 0, 1)
+        sdiv:Hide()
+    end
 
     -- Body container
     local body = CreateFrame("Frame", nil, panel)
@@ -1763,196 +2111,6 @@ function UI:BuildStatCapPanel()
     note:SetJustifyH("LEFT")
     note:SetTextColor(0.6, 0.6, 0.6, 1)
     self.statPanelNote = note
-
-    -- WoW Forever has no rating caps: the same space lists where the
-    -- still-missing items come from (the farm plan, no longer hidden in a hover).
-    if addon:IsForever() then
-        statTitle:SetText(UI_PAL.accent .. "Where to get it|r  " .. UI_PAL.muted .. "still needed|r")
-        fdiv:Hide()
-        -- One column: a coloured heading per source type, places listed under it.
-        self.farmLines = {}
-        local lineW = STAT_PANEL_W - 2 * (UI_PAL.pad + 4)
-        for i = 1, 30 do
-            local line = CreateFrame("Button", nil, body)
-            line:SetSize(lineW, 16)
-            line:SetPoint("TOPLEFT", body, "TOPLEFT", 0, -(i - 1) * 16)
-            local hl = line:CreateTexture(nil, "HIGHLIGHT")
-            hl:SetAllPoints()
-            hl:SetColorTexture(1, 1, 1, 0.07)
-            local count = line:CreateFontString(nil, "OVERLAY")
-            SetFontSmall(count)
-            count:SetPoint("RIGHT", line, "RIGHT", 0, 0)
-            count:SetJustifyH("RIGHT")
-            line.count = count
-            local text = line:CreateFontString(nil, "OVERLAY")
-            SetFontSmall(text)
-            text:SetJustifyH("LEFT")
-            text:SetWordWrap(false)
-            line.text = text
-            line:SetScript("OnEnter", function(l) UI:ShowFarmTooltip(l) end)
-            line:SetScript("OnLeave", function() GameTooltip:Hide() end)
-            line:SetScript("OnClick", function(l) UI:OpenFarmSource(l) end)
-            line:Hide()
-            self.farmLines[i] = line
-        end
-    end
-
-end
-
-local FARM_TYPE_LABELS = {
-    raid = "Raid", heroic = "Heroic", dungeon = "Dungeon", crafted = "Profession",
-    reputation = "Vendor", world = "World", quest = "Quest", pvp = "PvP",
-}
-
--- Forever side panel: still-needed items grouped by where they come from.
-local function SetFarmLine(line, indent, text, count, loc, kind)
-    line.text:ClearAllPoints()
-    line.text:SetPoint("LEFT", line, "LEFT", indent, 0)
-    line.text:SetPoint("RIGHT", line.count, "LEFT", -4, 0)
-    line.text:SetText(text)
-    line.count:SetText(count or "")
-    line.loc, line.kind = loc, kind
-    line:EnableMouse(loc ~= nil)
-    line:Show()
-end
-
-function UI:RefreshFarmPanel(class, spec, phase)
-    for _, line in ipairs(self.farmLines) do line:Hide() end
-    local groups = addon:GetFarmBreakdown(class, spec, phase)
-    if #groups == 0 then
-        self.statPanelNote:SetText(UI_PAL.accent .. "Everything obtained!|r")
-        return
-    end
-    local i, hidden, max = 0, 0, #self.farmLines
-    for g, group in ipairs(groups) do
-        local color = SOURCE_TYPE_COLORS[group.type] or "|cffcccccc"
-        -- heading (with a blank line before every group but the first)
-        if g > 1 and i < max then i = i + 1 end
-        if i < max - 1 then
-            i = i + 1
-            SetFarmLine(self.farmLines[i], 0,
-                color .. (FARM_TYPE_LABELS[group.type] or group.type):upper() .. "|r", nil, nil, nil)
-            for _, loc in ipairs(group.locations) do
-                if i < max then
-                    i = i + 1
-                    local where = ShortSource({ source = loc.location .. " (x)" })
-                    loc.where = where
-                    local first = loc.items and loc.items[1] and loc.items[1].entry
-                    local prof = first and addon:ParseCraftingProfession(first)
-                    local shown = where
-                    if prof and not addon:GetPlayerProfessionLevel(prof) then
-                        shown = "|cffff6b5a" .. where .. " (not learned)|r"
-                    end
-                    SetFarmLine(self.farmLines[i], 10, shown, UI_PAL.muted .. loc.count .. "|r", loc, group.type)
-                else
-                    hidden = hidden + loc.count
-                end
-            end
-        else
-            hidden = hidden + group.count
-        end
-    end
-    if hidden > 0 then
-        self.statPanelNote:SetText(UI_PAL.muted .. "+" .. hidden .. " more|r")
-    end
-end
-
--- Hover: full source text plus which of your items come from it.
-function UI:ShowFarmTooltip(line)
-    local loc = line.loc
-    if not loc then return end
-    GameTooltip:SetOwner(line, "ANCHOR_LEFT")
-    local first = loc.items and loc.items[1] and loc.items[1].entry
-    if SetQuestTooltip(line, first and first.questId) then
-        GameTooltip:AddLine(" ")
-    else
-        GameTooltip:SetText(loc.where, 1, 1, 1, 1, true)
-    end
-    for _, it in ipairs(loc.items or {}) do
-        local name = addon:GetItemName(it.entry.id)
-        local color = addon:GetItemQualityColor(it.entry.id) or "|cffffffff"
-        GameTooltip:AddDoubleLine(color .. name .. "|r", addon.SLOT_LABELS[it.slot] or it.slot, 1, 1, 1, 0.6, 0.6, 0.6)
-    end
-    GameTooltip:AddLine(" ")
-    if line.kind == "quest" then
-        GameTooltip:AddLine("Click: open in your quest log, or its Wowhead page", 0.6, 0.6, 0.6, true)
-    else
-        GameTooltip:AddLine("Click: Wowhead link", 0.6, 0.6, 0.6, true)
-    end
-    GameTooltip:Show()
-end
-
--- Opens a quest log entry by title on any client; false when it isn't in the log.
--- Newer quest map first, then the classic quest log; each tried on its own so
--- one client's missing or changed API never blocks the other way.
-local function OpenQuestInMap(want, questId)
-    if C_QuestLog and C_QuestLog.GetNumQuestLogEntries and C_QuestLog.GetInfo and QuestMapFrame_OpenToQuestDetails then
-        for i = 1, C_QuestLog.GetNumQuestLogEntries() do
-            local info = C_QuestLog.GetInfo(i)
-            if info and not info.isHeader and info.questID
-                and ((questId and info.questID == questId) or (info.title and info.title:lower() == want)) then
-                QuestMapFrame_OpenToQuestDetails(info.questID)
-                return true
-            end
-        end
-    end
-    return false
-end
-
-local function OpenQuestInLog(want, questId)
-    if GetNumQuestLogEntries and GetQuestLogTitle then
-        for i = 1, GetNumQuestLogEntries() do
-            local qTitle, _, _, isHeader, _, _, _, qId = GetQuestLogTitle(i)
-            if not isHeader and ((questId and qId == questId) or (qTitle and qTitle:lower() == want)) then
-                if QuestLog_OpenToQuest then
-                    QuestLog_OpenToQuest(i)
-                elseif QuestLogFrame then
-                    ShowUIPanel(QuestLogFrame)
-                    if QuestLog_SetSelection then QuestLog_SetSelection(i) end
-                    if QuestLog_Update then QuestLog_Update() end
-                else
-                    return false
-                end
-                return true
-            end
-        end
-    end
-    return false
-end
-
-local function OpenQuest(title, questId)
-    local want = title and title:lower()
-    if not want then return false end
-    local ok, opened = pcall(OpenQuestInMap, want, questId)
-    if ok and opened then return true end
-    ok, opened = pcall(OpenQuestInLog, want, questId)
-    return ok and opened or false
-end
-
-local function UrlEncode(text)
-    return (text:gsub("[^%w%-_%.~]", function(c) return string.format("%%%02X", c:byte()) end))
-end
-
--- Click: a quest you have opens in the quest log, a known quest links to its
--- Wowhead page; one item links straight to its page (drop / quest / vendor
--- tabs); anything else is a search.
-function UI:OpenFarmSource(line)
-    local loc = line.loc
-    if not loc then return end
-    local items = loc.items or {}
-    local questId = items[1] and items[1].entry.questId
-    if line.kind == "quest" then
-        if OpenQuest(loc.where, questId) then return end
-        if questId then
-            self:ShowUrlPopup("Wowhead quest (Ctrl+C to copy):", addon.WOWHEAD_QUEST_BASE .. questId)
-            return
-        end
-    end
-    if line.kind ~= "quest" and #items == 1 then
-        self:ShowUrlPopup("Wowhead (Ctrl+C to copy):", addon.WOWHEAD_BASE .. items[1].entry.id)
-    else
-        self:ShowUrlPopup("Wowhead search (Ctrl+C to copy):", addon.WOWHEAD_SEARCH_BASE .. UrlEncode(loc.where))
-    end
 end
 
 function UI:RefreshStatCaps()
@@ -1967,12 +2125,6 @@ function UI:RefreshStatCaps()
 
     if not (class and spec) then
         self.statPanelNote:SetText("No spec selected.")
-        return
-    end
-
-    if self.farmLines then
-        self.statPanelNote:SetText("")
-        self:RefreshFarmPanel(class, spec, phase)
         return
     end
 
@@ -2143,8 +2295,9 @@ end
 function UI:BuildProgressBar()
     local f = self.frame
 
-    -- Divider above the footer
+    -- Divider above the footer (the list's inset box does that on the game's window)
     local fdiv = CreateDivider(f, UI_PAL.dividerSoft)
+    fdiv:SetShown(not self.listInset)
     fdiv:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 20, 38)
     fdiv:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -20 - STAT_AREA_W, 38)
     fdiv:SetHeight(1)
@@ -2163,16 +2316,19 @@ function UI:BuildProgressBar()
     self.progressTxt = txt
 
     local trackW = LIST_W - 40 - 190
+    -- The game's status bar texture (as on the stat bars), tinted.
     local track = container:CreateTexture(nil, "BACKGROUND")
     track:SetSize(trackW, 10)
     track:SetPoint("LEFT", container, "LEFT", 0, 0)
-    track:SetColorTexture(0.11, 0.12, 0.14, 1)
+    track:SetTexture("Interface\\TargetingFrame\\UI-StatusBar")
+    track:SetVertexColor(unpack(UI_PAL.barTrack))
     self.progressTrackW = trackW
 
     local fill = container:CreateTexture(nil, "ARTWORK")
     fill:SetPoint("LEFT", track, "LEFT", 0, 0)
     fill:SetHeight(10)
-    fill:SetColorTexture(0.25, 0.62, 0.18, 1)
+    fill:SetTexture("Interface\\TargetingFrame\\UI-StatusBar")
+    fill:SetVertexColor(0.25, 0.62, 0.18, 1)
     self.progressFill = fill
 
     container:SetScript("OnEnter", function(self)
@@ -2384,10 +2540,10 @@ function UI:UpdateProgress(obtained, total)
     local pct = obtained / total
     self.progressFill:SetWidth(math.max(1, self.progressTrackW * pct))
     if obtained == total then
-        self.progressFill:SetColorTexture(0.9, 0.75, 0.1, 1)  -- gold when complete
+        self.progressFill:SetVertexColor(0.9, 0.75, 0.1, 1)  -- gold when complete
         self.progressTxt:SetText("|cffffd700All " .. total .. " obtained!|r")
     else
-        self.progressFill:SetColorTexture(0.25, 0.62, 0.18, 1)
+        self.progressFill:SetVertexColor(0.25, 0.62, 0.18, 1)
         self.progressTxt:SetText("|cff6fdc55" .. obtained .. " / " .. total .. "|r obtained  "
             .. UI_PAL.muted .. math.floor(pct * 100) .. "%|r")
     end
@@ -2425,24 +2581,20 @@ local PREV_H = PREV_HEADER_H + PREV_COL_ROWS * (PREV_SLOT + PREV_GAP) - PREV_GAP
 function UI:BuildBisPreview()
     if self.previewFrame then return self.previewFrame end
 
-    local f = CreateFrame("Frame", "TBCBisTrackerPreview", UIParent, "BasicFrameTemplateWithInset")
     local startW = (TBCBisTrackerDB.previewShowModel and PREV_W_WITH_MODEL) or PREV_W_COMPACT
-    f:SetSize(startW, PREV_H)
+    local f = CreateWindow("TBCBisTrackerPreview", startW, PREV_H, false)
     f:SetPoint("CENTER", UIParent, "CENTER", 200, 0)
-    f:SetMovable(true); f:EnableMouse(true)
-    f:RegisterForDrag("LeftButton")
-    f:SetScript("OnDragStart", f.StartMoving)
-    f:SetScript("OnDragStop",  f.StopMovingOrSizing)
-    f:SetClampedToScreen(true)
-    f:SetFrameStrata("HIGH")
-    f:SetToplevel(true)
-    f:Hide()
     self.previewFrame = f
 
-    local title = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
-    title:SetPoint("TOP", f, "TOP", 0, -6)
-    title:SetText(UI_PAL.accent .. "BiS Preview|r")
-    self.previewTitle = title
+    if f.heading then
+        f.heading:SetText("BiS Preview")
+        self.previewTitle = f.heading
+    else
+        local title = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
+        title:SetPoint("TOP", f, "TOP", 0, -6)
+        title:SetText(UI_PAL.accent .. "BiS Preview|r")
+        self.previewTitle = title
+    end
 
     local subtitle = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     subtitle:SetPoint("TOP", f, "TOP", 0, -28)
@@ -2451,7 +2603,12 @@ function UI:BuildBisPreview()
     -- "3D model" toggle button — small text button just under the close X.
     local toggle = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
     toggle:SetSize(76, 18)
-    toggle:SetPoint("TOPRIGHT", f, "TOPRIGHT", -28, -8)
+    -- Under the title bar on the game's window (its close button sits in the bar).
+    if f.templated then
+        toggle:SetPoint("TOPRIGHT", f, "TOPRIGHT", -8, -26)
+    else
+        toggle:SetPoint("TOPRIGHT", f, "TOPRIGHT", -28, -8)
+    end
     toggle:SetText(TBCBisTrackerDB.previewShowModel and "Hide model" or "Show model")
     toggle:HookScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
@@ -2749,6 +2906,7 @@ function UI:Toggle()
         self.frame:Hide()
     else
         self.frame:Show()
+        self:RefreshPortrait()
         self:RefreshClassButtons()
         self:RefreshSpecSelector()
         self:RefreshPhaseTabs()

@@ -156,9 +156,9 @@ local nH, wH = countFaction("Horde")
 check(wA == 0 and wH == 0, "no other-faction items shown (" .. nA .. " Alliance / " .. nH .. " Horde rows)")
 check(nA < entries and nH < entries, "faction-only items filtered out")
 
-local function windowTest(toc)
+local function windowTest(toc, templated)
     local forever = toc < 20000
-    print(forever and "Window (Forever, class browsing)" or "Window (TBC)")
+    print((forever and "Window (Forever, class browsing)" or "Window (TBC)") .. (templated and ", Blizzard templates" or ""))
     -- Widget mock: tracks shown state, text, scripts; anything else is a no-op.
     local function widget()
         local w = { shown = true, scripts = {}, text = "", checked = false, h = 300, value = 0, lo = 0, hi = 0 }
@@ -176,6 +176,7 @@ local function windowTest(toc)
         function m:GetChecked() return self.checked end
         function m:GetHeight() return self.h end
         function m:GetWidth() return 100 end
+        function m:SetSize(w) self.width = w end
         function m:GetStringWidth() return 50 end
         function m:GetFrameLevel() return 1 end
         function m:GetMinMaxValues() return self.lo, self.hi end
@@ -198,10 +199,26 @@ local function windowTest(toc)
     env.GetNumFactions = function() return 0 end
     env.UnitClass = function() return "Paladin", "PALADIN" end
     env.UnitFactionGroup = function() return "Alliance" end
-    env.CreateFrame = function()
+    env.templatesUsed = {}
+    env.UISpecialFrames = {}
+    if templated then
+        -- A client with the game's templates and atlases (Forever / newer clients)
+        env.C_XMLUtil = { GetTemplateInfo = function() return {} end }
+        env.C_Texture = { GetAtlasInfo = function() return {} end }
+    else
+        env.C_XMLUtil = false
+        env.C_Texture = false
+    end
+    env.CreateFrame = function(_, name, _, template)
         local f = widget()
-        local orig = f.SetScript
         f.SetScript = function(self, k, fn) if k == "OnEvent" then env.events[#env.events + 1] = fn end self.scripts[k] = fn end
+        if template then env.templatesUsed[template] = (env.templatesUsed[template] or 0) + 1 end
+        if template == "ButtonFrameTemplate" then
+            f.TitleContainer = { TitleText = widget() }
+            f.PortraitContainer = { portrait = widget() }
+            f.Inset = widget()
+        end
+        if name then env[name] = f end
         return f
     end
     env.GameTooltip = widget()
@@ -219,13 +236,73 @@ local function windowTest(toc)
     end
     for _, fn in ipairs(env.events) do fn(nil, "ADDON_LOADED", "TBCBisTracker") end
     local addon, UI = env.TBCBisTracker, env.TBCBisTracker.UI
-    local ok, err = pcall(function() UI:Build(); UI:Refresh() end)
+    local ok, err = pcall(function()
+        UI:Build()
+        UI:Refresh()
+    end)
     check(ok, "window builds and fills" .. (ok and "" or (" (" .. tostring(err) .. ")")))
     if not ok then return end
 
     local db = env.TBCBisTrackerDB
     check(db.lastClass == "PALADIN" and db.lastSpec == "Holy", "opens on your own class")
-    check(tostring(UI.classDropdown.ddText):find("Paladin"), "class dropdown shows Paladin")
+    if templated and forever then
+        -- /tbcbis probe tabs: a talent window with a Primary tab, read texture by texture
+        local function region(kind, props)
+            local r = props or {}
+            function r:GetObjectType() return kind end
+            function r:GetName() return nil end
+            function r:GetSize() return 120, 28 end
+            function r:GetDrawLayer() return "BACKGROUND" end
+            function r:IsShown() return true end
+            function r:GetText() return r.text end
+            function r:GetAtlas() return r.atlas end
+            function r:GetTexture() return r.file end
+            function r:GetVertexColor() return 1, 1, 1, 1 end
+            function r:GetTexCoord() return 0, 1, 0, 1 end
+            return r
+        end
+        local function frame(regions, children)
+            local f = region("Button")
+            function f:GetRegions() return unpack(regions or {}) end
+            function f:GetChildren() return unpack(children or {}) end
+            return f
+        end
+        local tab = frame({ region("Texture", { atlas = "talents-tab-active" }), region("FontString", { text = "Primary" }) })
+        env.PlayerSpellsFrame = frame({}, { frame({}, { tab }) })
+        env.C_AddOns = { LoadAddOn = function() end }
+        env.time = os.time
+        local lines, found = UI:ProbeTalentTabs()
+        local all = table.concat(lines, "\n")
+        check(found == 1 and all:find("atlas=talents-tab-active", 1, true) and all:find("text=Primary", 1, true),
+            "probe tabs reads the talent window's tab art")
+        check(env.TBCBisTrackerDB.probe and #env.TBCBisTrackerDB.probe.lines == #lines, "probe saved for the author")
+    end
+    local used = env.templatesUsed
+    if templated then
+        check(UI.frame.templated and used.ButtonFrameTemplate == 1 and not used.BasicFrameTemplateWithInset,
+            "window is the game's portrait frame")
+        check(UI.frame.TitleContainer.TitleText.text == addon.TITLE, "title in the template's title bar: " .. addon.TITLE)
+        check(UI.frame.portrait ~= nil and not UI.frame.Inset:IsShown(), "portrait kept, template inset hidden")
+        if forever then
+            check((used.InsetFrameTemplate or 0) >= 2 and UI.listInset ~= nil, "list and banner sit in the game's insets")
+        else
+            check((used.InsetFrameTemplate or 0) >= 3 and UI.listInset ~= nil and UI.statColInset ~= nil,
+                "list, side panel and banner sit in the game's insets")
+            check(UI.statPanelTitleBar ~= nil, "side panel title on the character window's section bar")
+        end
+        UI:ShowBisPreview()
+        check(used.ButtonFrameTemplate == 2 and rawget(UI.previewFrame, "portrait") == nil, "preview: game window, no portrait")
+    else
+        check(not UI.frame.templated and used.BasicFrameTemplateWithInset == 1 and not used.InsetFrameTemplate,
+            "old client: the plain dialog frame, no insets")
+        check(UI.titleText.text:find("ZenaBis"), "old client: own title")
+    end
+    check(env.UISpecialFrames[1] == "TBCBisTrackerFrame", "Escape closes the window")
+    check(UI.classTabs.PALADIN:GetChecked() and not UI.classTabs.MAGE:GetChecked(), "Paladin's side tab selected")
+    check(UI.classLabel.text:find("Paladin"), "class name shown: " .. UI.classLabel.text)
+    local n = 0
+    for _ in pairs(UI.classTabs) do n = n + 1 end
+    check(n == 9, "one side tab per class")
     check(UI.specBtns[1].classic and env.tabSelected[UI.specBtns[1]] == true and env.tabSelected[UI.specBtns[2]] == false,
         "spec tabs use the classic tab template, Holy selected")
     if forever then
@@ -236,19 +313,19 @@ local function windowTest(toc)
     check(not UI.browseBanner:IsShown(), "no browsing banner on your own class")
     local row = UI.rowPool[1]
     check(row:IsShown() and row.chk:IsShown() and not row.dash:IsShown(), "own class: Got it ticks shown")
-    local shown = 0
-    for _, line in ipairs(UI.farmLines or {}) do if line:IsShown() then shown = shown + 1 end end
     if forever then
-        check(shown > 0, "side panel lists where to get items (" .. shown .. " lines)")
+        check(UI.statPanel == nil and UI.frame.width == 760, "no side panel on Forever: the window is the gear list ("
+            .. tostring(UI.frame.width) .. " wide)")
     else
-        check(UI.farmLines == nil and UI.badgeStatus ~= nil, "stat caps and badge line kept")
+        check(UI.statPanel ~= nil and UI.badgeStatus ~= nil and UI.frame.width == 990, "TBC keeps stat caps and badge line")
     end
 
     -- Browse Mage
-    ok, err = pcall(function() UI:SetViewClass("MAGE") end)
+    ok, err = pcall(function() UI.classTabs.MAGE.scripts.OnClick(UI.classTabs.MAGE) end)
     check(ok, "switching class works" .. (ok and "" or (" (" .. tostring(err) .. ")")))
     check(db.lastClass == "MAGE" and db.lastSpec == "Arcane", "Mage selected, first spec")
-    check(tostring(UI.classDropdown.ddText):find("Mage"), "dropdown shows Mage")
+    check(UI.classLabel.text:find("Mage") and UI.classTabs.MAGE:GetChecked()
+        and not UI.classTabs.PALADIN:GetChecked(), "Mage tab selected, name shown")
     check(UI.browseBanner:IsShown() and UI.browseBanner.txt.text:find("Mage"), "browsing banner shown")
     check(not row.chk:IsShown() and row.dash:IsShown(), "browsing: ticks replaced by a dash")
     db.lastSpec = "Frost"
@@ -268,58 +345,11 @@ local function windowTest(toc)
     end
     check(found and found.srcDetail.text:find("World drop · auction house"), "source detail spelled out: " .. tostring(found and found.srcDetail.text))
     check(found and found.itemLbl.text:find("Twilight Cape|r|cffa39d8c of Healing", 1, true), "suffix shown next to the base name: " .. tostring(found and found.itemLbl.text))
-
-    -- "Where to get it": one column, headings + places; quest click opens the log
-    local heading, quest
-    for _, line in ipairs(UI.farmLines) do
-        if line:IsShown() then
-            local loc = rawget(line, "loc")
-            if not loc and line.text.text:find("QUEST") then heading = line end
-            if rawget(line, "kind") == "quest" and loc and not quest then quest = line end
-        end
-    end
-    check(heading ~= nil, "source types shown as headings (one column)")
-    check(quest ~= nil, "quest sources listed under their heading")
-    local opened, popup
-    env.GetNumQuestLogEntries = function() return 2 end
-    env.GetQuestLogTitle = function(i)
-        if i == 1 then return "Desolace", nil, nil, true end
-        return quest.loc.where, 30, nil, false
-    end
-    env.QuestLog_OpenToQuest = function(i) opened = i end
-    env.C_QuestLog = {}  -- classic client: no quest map API
-    env.StaticPopup_Show = function(_, _, _, url) popup = url end
-    UI:OpenFarmSource(quest)
-    check(opened == 2 and popup == nil, "clicking a quest in your log opens it there")
-    opened = nil
-    env.GetNumQuestLogEntries = function() return 0 end
-    UI:OpenFarmSource(quest)
-    check(opened == nil and popup and popup:find("wowhead.com/forever/search%?q="), "quest not in the log: Wowhead search link " .. tostring(popup))
-
-    -- A quest with a known ID: native tooltip on hover, direct quest link on click
-    addon:SetSelectedAlt("PALADIN", "Holy", "lvl30", "feet", 2)  -- Everlast Boots, quest Power Stones
-    UI:Refresh()
-    local withId
-    for _, line in ipairs(UI.farmLines) do
-        local loc = rawget(line, "loc")
-        if line:IsShown() and loc and rawget(line, "kind") == "quest" and loc.items[1].entry.questId then withId = line end
-    end
-    check(withId ~= nil, "some quest sources carry a quest ID")
-    if withId then
-        local qid = withId.loc.items[1].entry.questId
-        local link
-        env.GameTooltip.SetHyperlink = function(_, l) link = l end
-        env.GameTooltip.NumLines = function() return link and 3 or 0 end
-        env.GameTooltip.ClearLines = function() link = nil end
-        UI:ShowFarmTooltip(withId)
-        check(link == "quest:" .. qid, "hover shows the game's quest tooltip (" .. tostring(link) .. ")")
-        popup = nil
-        UI:OpenFarmSource(withId)
-        check(popup == "https://www.wowhead.com/forever/quest=" .. qid, "click links the exact quest: " .. tostring(popup))
-    end
 end
 windowTest(16001)
 windowTest(20505)
+windowTest(16001, true)
+windowTest(20505, true)
 
 print(failures == 0 and "\nALL PASSED" or ("\n" .. failures .. " FAILED"))
 os.exit(failures == 0 and 0 or 1)

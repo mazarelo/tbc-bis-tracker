@@ -1569,6 +1569,16 @@ SlashCmdList["TBCBISTRACKER"] = function(msg)
             end
             addon:Print(line)
         end
+    elseif cmd == "probe tabs" then
+        local lines, found = addon.UI:ProbeTalentTabs()
+        if found == 0 then
+            addon:Print("No Primary/Secondary tabs found. Open your talents window once, then try again.")
+        else
+            addon:Print("Read " .. found .. " talent tab(s) (" .. #lines .. " lines). /reload to save them for the author.")
+        end
+    elseif cmd == "probe" then
+        addon:Print("Blizzard UI parts on this client:")
+        for _, line in ipairs(addon.UI:ProbeLines()) do addon:Print("  " .. line) end
     elseif cmd == "mode" or cmd:match("^mode ") then
         addon:HandleModeCommand(cmd:match("^mode%s+(%S+)$"))
     elseif cmd == "help" or cmd == "" then
@@ -1584,6 +1594,8 @@ SlashCmdList["TBCBISTRACKER"] = function(msg)
             addon:Print("/tbcbis reset all — reset ALL tracking data")
             addon:Print("/tbcbis stats [mode]  — print stat-cap progress (modes: obtained/selected/equipped)")
             addon:Print("/tbcbis mode [auto|forever|tbc] — show or force game mode")
+            addon:Print("/tbcbis probe     — list the Blizzard UI parts this client has")
+            addon:Print("/tbcbis probe tabs — read the talent window's tabs (open it once first)")
             addon:Print("/tbcbis hide      — hide minimap button")
             addon:Print("/tbcbis show      — show minimap button")
             addon:Print("/tbcbis help      — show this message")
