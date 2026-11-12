@@ -35,7 +35,7 @@ export const GAMES: Record<Game, GameInfo> = {
     id: "forever",
     label: "Forever",
     subtitle: "WoW Forever · level 60 pre-raid",
-    credit: "Lists: Classic WoW Forever (classicwowforever.com), CC BY 4.0",
+    credit: "Lists: wowsims/forever gear sets, kami-labs.fr, Classic WoW Forever (CC BY 4.0)",
     wowheadSite: "forever",
     hasFactions: true,
     hasStatCaps: false,

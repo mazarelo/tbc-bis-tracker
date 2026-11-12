@@ -10,6 +10,15 @@ local addon = TBCBisTracker
 local UI = addon.UI
 local K = UI.kit
 
+-- Does the list say you need the profession yourself to use the item? The WoW
+-- Forever lists say so in the item's note; most other crafts can be bought.
+-- (TBC data has no such notes: there a crafted pick without the profession is flagged as before.)
+function K.NeedsOwnProfession(entry)
+    if not addon:IsForever() then return true end
+    local note = entry and entry.note
+    return note ~= nil and (note:find("Needs ", 1, true) ~= nil or note:find("Only its maker", 1, true) ~= nil)
+end
+
 local GetItemInfo = GetItemInfo or (C_Item and C_Item.GetItemInfo)
 
 -- ─────────────────────────────────────────────
@@ -519,8 +528,9 @@ function UI:FillGearRow(row, s, class, spec, phase)
     if entry.sourceType == "crafted" then
         local prof = addon:ParseCraftingProfession(entry)
         if prof then
+            -- Red only when the list says you need the profession yourself; most crafts can be bought.
             local rank, _, known = addon:GetPlayerProfessionLevel(prof)
-            if not rank and known then where, color = "Needs " .. prof, "|cffff6b5a" end
+            if not rank and known and K.NeedsOwnProfession(entry) then where, color = "Needs " .. prof, "|cffff6b5a" end
         end
     end
     row.srcLbl:SetText(color .. where .. "|r")
@@ -748,9 +758,9 @@ function UI:RefreshDetail()
             local r, _, k = addon:GetPlayerProfessionLevel(prof)
             rank, known = r, k
         end
-        local makerOnly = entry.note and entry.note:find("Only its maker", 1, true) and " (only its maker can wear it)" or ""
         if prof and not rank then
-            you = known and ("|cffff6b5aNeeds " .. prof .. makerOnly .. "|r") or ("Crafted with " .. prof .. makerOnly)
+            you = (known and K.NeedsOwnProfession(entry)) and ("|cffff6b5aNeeds " .. prof .. "|r")
+                or ("Crafted with " .. prof .. ": make it or buy it")
         elseif prof then
             you = prof .. " " .. rank
         else
@@ -1167,7 +1177,7 @@ function UI:RefreshWhere()
             if not rank and not known then
                 right = "|cff888888" .. (p.need > 0 and ("needs " .. p.need) or "crafted") .. "|r"
             elseif not rank then
-                right = "|cffff6b5anot learned" .. (p.need > 0 and (" · " .. p.need) or "") .. "|r"
+                right = "|cffffd100craft or buy" .. (p.need > 0 and (" · " .. p.need) or "") .. "|r"
             elseif p.need > 0 then
                 right = (rank >= p.need and "|cff60ff60" or "|cffffd100") .. rank .. " / " .. p.need .. "|r"
             else
@@ -1202,6 +1212,25 @@ function UI:RefreshWhere()
     end
     local auction = 0
     local gw = byType.world
+    -- World drops go to the auction house; named vendors and open-world bosses get their own lines.
+    local elsewhere = {}
+    if gw then
+        local drops = {}
+        for _, loc in ipairs(gw.locations) do
+            if loc.location:find("^World drop") or loc.location:find("^Unknown") then
+                table.insert(drops, loc)
+            else
+                table.insert(elsewhere, loc)
+            end
+        end
+        gw = (#drops > 0) and { locations = drops } or nil
+    end
+    if #elsewhere > 0 and c3:Header("Vendors & open world") then
+        for _, loc in ipairs(elsewhere) do
+            c3:Line({ text = K.ShortSource({ source = loc.location .. " (x)" }), right = tostring(loc.count),
+                items = ItemIds(loc), loc = loc, count = loc.count, onEnter = PlaceTooltip })
+        end
+    end
     if gw and c3:Header("Auction house") then
         for _, loc in ipairs(gw.locations) do
             for _, it in ipairs(loc.items) do
@@ -1227,7 +1256,7 @@ function UI:RefreshWhere()
                 items = ItemIds(loc), loc = loc, count = loc.count, onEnter = PlaceTooltip })
         end
     end
-    if not gr and not gw and not gp then
+    if not gr and not gw and not gp and #elsewhere == 0 then
         c3:Header("Vendors")
         c3:Note("Nothing to buy.")
     end

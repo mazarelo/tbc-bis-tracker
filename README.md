@@ -32,7 +32,7 @@ On the **WoW Forever** client (interface 1.60) the add-on switches itself to For
 - Item links go to `wowhead.com/forever`; TBC-only extras (Badges of Justice, rating caps) are hidden.
 - `/tbcbis mode` shows the detected mode; `/tbcbis mode forever|tbc|auto` + `/reload` forces one.
 
-The lists are from [Classic WoW Forever](https://classicwowforever.com/bis-list/) (CC BY 4.0). They live in `web/scripts/forever-lvl60.json`, read from the site by
+The lists are built from three sources, most trusted first: the gear sets and item data of the [WoW Forever simulator](https://github.com/wowsims/forever) (MIT), the simulator-weight lists of [kami-labs.fr](https://kami-labs.fr/en/bis-list-wow-forever/), and alternatives from [Classic WoW Forever](https://classicwowforever.com/bis-list/) (CC BY 4.0), each item checked against the simulator item data. They live in `web/scripts/forever-lvl60.json`, built by
 `python3 web/scripts/fetch-forever-bis.py` (run it again when the site updates its lists), and is turned into
 `TBCBisTracker/Database_Forever.lua` (add-on) and `web/public/data/forever.js` (website: TBC / Forever switch
 in the top bar, `?game=forever`) with `python3 web/scripts/build-forever-db.py`. Test with `lua tests/harness.lua` (Lua 5.1; `nvim -l tests/harness.lua` works too).

@@ -1911,7 +1911,8 @@ function UI:BuildProgressBar()
     local legend = container:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     legend:SetPoint("LEFT", container, "LEFT", 340, 0)
     legend:SetText("|TInterface\\RAIDFRAME\\ReadyCheck-Ready:12:12|t obtained    "
-        .. "|TInterface\\Buttons\\Arrow-Up-Up:12:12|t upgrade over what you wear    "
+        .. (HasAtlas("bags-greenarrow") and "|A:bags-greenarrow:12:12|a" or "|TInterface\\Buttons\\Arrow-Up-Up:12:12|t")
+        .. " upgrade over what you wear    "
         .. "|TInterface\\GossipFrame\\AvailableQuestIcon:12:12|t quest reward")
     self.progressLegend = legend
 
