@@ -87,11 +87,11 @@ local fv = loadAddon(16001, { lastPhase = "phase2" })
 a = fv.TBCBisTracker
 check(a.GAME_MODE == "forever", "switches to Forever mode")
 check(a.DB == a.FOREVER_DB, "uses Forever database")
-check(#a.PHASES == 1 and a.PHASES[1] == "lvl30", "single Level 30 stage")
-check(fv.TBCBisTrackerDB.lastPhase == "lvl30", "saved TBC phase moved to lvl30")
+check(#a.PHASES == 1 and a.PHASES[1] == "lvl60" and a.PHASE_LABELS.lvl60 == "Pre-BIS", "single Pre-BIS stage (key lvl60)")
+check(fv.TBCBisTrackerDB.lastPhase == "lvl60", "saved TBC phase moved to lvl60")
 check(next(a.STAT_CAPS) == nil, "TBC stat caps disabled")
 check(a.WOWHEAD_BASE:find("/forever/"), "Wowhead Forever links")
-check(a:GetCapStatus("WARRIOR", "Fury", "lvl30", "selected") == nil, "no cap rows")
+check(a:GetCapStatus("WARRIOR", "Fury", "lvl60", "selected") == nil, "no cap rows")
 check(fv.printed[#fv.printed]:find("Forever"), "load message mentions Forever")
 
 print("Tooltip hooks")
@@ -100,10 +100,48 @@ local modern = loadAddon(16001, {}, true)
 local modernErr = rawget(modern, "loadError")
 check(modernErr == nil, "new client: loads without HookScript error" .. (modernErr and (" (" .. modernErr .. ")") or ""))
 check(#modern.postCalls == 1 and modern.GameTooltip.hooks.OnTooltipSetItem == nil, "new client: uses TooltipDataProcessor")
-local ok, err = pcall(modern.postCalls[1] and modern.postCalls[1].fn or error, modern.GameTooltip, { id = 6686 })
+modern.TBCBisTrackerCharDB = { obtained = {}, selected = {}, notes = {}, customAlts = {} }
+local ok, err = pcall(modern.postCalls[1] and modern.postCalls[1].fn or error, modern.GameTooltip, { id = 12640 })
 check(ok, "item tooltip post-call runs" .. (ok and "" or (" (" .. tostring(err) .. ")")))
 local lines = table.concat(modern.GameTooltip.lines or {}, " | ")
-check(lines:find("Level 30"), "tracked item gets a Level 30 line: " .. lines)
+check(lines:find("Pre%-BIS"), "tracked item gets a Pre-BIS line: " .. lines)
+
+print("Forever: where to go groups by dungeon, professions")
+do
+    fv.TBCBisTrackerCharDB = { obtained = {}, selected = {}, notes = {}, customAlts = {} }
+    local places, perBoss = {}, false
+    for _, g in ipairs(a:GetFarmBreakdown("WARRIOR", "Fury", "lvl60")) do
+        if g.type == "dungeon" then
+            for _, loc in ipairs(g.locations) do
+                places[#places + 1] = loc.location
+                if loc.location:find(",") then perBoss = true end
+            end
+        end
+    end
+    check(#places > 0 and not perBoss, "dungeon drops listed per dungeon: " .. table.concat(places, " / "))
+    -- Neither profession list answers: unknown, not "not learned"
+    local rank, _, known = a:GetPlayerProfessionLevel("Blacksmithing")
+    check(rank == nil and known == false, "no profession list from the client: can't tell")
+    -- Classic skills list
+    fv.GetNumSkillLines = function() return 2 end
+    fv.GetSkillLineInfo = function(i)
+        if i == 1 then return "Professions", true end
+        return "Blacksmithing", false, nil, 120, nil, nil, 150
+    end
+    rank, _, known = a:GetPlayerProfessionLevel("Blacksmithing")
+    check(rank == 120 and known == true, "skills list: Blacksmithing 120")
+    rank, _, known = a:GetPlayerProfessionLevel("Tailoring")
+    check(rank == nil and known == true, "skills list: Tailoring not learned")
+    -- Newer clients: empty skills list, GetProfessions answers
+    fv.GetNumSkillLines = function() return 0 end
+    fv.GetProfessions = function() return 7, nil, 9 end
+    fv.GetProfessionInfo = function(index)
+        if index == 7 then return "Tailoring", "icon", 95, 150 end
+        return "Fishing", "icon", 10, 75
+    end
+    rank, _, known = a:GetPlayerProfessionLevel("Tailoring")
+    check(rank == 95 and known == true, "GetProfessions fallback: Tailoring 95")
+end
 
 print("Forever client forced to TBC")
 local forced = loadAddon(16001, { gameMode = "tbc" })
@@ -118,7 +156,7 @@ for cls, info in pairs(a.CLASS_INFO) do
         local d = a.FOREVER_DB[cls] and a.FOREVER_DB[cls][spec]
         if d then
             specs = specs + 1
-            for slot, list in pairs(d.lvl30 or {}) do
+            for slot, list in pairs(d.lvl60 or {}) do
                 if not SLOT_OK[slot] then check(false, cls .. "/" .. spec .. " unknown slot " .. slot) end
                 for _, e in ipairs(list) do
                     entries = entries + 1
@@ -133,7 +171,7 @@ for cls, info in pairs(a.CLASS_INFO) do
         if not known then check(false, cls .. " has unknown spec '" .. spec .. "'") end
     end
 end
-check(specs == 26, specs .. " specs with Forever data, " .. entries .. " items")
+check(specs == 28, specs .. " specs with Forever data, " .. entries .. " items")
 
 print("Faction filter")
 local function countFaction(fac)
@@ -142,7 +180,7 @@ local function countFaction(fac)
     for cls, specsT in pairs(a.FOREVER_DB) do
         for spec in pairs(specsT) do
             for _, slot in ipairs(a.SLOTS) do
-                for _, e in ipairs(a:GetSlotAlternatives(cls, spec, "lvl30", slot) or {}) do
+                for _, e in ipairs(a:GetSlotAlternatives(cls, spec, "lvl60", slot) or {}) do
                     n = n + 1
                     if e.faction and e.faction ~= fac then wrong = wrong + 1 end
                 end
@@ -229,7 +267,7 @@ local function windowTest(toc, templated)
     env.PanelTemplates_SelectTab = function(tab) env.tabSelected[tab] = true end
     env.PanelTemplates_DeselectTab = function(tab) env.tabSelected[tab] = false end
     env.C_Timer = { After = function(_, fn) fn() end }
-    for _, file in ipairs({ "Localization.lua", "Core.lua", "Database.lua", "Database_Forever.lua", "Forever.lua", "UI.lua" }) do
+    for _, file in ipairs({ "Localization.lua", "Core.lua", "Database.lua", "Database_Forever.lua", "Forever.lua", "UI.lua", "Pages.lua" }) do
         local chunk = assert(loadfile(ADDON_DIR .. file))
         setfenv(chunk, env)
         chunk()
@@ -312,13 +350,45 @@ local function windowTest(toc, templated)
     end
     check(not UI.browseBanner:IsShown(), "no browsing banner on your own class")
     local row = UI.rowPool[1]
-    check(row:IsShown() and row.chk:IsShown() and not row.dash:IsShown(), "own class: Got it ticks shown")
+    check(UI.frame.width == 960, "the window is 960 wide (gear list + details)")
+    check(UI.pageTabs.gear and UI.pageTabs.where and UI.pages.gear:IsShown() and not UI.pages.where:IsShown(),
+        "tabs under the window: Gear (shown) and Where to go")
     if forever then
-        check(UI.statPanel == nil and UI.frame.width == 760, "no side panel on Forever: the window is the gear list ("
-            .. tostring(UI.frame.width) .. " wide)")
+        check(UI.pageTabs.stats == nil and UI.statPanel == nil, "Forever: no Stat Caps tab")
     else
-        check(UI.statPanel ~= nil and UI.badgeStatus ~= nil and UI.frame.width == 990, "TBC keeps stat caps and badge line")
+        check(UI.pageTabs.stats ~= nil and UI.statPanel ~= nil and UI.badgeStatus ~= nil, "TBC: Stat Caps tab and badge line")
     end
+    -- Gear: slots grouped under section titles, the first row selected, its details on the right
+    local titles = {}
+    for _, h in ipairs(UI.sectionPool) do if h:IsShown() then table.insert(titles, h.title.text) end end
+    check(table.concat(titles, ",") == "Armor,Jewelry & trinkets,Weapons", "rows grouped: " .. table.concat(titles, ","))
+    check(row:IsShown() and row.slotKey == "head" and row.selected:IsShown(), "first row (Head) selected")
+    check(UI.detail.lines["Slot"].value.text == "Head" and UI.detail.got:IsShown(), "details show the slot, with Got it")
+    -- Click another row: its details
+    local neckRow
+    for _, r in ipairs(UI.rowPool) do if r:IsShown() and r.slotKey == "neck" then neckRow = r end end
+    neckRow.scripts.OnClick(neckRow, "LeftButton")
+    check(UI.selectedSlot == "neck" and UI.detail.lines["Slot"].value.text == "Neck" and neckRow.selected:IsShown()
+        and not row.selected:IsShown(), "clicking a row shows its details")
+    local altsShown = 0
+    for _, b in ipairs(UI.detail.alts) do if b:IsShown() then altsShown = altsShown + 1 end end
+    local altCount = #(addon:GetSlotAlternatives(db.lastClass, db.lastSpec, db.lastPhase, "neck") or {})
+    check(altsShown == math.min(altCount, 6) and altsShown > 0, "its alternatives as item buttons (" .. altsShown .. ")")
+    -- Got it ticks the slot, and the row's mark follows
+    UI.detail.got:SetChecked(true)
+    UI.detail.got.scripts.OnClick(UI.detail.got)
+    check(addon:IsObtained(db.lastClass, db.lastSpec, db.lastPhase, "neck") and neckRow.mark == "obtained",
+        "Got it in the details marks the row obtained")
+    UI.detail.got:SetChecked(false)
+    UI.detail.got.scripts.OnClick(UI.detail.got)
+    -- Where to go
+    UI.pageTabs.where.scripts.OnClick(UI.pageTabs.where)
+    check(UI.pages.where:IsShown() and not UI.pages.gear:IsShown() and db.page == "where", "Where to go tab")
+    check(UI.whereSummary.text:find("still needed"), "summary line: " .. tostring(UI.whereSummary.text))
+    local lines = 0
+    for _, col in ipairs(UI.whereCols) do for _, l in ipairs(col.lines) do if l:IsShown() then lines = lines + 1 end end end
+    check(lines > 0, "columns list places (" .. lines .. " lines)")
+    UI.pageTabs.gear.scripts.OnClick(UI.pageTabs.gear)
 
     -- Browse Mage
     ok, err = pcall(function() UI.classTabs.MAGE.scripts.OnClick(UI.classTabs.MAGE) end)
@@ -327,24 +397,25 @@ local function windowTest(toc, templated)
     check(UI.classLabel.text:find("Mage") and UI.classTabs.MAGE:GetChecked()
         and not UI.classTabs.PALADIN:GetChecked(), "Mage tab selected, name shown")
     check(UI.browseBanner:IsShown() and UI.browseBanner.txt.text:find("Mage"), "browsing banner shown")
-    check(not row.chk:IsShown() and row.dash:IsShown(), "browsing: ticks replaced by a dash")
+    check(not UI.detail.got:IsShown(), "browsing: no Got it (planning only)")
     db.lastSpec = "Frost"
 
     -- And back
     UI:SetViewClass("PALADIN")
-    check(not UI.browseBanner:IsShown() and row.chk:IsShown(), "back to Paladin: ticks back, banner gone")
+    check(not UI.browseBanner:IsShown() and UI.detail.got:IsShown(), "back to Paladin: Got it back, banner gone")
     UI:SetViewClass("MAGE")
     check(db.lastSpec == "Frost", "remembers the spec you last viewed per class")
 
     if not forever then return end
-    -- Suffix hint and source detail on the Holy rows
+    -- Source detail on the Holy rows (the level 60 lists have no random-suffix items to hint at)
     UI:SetViewClass("PALADIN")
     local found
     for _, r in ipairs(UI.rowPool) do
         if r:IsShown() and r.slotKey == "back" then found = r end
     end
-    check(found and found.srcDetail.text:find("World drop · auction house"), "source detail spelled out: " .. tostring(found and found.srcDetail.text))
-    check(found and found.itemLbl.text:find("Twilight Cape|r|cffa39d8c of Healing", 1, true), "suffix shown next to the base name: " .. tostring(found and found.itemLbl.text))
+    local backPick = addon:GetSlotItem("PALADIN", db.lastSpec, db.lastPhase, "back")
+    check(found and backPick and found.srcLbl.text:find(UI.kit.ShortSource(backPick), 1, true),
+        "source spelled out: " .. tostring(found and found.srcLbl.text))
 end
 windowTest(16001)
 windowTest(20505)

@@ -2,7 +2,7 @@
 """
 Builds the WoW Forever gear tables from the curated JSON:
 
-  web/scripts/forever-lvl30.json  ->  TBCBisTracker/Database_Forever.lua  (add-on)
+  web/scripts/forever-lvl60.json  ->  TBCBisTracker/Database_Forever.lua  (add-on)
                                   ->  web/public/data/forever.js          (website)
 
 Entries without an item ID are kept as comments (the add-on needs real IDs).
@@ -13,15 +13,15 @@ import re
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent.parent
-SRC = REPO / "web" / "scripts" / "forever-lvl30.json"
+SRC = REPO / "web" / "scripts" / "forever-lvl60.json"
 OUT = REPO / "TBCBisTracker" / "Database_Forever.lua"
 WEB_OUT = REPO / "web" / "public" / "data" / "forever.js"
 PKG_FILE = REPO / "web" / "package.json"
 TOC_FILE = REPO / "TBCBisTracker" / "TBCBisTracker.toc"
 
 # Mirrors Forever.lua (FOREVER_PHASES / labels / descriptions).
-PHASE_LABEL = "Level 30"
-PHASE_DESCRIPTION = "Level 30 — beta cap: dungeons, quests, crafted and world drops"
+PHASE_LABEL = "Pre-BIS"
+PHASE_DESCRIPTION = "Pre-raid Best in Slot at level 60 — dungeons, quests, crafted and reputation gear"
 SLOT_LABELS = {
     "head": "Head", "neck": "Neck", "shoulder": "Shoulders", "back": "Back",
     "chest": "Chest", "wrist": "Wrist", "hands": "Hands", "waist": "Waist",
@@ -30,7 +30,7 @@ SLOT_LABELS = {
     "offhand": "Off Hand", "ranged": "Ranged",
 }
 
-PHASE = "lvl30"
+PHASE = "lvl60"
 CLASS_ORDER = ["WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST",
                "SHAMAN", "MAGE", "WARLOCK", "DRUID"]
 SLOTS = ["head", "neck", "shoulder", "back", "chest", "wrist", "hands",
@@ -65,7 +65,7 @@ def source_type(e):
 
 
 def write_web(doc):
-    """Same bundle shape as data.js (window.TBC_DATA), one phase: lvl30."""
+    """Same bundle shape as data.js (window.TBC_DATA), one phase: lvl60."""
     database = {}
     for cls, specs in doc["data"].items():
         for spec, slots in specs.items():
@@ -119,9 +119,11 @@ def main():
 
     lines = [
         "-- TBCBisTracker WoW Forever database (GENERATED — do not edit by hand)",
-        "-- Source: web/scripts/forever-lvl30.json via web/scripts/build-forever-db.py",
+        "-- Source: web/scripts/forever-lvl60.json via web/scripts/build-forever-db.py",
         "-- Generated: " + str(meta.get("generated", "?")),
-        "-- Beta data (level 30 cap): unverified until the game launches.",
+        "-- Level 60 pre-raid lists; refresh with web/scripts/fetch-forever-bis.py.",
+        "-- " + str(meta.get("credit", "")),
+        "-- " + "; ".join(meta.get("siteStatus") or []),
         "",
         "TBCBisTracker = TBCBisTracker or {}",
         "TBCBisTracker.FOREVER_DB = {}",

@@ -103,16 +103,16 @@ export const mockStatCaps: StatCaps = {
 
 export const mockForeverMeta: Meta = {
   slots: ["head", "neck", "back"],
-  phases: ["lvl30"],
+  phases: ["lvl60"],
   slotLabels: { head: "Head", neck: "Neck", back: "Back" },
-  phaseLabels: { lvl30: "Level 30" },
-  phaseDescriptions: { lvl30: "Level 30 — beta cap: dungeons, quests, crafted and world drops" },
+  phaseLabels: { lvl60: "Pre-BIS" },
+  phaseDescriptions: { lvl60: "Pre-raid Best in Slot at level 60 — dungeons, quests, crafted and reputation gear" },
 };
 
 export const mockForeverDatabase: Database = {
   WARRIOR: {
     Fury: {
-      lvl30: {
+      lvl60: {
         head: [
           {
             id: 250498,

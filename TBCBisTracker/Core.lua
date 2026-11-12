@@ -724,15 +724,47 @@ function addon:ParseCraftingProfession(entry)
     return nil
 end
 
-function addon:GetPlayerProfessionLevel(profName)
-    if not GetNumSkillLines or not profName then return nil end
-    for i = 1, GetNumSkillLines() do
-        local skillName, _, _, skillRank, _, _, skillMaxRank = GetSkillLineInfo(i)
-        if skillName == profName then
-            return skillRank, skillMaxRank
+-- { [profession name] = { rank, max } } from whichever list the client fills:
+-- the Classic skills list, or GetProfessions on newer clients (WoW Forever
+-- leaves the skills list empty). Second value: false when neither answered,
+-- so callers can tell "not learned" from "can't tell".
+function addon:ReadProfessions()
+    local found, known = {}, false
+    if GetNumSkillLines and GetSkillLineInfo then
+        for i = 1, tonumber(GetNumSkillLines()) or 0 do
+            local skillName, isHeader, _, skillRank, _, _, skillMaxRank = GetSkillLineInfo(i)
+            if type(skillName) == "string" and not isHeader then
+                found[skillName] = { tonumber(skillRank) or 0, tonumber(skillMaxRank) or 0 }
+                known = true
+            end
         end
     end
-    return nil
+    if not known and GetProfessions and GetProfessionInfo then
+        local ok, list = pcall(function() return { GetProfessions() } end)
+        if ok and type(list) == "table" then
+            for i = 1, 6 do
+                local index = list[i]
+                if type(index) == "number" then
+                    local okInfo, name, _, rank, max = pcall(GetProfessionInfo, index)
+                    if okInfo and type(name) == "string" then
+                        found[name] = { tonumber(rank) or 0, tonumber(max) or 0 }
+                        known = true
+                    end
+                end
+            end
+        end
+    end
+    return found, known
+end
+
+-- rank, max for a learned profession; nil when not learned. The third value is
+-- false when the client gave no profession list at all (don't claim "not learned").
+function addon:GetPlayerProfessionLevel(profName)
+    if not profName then return nil, nil, false end
+    local found, known = self:ReadProfessions()
+    local p = found[profName]
+    if p then return p[1], p[2], true end
+    return nil, nil, known
 end
 
 -- ─────────────────────────────────────────────
@@ -799,6 +831,10 @@ function addon:GetFarmBreakdown(class, spec, phase)
                 buckets[t].count = buckets[t].count + 1
                 local loc = (entry.source or "Unknown"):match("^(.-)%s*%(") or entry.source or "Unknown"
                 loc = loc:match("^%s*(.-)%s*$")
+                -- Forever lists name the boss first ("Roogug, Razorfen Kraul"): one line per dungeon.
+                if t == "dungeon" and self:IsForever() then
+                    loc = loc:match("^.*,%s*(.-)$") or loc
+                end
                 local found
                 for _, l in ipairs(buckets[t].locations) do
                     if l.location == loc then

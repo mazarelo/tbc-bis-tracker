@@ -32,21 +32,12 @@ end)
 -- LIST_W is the width of the gear-list / filters / footer area on the left.
 -- STAT_AREA_W is the width of the stat-cap column on the right inside the
 -- same window (TBC only). FRAME_W is the total window width.
-local LIST_W       = 760
-local STAT_COL_W   = 230
-local STAT_AREA_W  = STAT_COL_W           -- set in Build: 0 on WoW Forever (no side column)
-local FRAME_W      = LIST_W + STAT_AREA_W
+local LIST_W       = 960   -- the window's content width (Pages.lua lays out the tabs' pages in it)
+local STAT_AREA_W  = 0     -- (the stat caps have their own tab now)
+local FRAME_W      = LIST_W
 local FRAME_H      = 640
 local PHASE_TAB_H  = 24
 local PROGRESS_H   = 18
-local ROW_H        = 34
-local ROW_PAD      = 2
-local SCROLL_W     = LIST_W - 52   -- leaves room for the slim scrollbar
-local COL_ICON_W   = 28
-local COL_SLOT_W   = 70
-local COL_ITEM_W   = 340
-local COL_SRC_W    = 200
-local COL_CHK_W    = 40
 
 -- Vertical layout (offsets from the top of the window).
 local ROW_A_Y      = -30   -- class dropdown, spec tabs, stage chip
@@ -54,7 +45,7 @@ local ROW_A_X      = 0     -- set in Build: right of the portrait on the game's 
 local ROW_B_Y      = -62   -- source filter, missing only, export/import
 local TABS_Y       = -92   -- phase tabs (only when there's more than one phase)
 local BANNER_H     = 26
--- Space kept under the list: progress footer, plus badge/tier lines on TBC.
+-- Space kept under the pages: progress footer, plus badge/tier lines on TBC.
 local LIST_BOTTOM_FOREVER = 44
 local LIST_BOTTOM_TBC     = 80
 
@@ -572,10 +563,6 @@ function UI:Build()
 
     -- Outer frame: the game's portrait window (your character's face top left), like
     -- the character window, or the plain dialog frame on older clients.
-    -- TBC has the stat-cap column on the right; WoW Forever has no rating caps, so
-    -- the window is just the gear list.
-    STAT_AREA_W = addon:IsForever() and 0 or STAT_COL_W
-    FRAME_W = LIST_W + STAT_AREA_W
     local f = CreateWindow("TBCBisTrackerFrame", FRAME_W, FRAME_H, true)
     f:SetPoint("CENTER")
     self.frame = f
@@ -619,24 +606,15 @@ function UI:Build()
     -- ── "Browsing another class" banner ──
     self:BuildBrowseBanner()
 
-    -- ── Column headers ──
-    self:BuildColumnHeaders()
-
-    -- ── Scrollable gear list ──
-    self:BuildScrollFrame()
+    -- ── Pages (Gear, Where to go, TBC: Stat Caps) and their tabs under the window ──
+    self:BuildPages()
 
     -- ── Progress footer ──
     self:BuildProgressBar()
 
-    -- ── TBC extras under the list: badges, tier sets, farm plan hover ──
-    if not addon:IsForever() then
-        self:BuildBadgeStatus()
-        self:BuildFarmPlan()
-    end
+    -- ── TBC extras under the pages: badges, tier sets ──
+    if not addon:IsForever() then self:BuildBadgeStatus() end
     self:BuildTierStatus()
-
-    -- ── Stat-cap side panel (TBC) ──
-    if not addon:IsForever() then self:BuildStatCapPanel() end
 
     -- Initial population
     self:RefreshClassButtons()
@@ -1082,7 +1060,7 @@ function UI:BuildBrowseBanner()
         AddFill(banner, 0.10, 0.13, 0.19, 0.95)
         AddBorder(banner, 0.18, 0.23, 0.32, 1)
     end
-    banner:SetSize(LIST_W - 40, BANNER_H)
+    banner:SetSize(LIST_W - 24, BANNER_H)
 
     local back = CreateFrame("Button", nil, banner, "UIPanelButtonTemplate")
     back:SetSize(130, 20)
@@ -1102,140 +1080,24 @@ function UI:BuildBrowseBanner()
     self.browseBanner = banner
 end
 
-function UI:BuildColumnHeaders()
-    local f = self.frame
-    local header = CreateFrame("Frame", nil, f)
-    header:SetSize(SCROLL_W, 16)
-    self.colHeader = header
-
-    local headers = {
-        { text = "",       w = COL_ICON_W },
-        { text = "Slot",   w = COL_SLOT_W },
-        { text = "Item",   w = COL_ITEM_W },
-        { text = "Source", w = COL_SRC_W  },
-        { text = "Got it", w = COL_CHK_W, center = true },
-    }
-
-    local x = 0
-    for _, h in ipairs(headers) do
-        if h.text ~= "" then
-            local fs = header:CreateFontString(nil, "OVERLAY")
-            SetFontSmall(fs)
-            fs:SetTextColor(0.55, 0.53, 0.48, 1)
-            fs:SetWidth(h.w)
-            fs:SetJustifyH(h.center and "CENTER" or "LEFT")
-            fs:SetPoint("LEFT", header, "LEFT", x, 0)
-            fs:SetText(h.text:upper())
-        end
-        x = x + h.w + 4
-    end
-
-    local div = header:CreateTexture(nil, "OVERLAY")
-    div:SetColorTexture(0.3, 0.3, 0.3, 0.7)
-    div:SetHeight(1)
-    div:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 0, -2)
-    div:SetPoint("TOPRIGHT", header, "BOTTOMRIGHT", 10, -2)
-end
-
--- ─────────────────────────────────────────────
--- Scrollable gear list (plain scroll frame + slim scrollbar; the old
--- UIPanelScrollFrameTemplate art draws as grey boxes on newer clients)
--- ─────────────────────────────────────────────
-
-function UI:BuildScrollFrame()
-    local f = self.frame
-
-    local sf = CreateFrame("ScrollFrame", "TBCBisTrackerScroll", f)
-    sf:EnableMouseWheel(true)
-    self.scrollFrame = sf
-
-    local content = CreateFrame("Frame", nil, sf)
-    content:SetSize(SCROLL_W, 17 * (ROW_H + ROW_PAD))
-    sf:SetScrollChild(content)
-    self.scrollContent = content
-
-    -- Slim scrollbar on the right of the list.
-    -- The list sits in the game's inset box (placed by ApplyLayout).
-    self.listInset = CreateInset(f)
-
-    local bar = CreateFrame("Slider", nil, f)
-    bar:SetOrientation("VERTICAL")
-    bar:SetWidth(6)
-    bar:EnableMouse(true)
-    bar:SetPoint("TOPLEFT", sf, "TOPRIGHT", 6, 0)
-    bar:SetPoint("BOTTOMLEFT", sf, "BOTTOMRIGHT", 6, 0)
-    local thumb = TEMPLATED and SkinMinimalScrollBar(bar)
-    if not thumb then
-        AddFill(bar, 0.11, 0.12, 0.14, 1)
-        thumb = bar:CreateTexture(nil, "OVERLAY")
-        thumb:SetColorTexture(0.42, 0.39, 0.30, 1)
-        thumb:SetSize(6, 40)
-        bar:SetThumbTexture(thumb)
-    end
-    bar:SetMinMaxValues(0, 0)
-    bar:SetValue(0)
-    bar:SetScript("OnValueChanged", function(_, value) sf:SetVerticalScroll(value) end)
-    sf:SetScript("OnMouseWheel", function(_, delta)
-        local lo, hi = bar:GetMinMaxValues()
-        local v = bar:GetValue() - delta * (ROW_H + ROW_PAD) * 2
-        bar:SetValue(math.max(lo, math.min(hi, v)))
-    end)
-    self.scrollBar = bar
-    self.scrollThumb = thumb
-    -- The list only knows its height once laid out; redo the range then.
-    sf:SetScript("OnSizeChanged", function() UI:UpdateScrollRange(UI.lastRowCount or 0) end)
-
-    self.rowPool = {}
-    for i = 1, 18 do
-        local row = self:CreateRowFrame(content, i)
-        self.rowPool[i] = row
-        row:Hide()
-    end
-end
-
--- Positions the header, banner and list for the current state: one stage or
+-- Positions the browse banner and the pages for the current state: one stage or
 -- phase tabs, browsing banner or not, TBC footer lines or not.
 function UI:ApplyLayout()
     local f = self.frame
     local top = (#addon.PHASES > 1) and (TABS_Y - PHASE_TAB_H - 6) or (ROW_B_Y - 30)
-    local browsing = IsBrowsing()
-    if browsing then
+    if IsBrowsing() then
         self.browseBanner:ClearAllPoints()
-        self.browseBanner:SetPoint("TOPLEFT", f, "TOPLEFT", 20, top)
+        self.browseBanner:SetPoint("TOPLEFT", f, "TOPLEFT", 12, top)
         self.browseBanner:Show()
         top = top - BANNER_H - 6
     else
         self.browseBanner:Hide()
     end
-    self.colHeader:ClearAllPoints()
-    self.colHeader:SetPoint("TOPLEFT", f, "TOPLEFT", 20, top)
-
     local bottom = addon:IsForever() and LIST_BOTTOM_FOREVER or LIST_BOTTOM_TBC
-    self.scrollFrame:ClearAllPoints()
-    self.scrollFrame:SetPoint("TOPLEFT", f, "TOPLEFT", 20, top - 22)
-    self.scrollFrame:SetPoint("BOTTOMRIGHT", f, "BOTTOMLEFT", 20 + SCROLL_W, bottom)
-    if self.listInset then
-        self.listInset:ClearAllPoints()
-        self.listInset:SetPoint("TOPLEFT", f, "TOPLEFT", 12, top + 6)
-        self.listInset:SetPoint("BOTTOMRIGHT", f, "BOTTOMLEFT", LIST_W - 10, bottom - 6)
-    end
-end
-
--- Scroll range and thumb size for the current number of rows.
-function UI:UpdateScrollRange(rowCount)
-    self.lastRowCount = rowCount
-    local contentH = math.max(1, rowCount) * (ROW_H + ROW_PAD)
-    self.scrollContent:SetHeight(contentH)
-    local viewH = self.scrollFrame:GetHeight() or 0
-    local maxScroll = math.max(0, contentH - viewH)
-    self.scrollBar:SetMinMaxValues(0, maxScroll)
-    if self.scrollBar:GetValue() > maxScroll then self.scrollBar:SetValue(maxScroll) end
-    self.scrollFrame:SetVerticalScroll(self.scrollBar:GetValue())
-    if viewH > 0 and maxScroll > 0 then
-        self.scrollThumb:SetHeight(math.max(24, viewH * viewH / contentH))
-        self.scrollBar:Show()
-    else
-        self.scrollBar:Hide()
+    for _, page in pairs(self.pages) do
+        page:ClearAllPoints()
+        page:SetPoint("TOPLEFT", f, "TOPLEFT", 12, top)
+        page:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -12, bottom)
     end
 end
 
@@ -1311,222 +1173,17 @@ local function SetQuestTooltip(owner, questId)
     return false
 end
 
-function UI:CreateRowFrame(parent, idx)
-    local row = CreateFrame("Button", nil, parent)
-    row:SetHeight(ROW_H)
-
-    -- Background (alternating)
-    local bg = row:CreateTexture(nil, "BACKGROUND")
-    bg:SetAllPoints()
-    bg:SetTexture("Interface\\ChatFrame\\ChatFrameBackground")
-    if idx % 2 == 0 then
-        bg:SetVertexColor(0.10, 0.10, 0.14, 0.6)
-    else
-        bg:SetVertexColor(0.06, 0.06, 0.09, 0.4)
-    end
-    row.bg = bg
-
-    local x = 0
-
-    -- Item icon with a quality-coloured border
-    local iconBorder = row:CreateTexture(nil, "BORDER")
-    iconBorder:SetSize(26, 26)
-    iconBorder:SetPoint("LEFT", row, "LEFT", x + 1, 0)
-    iconBorder:SetColorTexture(0.35, 0.35, 0.35, 1)
-    row.iconBorder = iconBorder
-    local iconTex = row:CreateTexture(nil, "ARTWORK")
-    iconTex:SetSize(24, 24)
-    iconTex:SetPoint("CENTER", iconBorder, "CENTER", 0, 0)
-    iconTex:SetTexCoord(0.07, 0.93, 0.07, 0.93)
-    row.iconTex = iconTex
-    x = x + COL_ICON_W + 4
-
-    -- Slot label
-    local slotLbl = row:CreateFontString(nil, "OVERLAY")
-    SetFontSmall(slotLbl)
-    slotLbl:SetWidth(COL_SLOT_W)
-    slotLbl:SetJustifyH("LEFT")
-    slotLbl:SetPoint("LEFT", row, "LEFT", x, 0)
-    slotLbl:SetTextColor(0.7, 0.7, 0.7, 1)
-    row.slotLbl = slotLbl
-    x = x + COL_SLOT_W + 4
-
-    -- Item name
-    local itemLbl = row:CreateFontString(nil, "OVERLAY")
-    SetFontNormal(itemLbl)
-    itemLbl:SetWidth(COL_ITEM_W)
-    itemLbl:SetJustifyH("LEFT")
-    itemLbl:SetWordWrap(false)
-    itemLbl:SetPoint("LEFT", row, "LEFT", x, 0)
-    row.itemLbl = itemLbl
-    x = x + COL_ITEM_W + 4
-
-    -- Source: type on top (coloured), where-from underneath (dim, one line)
-    local srcLbl = row:CreateFontString(nil, "OVERLAY")
-    SetFontSmall(srcLbl)
-    srcLbl:SetWidth(COL_SRC_W)
-    srcLbl:SetJustifyH("LEFT")
-    srcLbl:SetPoint("LEFT", row, "LEFT", x, 7)
-    srcLbl:SetTextColor(0.65, 0.65, 0.65, 1)
-    row.srcLbl = srcLbl
-    local srcDetail = row:CreateFontString(nil, "OVERLAY")
-    SetFontSmall(srcDetail)
-    srcDetail:SetWidth(COL_SRC_W)
-    srcDetail:SetJustifyH("LEFT")
-    srcDetail:SetWordWrap(false)
-    srcDetail:SetPoint("LEFT", row, "LEFT", x, -7)
-    srcDetail:SetTextColor(0.64, 0.62, 0.55, 1)
-    row.srcDetail = srcDetail
-    -- Invisible mouse-capture overlay for the source column — shows a quest
-    -- tooltip when this row's item has a questId.
-    local srcHover = CreateFrame("Frame", nil, row)
-    srcHover:SetSize(COL_SRC_W, ROW_H)
-    srcHover:SetPoint("LEFT", row, "LEFT", x, 0)
-    srcHover:EnableMouse(true)
-    srcHover:SetFrameLevel(row:GetFrameLevel() + 1)
-    srcHover:SetScript("OnEnter", function(self)
-        if not row.sourceFull then return end  -- empty/placeholder slot
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        local typeLabel  = SOURCE_TYPE_LABELS[row.sourceType] or "Source"
-        local typeColor  = SOURCE_TYPE_COLORS[row.sourceType] or "|cffcccccc"
-        local qid = row.questId
-        -- Quest rewards: the game's own quest tooltip, source text underneath.
-        local native = SetQuestTooltip(self, qid)
-        if native then
-            GameTooltip:AddLine(" ")
-            GameTooltip:AddLine(typeColor .. typeLabel .. "|r  " .. row.sourceFull, 1, 1, 1, true)
-        else
-            GameTooltip:SetText(typeColor .. typeLabel .. "|r")
-            GameTooltip:AddLine(row.sourceFull, 1, 1, 1, true)
-        end
-        if row.profStatus then
-            GameTooltip:AddLine(" ")
-            GameTooltip:AddLine(row.profStatus, 1, 1, 1, true)
-        end
-        if row.userNote and row.userNote ~= "" then
-            GameTooltip:AddLine(" ")
-            GameTooltip:AddLine("|TInterface\\GossipFrame\\TrainerGossipIcon:12:12|t |cffd6b85aYour note|r", 1, 1, 1)
-            GameTooltip:AddLine("|cffffffff" .. row.userNote .. "|r", 1, 1, 1, true)
-        end
-        if qid and qid > 0 then
-            GameTooltip:AddLine(" ")
-            local qTitle
-            if not native and C_QuestLog and C_QuestLog.GetTitleForQuestID then
-                qTitle = C_QuestLog.GetTitleForQuestID(qid)
-            end
-            if native then
-                -- title and objectives are already shown above
-            elseif qTitle and qTitle ~= "" then
-                GameTooltip:AddLine("|cffffd700Quest:|r |cffffff00[" .. qTitle .. "]|r", 1, 1, 1, true)
-            else
-                GameTooltip:AddLine("|cffffd700Quest reward|r (id " .. qid .. ")", 1, 1, 1, true)
-            end
-            GameTooltip:AddLine("|cffaaaaaa" .. addon.WOWHEAD_QUEST_BASE .. qid .. "|r", 1, 1, 1, true)
-            GameTooltip:AddLine("|cff888888Ctrl+click for URL  ·  Shift+click for chat-link|r", 0.7, 0.7, 0.7, true)
-        end
-        GameTooltip:Show()
-    end)
-    srcHover:SetScript("OnLeave", function() GameTooltip:Hide() end)
-    -- Click handlers on the source overlay: ctrl=URL popup, shift=chat link
-    srcHover:EnableMouse(true)
-    srcHover:SetScript("OnMouseDown", function(self, button)
-        local qid = row.questId
-        if not (qid and qid > 0) then return end
-        if button == "LeftButton" and IsShiftKeyDown() then
-            local link = GetQuestLink and GetQuestLink(qid)
-            if link and ChatEdit_InsertLink then ChatEdit_InsertLink(link) end
-        elseif button == "LeftButton" and IsControlKeyDown() then
-            UI:ShowUrlPopup("Wowhead Quest URL (Ctrl+C to copy):", addon.WOWHEAD_QUEST_BASE .. tostring(qid))
-        end
-    end)
-    row.srcHover = srcHover
-    x = x + COL_SRC_W + 4
-
-    -- Checkbox (a dash instead while browsing another class)
-    local chk = CreateFrame("CheckButton", nil, row, "UICheckButtonTemplate")
-    chk:SetSize(22, 22)
-    chk:SetPoint("LEFT", row, "LEFT", x + (COL_CHK_W - 22) / 2, 0)
-    row.chk = chk
-    local dash = row:CreateFontString(nil, "OVERLAY")
-    SetFontNormal(dash)
-    dash:SetPoint("CENTER", chk, "CENTER", 0, 0)
-    dash:SetText("|cff4d4f57-|r")
-    dash:Hide()
-    row.dash = dash
-
-    -- Hover highlight + tooltip; shift = side-by-side comparison
-    row:SetScript("OnEnter", function(self)
-        self.bg:SetVertexColor(0.20, 0.20, 0.30, 0.8)
-        if self.itemId and self.itemId > 0 then
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-            GameTooltip:SetHyperlink("item:" .. self.itemId .. ":0:0:0:0:0:0:0")
-            -- Quest source: append quest info if this item is a quest reward
-            if self.questId and self.questId > 0 then
-                GameTooltip:AddLine(" ")
-                local qTitle
-                if C_QuestLog and C_QuestLog.GetTitleForQuestID then
-                    qTitle = C_QuestLog.GetTitleForQuestID(self.questId)
-                end
-                if qTitle and qTitle ~= "" then
-                    GameTooltip:AddLine("|cffffd700Quest:|r |cffffff00[" .. qTitle .. "]|r", 1, 1, 1)
-                else
-                    GameTooltip:AddLine("|cffffd700Quest reward|r", 1, 1, 1)
-                end
-                GameTooltip:AddLine("|cffaaaaaa" .. addon.WOWHEAD_QUEST_BASE .. self.questId .. "|r", 0.8, 0.8, 0.8, true)
-            end
-            -- User note
-            if self.userNote and self.userNote ~= "" then
-                GameTooltip:AddLine(" ")
-                GameTooltip:AddLine("|TInterface\\GossipFrame\\TrainerGossipIcon:12:12|t |cffd6b85aYour note|r", 1, 1, 1)
-                GameTooltip:AddLine("|cffffffff" .. self.userNote .. "|r", 1, 1, 1, true)
-            end
-            GameTooltip:AddLine(" ")
-            GameTooltip:AddLine("|cffaaaaaa" .. (addon.WOWHEAD_BASE .. self.itemId) .. "|r", 1, 1, 1, true)
-            GameTooltip:Show()
-            if IsShiftKeyDown() and GameTooltip_ShowCompareItem then
-                GameTooltip_ShowCompareItem(GameTooltip)
-            end
-        end
-    end)
-    row:SetScript("OnLeave", function(self)
-        if idx % 2 == 0 then
-            self.bg:SetVertexColor(0.10, 0.10, 0.14, 0.6)
-        else
-            self.bg:SetVertexColor(0.06, 0.06, 0.09, 0.4)
-        end
-        GameTooltip:Hide()
-    end)
-
-    -- Click handlers: cursor-drop = import; shift+left = chat-link; ctrl+left = URL; right = alts menu
-    row:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-    row:SetScript("OnClick", function(self, button)
-        if button == "LeftButton" and CursorHasItem() then
-            UI:ImportFromCursor(self.slotKey)
-            return
-        end
-        if button == "LeftButton" and IsShiftKeyDown() and self.itemId and self.itemId > 0 then
-            local _, link = GetItemInfo(self.itemId)
-            if link then
-                if ChatEdit_InsertLink then
-                    ChatEdit_InsertLink(link)
-                else
-                    DEFAULT_CHAT_FRAME.editBox:Insert(link)
-                end
-            end
-        elseif button == "LeftButton" and IsControlKeyDown() and self.itemId and self.itemId > 0 then
-            UI:ShowUrlPopup("Wowhead URL (Ctrl+C to copy):", addon.WOWHEAD_BASE .. tostring(self.itemId))
-        elseif button == "RightButton" and self.slotKey then
-            UI:ShowAlternativesMenu(self, self.slotKey)
-        end
-    end)
-
-    -- Drag-drop: drop a bag or equipped item onto the row to import it as an alternative
-    row:SetScript("OnReceiveDrag", function(self)
-        if self.slotKey then UI:ImportFromCursor(self.slotKey) end
-    end)
-
-    return row
-end
+-- The pieces Pages.lua builds with (it can't see this file's locals).
+UI.kit = {
+    TEMPLATED = TEMPLATED, HasAtlas = HasAtlas, FromTemplate = FromTemplate, Child = Child,
+    CreateInset = CreateInset, SkinMinimalScrollBar = SkinMinimalScrollBar,
+    SECTION_ATLAS = SECTION_ATLAS, STRIPE_ATLAS = STRIPE_ATLAS,
+    AddFill = AddFill, AddBorder = AddBorder, SetFontNormal = SetFontNormal, SetFontSmall = SetFontSmall,
+    CreateTab = CreateTab, SetTabLabel = SetTabLabel, SetTabSelected = SetTabSelected,
+    SOURCE_TYPE_COLORS = SOURCE_TYPE_COLORS, SOURCE_TYPE_LABELS = SOURCE_TYPE_LABELS, UI_PAL = UI_PAL,
+    ShortSource = ShortSource, SuffixHint = SuffixHint, ItemQualityRGB = ItemQualityRGB,
+    SetQuestTooltip = SetQuestTooltip, PlayerClass = PlayerClass, IsBrowsing = IsBrowsing,
+}
 
 -- Set selected alternative by item id; returns true if found
 local function selectAltById(class, spec, phase, slot, itemId)
@@ -1898,94 +1555,29 @@ function UI:BuildBadgeStatus()
     self.badgeHover = hoverFrame
 end
 
-function UI:BuildFarmPlan()
-    local f = self.frame
-    local fs = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    fs:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -22 - STAT_AREA_W, 44)
-    fs:SetJustifyH("RIGHT")
-    fs:SetText("|cff00d0ff[Hover for farm plan]|r")
-    self.farmHint = fs
-
-    local hover = CreateFrame("Frame", nil, f)
-    hover:SetSize(160, 16)
-    hover:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -18 - STAT_AREA_W, 40)
-    hover:EnableMouse(true)
-    hover:SetScript("OnEnter", function(self)
-        local class = TBCBisTrackerDB.lastClass
-        local spec  = TBCBisTrackerDB.lastSpec
-        local phase = TBCBisTrackerDB.lastPhase
-        local groups = addon:GetFarmBreakdown(class, spec, phase)
-        GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        GameTooltip:SetText("Farm plan — " .. (addon.PHASE_LABELS[phase] or phase))
-        if not groups or #groups == 0 then
-            GameTooltip:AddLine("Nothing left to farm — all items obtained!", 1, 0.84, 0)
-        else
-            for _, group in ipairs(groups) do
-                GameTooltip:AddLine(" ")
-                GameTooltip:AddDoubleLine("|cffffd700" .. group.label .. "|r", group.count .. " unobtained", 1, 0.84, 0, 0.9, 0.9, 0.9)
-                for _, sub in ipairs(group.locations or {}) do
-                    if group.type == "reputation" then
-                        local fname, requiredStanding, requiredId = addon:ParseRepLocation(sub.location)
-                        if fname and requiredStanding then
-                            local matched, currentId = addon:GetCurrentReputation(fname)
-                            local statusText
-                            if currentId then
-                                local current = addon.STANDING_NAMES[currentId] or "?"
-                                if currentId >= requiredId then
-                                    statusText = "|TInterface\\RAIDFRAME\\ReadyCheck-Ready:10:10|t |cff00ff00" .. current .. "|r"
-                                else
-                                    statusText = "|cffff8800" .. current .. " to " .. requiredStanding .. "|r"
-                                end
-                            else
-                                statusText = "|cff888888not yet discovered|r"
-                            end
-                            GameTooltip:AddDoubleLine("  " .. (matched or fname) .. " (" .. requiredStanding .. ")", statusText, 0.8, 0.85, 0.95, 1, 1, 1)
-                        else
-                            GameTooltip:AddDoubleLine("  " .. sub.location, sub.count, 0.8, 0.85, 0.95, 1, 1, 1)
-                        end
-                    else
-                        GameTooltip:AddDoubleLine("  " .. sub.location, sub.count, 0.8, 0.85, 0.95, 1, 1, 1)
-                    end
-                end
-            end
-        end
-        GameTooltip:Show()
-    end)
-    hover:SetScript("OnLeave", function() GameTooltip:Hide() end)
-    self.farmHover = hover
-end
-
 -- ─────────────────────────────────────────────
 -- Stat-cap side panel
 -- ─────────────────────────────────────────────
 
-local STAT_PANEL_W = STAT_COL_W - 12
+local STAT_PANEL_W = 420
 local STAT_PANEL_BAR_H = 14
 local STAT_PANEL_ROW_H = 38   -- label + bar + spacing
 local STAT_PANEL_MAX_ROWS = 8
 
-function UI:BuildStatCapPanel()
-    local f = self.frame
-
-    -- The stat column sits in the game's inset box, or behind a divider line.
-    local sideInset = CreateInset(f)
-    if sideInset then
-        sideInset:SetPoint("TOPLEFT", f, "TOPLEFT", LIST_W - 2, -28)
-        sideInset:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -6, 6)
-        self.statColInset = sideInset
-    else
-        local vdiv = CreateDivider(f, UI_PAL.dividerSoft)
-        vdiv:SetPoint("TOPLEFT",    f, "TOPLEFT", LIST_W - 4, -32)
-        vdiv:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", LIST_W - 4, 32)
-        vdiv:SetWidth(1)
-        self.statColDivider = vdiv
+-- The Stat Caps tab (TBC): a column of bars in the game's inset box.
+function UI:BuildStatCapPanel(page)
+    local inset = CreateInset(page)
+    if inset then
+        inset:SetPoint("TOPLEFT")
+        inset:SetPoint("BOTTOMLEFT")
+        inset:SetWidth(STAT_PANEL_W + 12)
+        self.statColInset = inset
     end
 
-    -- Stat column lives INSIDE the main frame on the right side.
-    local panel = CreateFrame("Frame", "TBCBisTrackerStatCapPanel", f)
-    panel:SetSize(STAT_PANEL_W, FRAME_H - 40)
-    panel:SetPoint("TOPLEFT", f, "TOPLEFT", LIST_W + 6, -30)
-    panel:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -8, 10)
+    local panel = CreateFrame("Frame", "TBCBisTrackerStatCapPanel", page)
+    panel:SetPoint("TOPLEFT", page, "TOPLEFT", 6, -6)
+    panel:SetPoint("BOTTOMLEFT", page, "BOTTOMLEFT", 6, 6)
+    panel:SetWidth(STAT_PANEL_W)
     self.statPanel = panel
 
     -- The panel starts with its main section (the BiS icon grid that used to sit
@@ -2303,8 +1895,8 @@ function UI:BuildProgressBar()
     fdiv:SetHeight(1)
 
     local container = CreateFrame("Frame", nil, f)
-    container:SetSize(LIST_W - 40, PROGRESS_H)
-    container:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 20, 12)
+    container:SetSize(LIST_W - 24, PROGRESS_H)
+    container:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 12, 12)
     container:EnableMouse(true)
     self.progressContainer = container
 
@@ -2315,7 +1907,15 @@ function UI:BuildProgressBar()
     txt:SetJustifyH("RIGHT")
     self.progressTxt = txt
 
-    local trackW = LIST_W - 40 - 190
+    -- What the marks at the end of the gear rows mean
+    local legend = container:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    legend:SetPoint("LEFT", container, "LEFT", 340, 0)
+    legend:SetText("|TInterface\\RAIDFRAME\\ReadyCheck-Ready:12:12|t obtained    "
+        .. "|TInterface\\Buttons\\Arrow-Up-Up:12:12|t upgrade over what you wear    "
+        .. "|TInterface\\GossipFrame\\AvailableQuestIcon:12:12|t quest reward")
+    self.progressLegend = legend
+
+    local trackW = 320
     -- The game's status bar texture (as on the stat bars), tinted.
     local track = container:CreateTexture(nil, "BACKGROUND")
     track:SetSize(trackW, 10)
@@ -2346,19 +1946,10 @@ end
 
 function UI:Refresh()
     if not self.frame then return end
-    local class  = TBCBisTrackerDB.lastClass
-    local spec   = TBCBisTrackerDB.lastSpec
-    local phase  = TBCBisTrackerDB.lastPhase
-    local missingOnly = TBCBisTrackerDB.showMissingOnly
+    local class = TBCBisTrackerDB.lastClass
 
-    -- Hide all rows first
-    for _, row in ipairs(self.rowPool) do row:Hide() end
-
-    local data = addon:GetPhaseData(class, spec, phase)
-
-    local browsing = IsBrowsing()
     self:ApplyLayout()
-    if browsing then
+    if IsBrowsing() then
         local info = addon.CLASS_INFO[class]
         local home = addon.CLASS_INFO[PlayerClass()]
         self.browseBanner.txt:SetText(
@@ -2367,170 +1958,18 @@ function UI:Refresh()
         self.browseBanner.back:SetText("Back to " .. home.name)
     end
 
-    if not data then
-        self:UpdateScrollRange(0)
-        self:UpdateProgress(0, 0)
-        return
-    end
+    local obtained, total, upgrades = self:RefreshGear()
+    self:RefreshDetail()
+    if self.page == "where" then self:RefreshWhere() end
 
-    local rowIdx = 0
-    local obtained, total = 0, 0
-
-    local sourceFilter = TBCBisTrackerDB.sourceFilter or "all"
-    for _, slot in ipairs(addon.SLOTS) do
-        local entry, selectedIdx, altCount = addon:GetSlotItem(class, spec, phase, slot)
-        local isObtained = entry and addon:IsObtained(class, spec, phase, slot) or false
-
-        if entry then
-            total = total + 1
-            if isObtained then obtained = obtained + 1 end
-        end
-
-        local matchesSource = (sourceFilter == "all") or (entry and entry.sourceType == sourceFilter)
-
-        if not (missingOnly and isObtained) and matchesSource then
-            rowIdx = rowIdx + 1
-            local row = self.rowPool[rowIdx]
-            if not row then break end
-
-            -- Position row
-            row:SetWidth(SCROLL_W)
-            row:SetPoint("TOPLEFT", self.scrollContent, "TOPLEFT", 0, -(rowIdx - 1) * (ROW_H + ROW_PAD))
-            row:Show()
-            row.slotKey = slot
-
-            -- Slot icon until the item's own icon is known
-            row.iconTex:SetTexture(addon.SLOT_ICONS[slot] or "Interface\\Icons\\INV_Misc_QuestionMark")
-            row.iconBorder:SetColorTexture(0.35, 0.35, 0.35, 1)
-            row.slotLbl:SetText(addon.SLOT_LABELS[slot] or slot)
-
-            if entry then
-                -- Populated slot — show item details
-                local itemId   = entry.id
-                row.itemId     = itemId or 0
-                row.questId    = entry.questId
-                local itemName = addon:GetItemName(itemId)
-                local color    = addon:GetItemQualityColor(itemId)
-                local texture  = select(10, GetItemInfo(itemId))
-                    or (C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(itemId))
-                if texture then row.iconTex:SetTexture(texture) end
-                row.iconBorder:SetColorTexture(ItemQualityRGB(itemId))
-                local suffix = SuffixHint(entry, itemName)
-                local suffixText = suffix and ("|cffa39d8c" .. suffix .. "|r") or ""
-                local altSuffix = (altCount > 1) and (" |cff888888[" .. selectedIdx .. "/" .. altCount .. "]|r") or ""
-
-                local tierInfo = addon:GetTierInfo(entry)
-                local tierPrefix = ""
-                if tierInfo then
-                    tierPrefix = "|cffffd700[" .. tierInfo.tier .. "]|r "
-                end
-
-                -- Stash the user note for the hover tooltip; show a small
-                -- pencil icon + a short preview when one is set.
-                local userNote = addon:GetNote(class, spec, phase, slot)
-                row.userNote = userNote
-                local noteSuffix = ""
-                if userNote and userNote ~= "" then
-                    local preview = userNote:sub(1, 36)
-                    if #userNote > 36 then preview = preview .. "…" end
-                    noteSuffix = "  |TInterface\\GossipFrame\\TrainerGossipIcon:12:12|t |cffd6b85a" .. preview .. "|r"
-                end
-                row.itemLbl:SetText(tierPrefix .. color .. itemName .. "|r" .. suffixText .. altSuffix .. noteSuffix)
-
-                -- Source column — short category label inline; full text shown
-                -- in the source-column hover tooltip.
-                local srcColor = SOURCE_TYPE_COLORS[entry.sourceType] or "|cffcccccc"
-                local srcShort = SOURCE_TYPE_LABELS[entry.sourceType] or (entry.sourceType or "Unknown")
-
-                -- Stash the full text for the hover handler
-                local fullSource = entry.source or "Unknown"
-                if entry.note then fullSource = entry.note .. " (" .. fullSource .. ")" end
-                row.sourceFull = fullSource
-                row.sourceType = entry.sourceType
-                row.profStatus = nil
-
-                -- Inline indicators (texture-based — WoW renders Blizzard textures
-                -- reliably, unlike unicode glyphs that depend on the font).
-                local indicators = ""
-                local detail = ShortSource(entry)
-                local detailColor = "|cffa39d8c"
-                if entry.sourceType == "crafted" then
-                    local prof = addon:ParseCraftingProfession(entry)
-                    if prof then
-                        local level = addon:GetPlayerProfessionLevel(prof)
-                        if level then
-                            indicators = indicators .. " |TInterface\\RAIDFRAME\\ReadyCheck-Ready:12:12|t"
-                            row.profStatus = "|cff00ff00You have " .. prof .. " (" .. level .. ").|r"
-                        else
-                            -- Spelled out instead of an unexplained red cross.
-                            detail = "Needs " .. detail
-                            detailColor = "|cffff6b5a"
-                            row.profStatus = "|cffff6060You don't have " .. prof .. ".|r"
-                        end
-                    end
-                end
-                row.srcDetail:SetText(detailColor .. detail .. "|r")
-                if entry.questId and entry.questId > 0 then
-                    -- Quest ! icon — the gold "available quest" exclamation mark
-                    indicators = indicators .. " |TInterface\\GossipFrame\\AvailableQuestIcon:12:12|t"
-                end
-                row.srcLbl:SetText(srcColor .. srcShort .. "|r" .. indicators)
-
-                local slotName = addon.SLOT_LABELS[slot] or slot
-                if tierInfo then
-                    row.slotLbl:SetText("|TInterface\\AchievementFrame\\UI-Achievement-TinyShield:12:12|t " .. slotName)
-                else
-                    row.slotLbl:SetText(slotName)
-                end
-
-                -- Ticks belong to your own class; browsing shows a dash.
-                row.chk:SetShown(not browsing)
-                row.dash:SetShown(browsing)
-                row.chk:Enable()
-                row.chk:SetChecked(isObtained)
-                row.chk:SetScript("OnClick", function(chkSelf)
-                    local val = chkSelf:GetChecked()
-                    addon:SetObtained(class, spec, phase, slot, val)
-                    UI:Refresh()
-                end)
-
-                if isObtained then
-                    row.itemLbl:SetTextColor(0.4, 0.4, 0.4, 1)
-                    row.slotLbl:SetTextColor(0.4, 0.4, 0.4, 1)
-                elseif tierInfo then
-                    row.slotLbl:SetTextColor(1, 0.82, 0, 1)
-                else
-                    row.slotLbl:SetTextColor(0.7, 0.7, 0.7, 1)
-                end
-            else
-                -- Empty slot — invite the user to drop or right-click to import.
-                row.itemId = 0
-                row.questId = nil
-                row.sourceFull = nil
-                row.sourceType = nil
-                row.profStatus = nil
-                row.userNote = nil
-                row.itemLbl:SetText("|cff666666No BiS pick set|r  |cff444444· right-click to import|r")
-                row.srcLbl:SetText("|cff444444-|r")
-                row.srcDetail:SetText("")
-                row.chk:SetChecked(false)
-                row.chk:Hide()
-                row.dash:Hide()
-                row.slotLbl:SetTextColor(0.45, 0.45, 0.45, 1)
-            end
-        end
-    end
-
-    self:UpdateScrollRange(rowIdx)
-
-    self:UpdateProgress(obtained, total)
+    self:UpdateProgress(obtained, total, upgrades)
     self:RefreshPhaseTabs()
     self:RefreshBadgeStatus()
     self:RefreshTierStatus()
     self:RefreshStatCaps()
 end
 
-function UI:UpdateProgress(obtained, total)
+function UI:UpdateProgress(obtained, total, upgrades)
     if total == 0 then
         self.progressFill:SetWidth(1)
         self.progressTxt:SetText("|cffaaaaaaNo data for this selection.|r")
@@ -2545,7 +1984,8 @@ function UI:UpdateProgress(obtained, total)
     else
         self.progressFill:SetVertexColor(0.25, 0.62, 0.18, 1)
         self.progressTxt:SetText("|cff6fdc55" .. obtained .. " / " .. total .. "|r obtained  "
-            .. UI_PAL.muted .. math.floor(pct * 100) .. "%|r")
+            .. UI_PAL.muted .. math.floor(pct * 100) .. "%|r"
+            .. ((upgrades or 0) > 0 and ("  |cff40ff40" .. upgrades .. " upgrades|r") or ""))
     end
 end
 

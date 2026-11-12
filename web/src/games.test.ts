@@ -9,7 +9,7 @@ const bundle = (phases: string[]): TbcDataBundle => ({
   meta: { slots: [], phases, slotLabels: {}, phaseLabels: {}, phaseDescriptions: {} },
 });
 
-const both: Bundles = { tbc: bundle(["prebis", "phase1"]), forever: bundle(["lvl30"]) };
+const both: Bundles = { tbc: bundle(["prebis", "phase1"]), forever: bundle(["lvl60"]) };
 
 describe("games", () => {
   it("lists only loaded bundles", () => {
@@ -24,7 +24,7 @@ describe("games", () => {
   });
 
   it("maps an export's phase to its game", () => {
-    expect(gameForPhase(both, "lvl30")).toBe("forever");
+    expect(gameForPhase(both, "lvl60")).toBe("forever");
     expect(gameForPhase(both, "phase1")).toBe("tbc");
     expect(gameForPhase(both, "nope")).toBeNull();
   });

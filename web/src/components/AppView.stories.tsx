@@ -101,8 +101,8 @@ export const Forever: Story = {
     meta: mockForeverMeta,
     statCaps: {},
     bosses: {},
-    phase: "lvl30",
-    exportString: "TBCBIS:v1;class=WARRIOR;spec=Fury;phase=lvl30;head=250498;neck=7731;back=6751",
+    phase: "lvl60",
+    exportString: "TBCBIS:v1;class=WARRIOR;spec=Fury;phase=lvl60;head=250498;neck=7731;back=6751",
   },
 };
 

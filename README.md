@@ -27,14 +27,15 @@ A **World of Warcraft TBC Anniversary** add-on that lets you select gear for eve
 
 On the **WoW Forever** client (interface 1.60) the add-on switches itself to Forever mode on load:
 
-- One **Level 30** stage (the beta cap), for all 26 class/spec lists. End-game stages get added at release.
+- One **Pre-BIS** stage: the level 60 pre-raid lists for all 28 class/spec lists (Arms and Subtlety included), a first pick and alternatives per slot. Raid stages get added when the raids open.
 - Alliance-only / Horde-only items are hidden from the other faction.
 - Item links go to `wowhead.com/forever`; TBC-only extras (Badges of Justice, rating caps) are hidden.
 - `/tbcbis mode` shows the detected mode; `/tbcbis mode forever|tbc|auto` + `/reload` forces one.
 
-The data lives in `web/scripts/forever-lvl30.json` (from [foreverchanges.pro](https://foreverchanges.pro/bis/warrior)) and is turned into
+The lists are from [Classic WoW Forever](https://classicwowforever.com/bis-list/) (CC BY 4.0). They live in `web/scripts/forever-lvl60.json`, read from the site by
+`python3 web/scripts/fetch-forever-bis.py` (run it again when the site updates its lists), and is turned into
 `TBCBisTracker/Database_Forever.lua` (add-on) and `web/public/data/forever.js` (website: TBC / Forever switch
-in the top bar, `?game=forever`) with `python3 web/scripts/build-forever-db.py`. Test with `lua tests/harness.lua` (Lua 5.1).
+in the top bar, `?game=forever`) with `python3 web/scripts/build-forever-db.py`. Test with `lua tests/harness.lua` (Lua 5.1; `nvim -l tests/harness.lua` works too).
 
 ---
 

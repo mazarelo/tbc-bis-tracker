@@ -10,15 +10,22 @@ local addon = TBCBisTracker
 -- Forever constants
 -- ─────────────────────────────────────────────
 
--- Stages are added here as content opens up (end-game raids come later).
-local FOREVER_PHASES = { "lvl30" }
+-- Stages are added here as content opens up: "lvl60" is the pre-raid list at
+-- level 60; the raid stages come next.
+local FOREVER_PHASES = { "lvl60" }
+
+-- Forever has lists for specs the TBC data doesn't cover.
+local FOREVER_SPECS = {
+    WARRIOR = { "Fury", "Arms", "Protection" },
+    ROGUE   = { "Combat", "Assassination", "Subtlety" },
+}
 
 local FOREVER_PHASE_LABELS = {
-    lvl30 = "Level 30",
+    lvl60 = "Pre-BIS",
 }
 
 local FOREVER_PHASE_DESCRIPTIONS = {
-    lvl30 = "Level 30 — beta cap: dungeons, quests, crafted and world drops",
+    lvl60 = "Pre-raid Best in Slot at level 60 — dungeons, quests, crafted and reputation gear",
 }
 
 -- ─────────────────────────────────────────────
@@ -52,6 +59,9 @@ function addon:ApplyGameMode()
     self.PHASES             = FOREVER_PHASES
     self.PHASE_LABELS       = FOREVER_PHASE_LABELS
     self.PHASE_DESCRIPTIONS = FOREVER_PHASE_DESCRIPTIONS
+    for class, specs in pairs(FOREVER_SPECS) do
+        if self.CLASS_INFO and self.CLASS_INFO[class] then self.CLASS_INFO[class].specs = specs end
+    end
     -- TBC rating caps don't apply to Classic-style % stats.
     self.STAT_CAPS          = {}
     -- Wowhead's Forever database knows both the new and the carried-over items.

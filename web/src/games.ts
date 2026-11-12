@@ -34,8 +34,8 @@ export const GAMES: Record<Game, GameInfo> = {
   forever: {
     id: "forever",
     label: "Forever",
-    subtitle: "WoW Forever · level 30 beta",
-    credit: "Data: foreverchanges.pro beta lists (may change before launch)",
+    subtitle: "WoW Forever · level 60 pre-raid",
+    credit: "Lists: Classic WoW Forever (classicwowforever.com), CC BY 4.0",
     wowheadSite: "forever",
     hasFactions: true,
     hasStatCaps: false,

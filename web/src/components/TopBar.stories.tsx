@@ -31,7 +31,7 @@ export const Default: Story = {};
 export const Phase1Active: Story = { args: { phase: "phase1" } };
 
 export const Forever: Story = {
-  args: { game: "forever", meta: mockForeverMeta, phase: "lvl30" },
+  args: { game: "forever", meta: mockForeverMeta, phase: "lvl60" },
 };
 
 export const Mobile: Story = {
